@@ -67,14 +67,14 @@ body {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 14px;
-  padding: 36px 32px;
+  gap: 18px;
+  padding: 40px 36px;
   background: rgba(255,255,255,0.05);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
   border: 1px solid rgba(255,255,255,0.1);
-  border-radius: 16px;
-  width: 420px;
+  border-radius: 20px;
+  width: 460px;
   max-width: 92vw;
   box-shadow: 0 8px 32px rgba(0,0,0,0.5);
   animation: fadeInUp 0.5s ease-out;
@@ -82,7 +82,7 @@ body {
 
 .brand-title {
   font-family: 'Outfit', sans-serif;
-  font-size: 2.8rem;
+  font-size: 3.2rem;
   font-weight: 800;
   letter-spacing: -2px;
   background: linear-gradient(135deg, var(--teal) 0%, var(--purple) 45%, var(--gold) 100%);
@@ -93,7 +93,7 @@ body {
 }
 
 .brand-subtitle {
-  font-size: 0.9rem;
+  font-size: 1rem;
   color: var(--text-dim);
   margin-top: -8px;
 }
@@ -102,45 +102,72 @@ body {
 .bento-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 10px;
+  gap: 12px;
   width: 100%;
 }
 
 .bento-card {
-  padding: 16px 14px;
-  border-radius: 10px;
-  border: 1px solid rgba(255,255,255,0.08);
+  padding: 28px 20px;
+  border-radius: 14px;
+  border: 1.5px solid rgba(255,255,255,0.08);
   text-align: center;
+  cursor: pointer;
+  background: none;
+  font-family: inherit;
+  transition: transform 0.2s ease, border-color 0.25s, box-shadow 0.25s, background 0.25s;
+  outline: none;
+}
+.bento-card:hover {
+  transform: translateY(-4px) scale(1.02);
+  box-shadow: 0 8px 30px rgba(0,0,0,0.4);
+}
+.bento-card:active {
+  transform: translateY(0) scale(0.98);
+  transition-duration: 0.08s;
 }
 
 .bento-player {
-  background: rgba(92,196,176,0.08);
-  border-color: rgba(92,196,176,0.15);
+  background: rgba(92,196,176,0.06);
+  border-color: rgba(92,196,176,0.12);
+}
+.bento-player:hover {
+  background: rgba(92,196,176,0.12);
+  border-color: rgba(92,196,176,0.35);
+  box-shadow: 0 8px 30px rgba(92,196,176,0.15);
 }
 
 .bento-host {
-  background: rgba(155,107,190,0.08);
-  border-color: rgba(155,107,190,0.15);
+  background: rgba(155,107,190,0.06);
+  border-color: rgba(155,107,190,0.12);
+}
+.bento-host:hover {
+  background: rgba(155,107,190,0.12);
+  border-color: rgba(155,107,190,0.35);
+  box-shadow: 0 8px 30px rgba(155,107,190,0.15);
 }
 
 .bento-icon {
-  font-size: 1.6rem;
-  margin-bottom: 6px;
+  font-size: 2rem;
+  margin-bottom: 10px;
+  transition: transform 0.2s ease;
+}
+.bento-card:hover .bento-icon {
+  transform: scale(1.15);
 }
 
 .bento-player .bento-icon { color: var(--teal); }
 .bento-host .bento-icon { color: var(--purple); }
 
 .bento-card h3 {
-  font-size: 0.95rem;
+  font-size: 1.1rem;
   font-weight: 800;
   color: #fff;
-  margin-bottom: 4px;
+  margin-bottom: 6px;
 }
 
 .bento-card p {
-  font-size: 0.78rem;
-  color: #aaa;
+  font-size: 0.85rem;
+  color: #999;
   line-height: 1.4;
 }
 
@@ -180,18 +207,147 @@ body {
 }
 
 .connect-credits p {
-  font-size: 0.7rem;
+  font-size: 0.75rem;
   color: #555;
-  line-height: 1.6;
+  line-height: 1.7;
 }
 
 .connect-credits a {
-  color: #888;
+  color: #777;
   text-decoration: none;
+  transition: color 0.2s;
 }
 .connect-credits a:hover {
   color: var(--teal);
 }
+
+/* --- Role Picker Flows --- */
+.back-link {
+  -webkit-appearance: none;
+  appearance: none;
+  font-size: 0.9rem;
+  font-weight: 600;
+  font-family: inherit;
+  color: #888;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 8px;
+  cursor: pointer;
+  margin-bottom: 16px;
+  padding: 8px 14px;
+  display: inline-flex;
+  align-items: center;
+  align-self: flex-start;
+  gap: 6px;
+  transition: color 0.2s, background 0.2s, border-color 0.2s, gap 0.2s;
+  outline: none;
+}
+.back-link:hover {
+  color: var(--text);
+  background: rgba(255,255,255,0.08);
+  border-color: rgba(255,255,255,0.15);
+  gap: 8px;
+}
+.back-link:active {
+  transform: scale(0.97);
+}
+.back-link i {
+  font-size: 1em;
+  transition: transform 0.2s;
+}
+.back-link:hover i {
+  transform: translateX(-2px);
+}
+
+.flow-desc {
+  font-size: 1rem;
+  color: #ccc;
+  margin-bottom: 14px;
+  text-align: center;
+}
+
+#player-flow, #host-flow {
+  width: 100%;
+  animation: slideIn 0.3s ease-out;
+}
+
+@keyframes slideIn {
+  from { opacity: 0; transform: translateX(-12px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+/* --- Host Steps --- */
+.host-steps {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  width: 100%;
+}
+
+.host-step {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  gap: 14px;
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: 10px;
+  transition: background 0.2s;
+}
+.host-step:hover {
+  background: rgba(255,255,255,0.03);
+}
+
+.host-step-num {
+  width: 32px;
+  min-width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: rgba(155,107,190,0.15);
+  color: var(--purple);
+  font-size: 0.9rem;
+  font-weight: 800;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  border: 1px solid rgba(155,107,190,0.25);
+  transition: background 0.2s, transform 0.2s;
+}
+
+.host-step:hover .host-step-num {
+  background: rgba(155,107,190,0.25);
+  transform: scale(1.1);
+}
+
+.host-step p {
+  flex: 1;
+  min-width: 0;
+  font-size: 0.95rem;
+  color: #ccc;
+  line-height: 1.5;
+  padding-top: 4px;
+  margin: 0;
+}
+
+.host-step a {
+  color: var(--teal);
+  text-decoration: none;
+  font-weight: 600;
+  transition: color 0.2s;
+}
+.host-step a:hover {
+  color: #7DDCC8;
+  text-decoration: underline;
+}
+
+/* Staggered entrance for host steps */
+.host-step {
+  animation: slideIn 0.3s ease-out both;
+}
+.host-step:nth-child(1) { animation-delay: 0s; }
+.host-step:nth-child(2) { animation-delay: 0.08s; }
+.host-step:nth-child(3) { animation-delay: 0.16s; }
 
 #room-code {
   width: 100%;
@@ -229,10 +385,15 @@ body {
   background: linear-gradient(135deg, var(--purple), var(--purple-deep));
   color: #fff;
   cursor: pointer;
-  transition: transform 0.1s, box-shadow 0.2s;
+  transition: transform 0.15s, box-shadow 0.2s, background 0.2s;
+}
+.btn-primary:hover {
+  background: linear-gradient(135deg, #B080D0, var(--purple));
+  box-shadow: 0 4px 20px rgba(155,107,190,0.4);
+  transform: translateY(-1px);
 }
 .btn-primary:active {
-  transform: scale(0.97);
+  transform: scale(0.97) translateY(0);
   box-shadow: 0 0 12px rgba(155,107,190,0.5);
 }
 
@@ -435,7 +596,7 @@ body {
   gap: 4px;
   /* Larger touch target via padding trick - actual tap zone is bigger */
   position: relative;
-  transition: transform 0.1s ease-out, filter 0.1s, box-shadow 0.1s;
+  transition: transform 0.08s ease-out, filter 0.08s, box-shadow 0.12s;
   -webkit-tap-highlight-color: transparent;
 }
 /* Invisible touch-target expander */
@@ -450,9 +611,9 @@ body {
 
 .action-btn:active,
 .action-btn.pressed {
-  transform: scale(0.88);
-  filter: brightness(1.5) saturate(1.3);
-  border-color: rgba(255,255,255,0.4);
+  transform: scale(0.82);
+  filter: brightness(1.8) saturate(1.5);
+  border-color: rgba(255,255,255,0.6);
 }
 
 /* Color-coded buttons — BombSquad bomb palette */
@@ -461,7 +622,7 @@ body {
   box-shadow: 0 2px 8px rgba(92,196,176,0.3);
 }
 .btn-jump:active, .btn-jump.pressed {
-  box-shadow: 0 0 24px rgba(92,196,176,0.7), 0 0 48px rgba(92,196,176,0.3);
+  box-shadow: 0 0 30px rgba(92,196,176,0.9), 0 0 60px rgba(92,196,176,0.4), inset 0 0 12px rgba(255,255,255,0.15);
 }
 
 .btn-punch {
@@ -469,7 +630,7 @@ body {
   box-shadow: 0 2px 8px rgba(200,120,168,0.3);
 }
 .btn-punch:active, .btn-punch.pressed {
-  box-shadow: 0 0 24px rgba(200,120,168,0.7), 0 0 48px rgba(200,120,168,0.3);
+  box-shadow: 0 0 30px rgba(200,120,168,0.9), 0 0 60px rgba(200,120,168,0.4), inset 0 0 12px rgba(255,255,255,0.15);
 }
 
 .btn-bomb {
@@ -477,7 +638,7 @@ body {
   box-shadow: 0 2px 8px rgba(232,200,64,0.3);
 }
 .btn-bomb:active, .btn-bomb.pressed {
-  box-shadow: 0 0 24px rgba(232,200,64,0.7), 0 0 48px rgba(232,200,64,0.3);
+  box-shadow: 0 0 30px rgba(232,200,64,0.9), 0 0 60px rgba(232,200,64,0.4), inset 0 0 12px rgba(255,255,255,0.15);
 }
 
 .btn-throw {
@@ -485,7 +646,7 @@ body {
   box-shadow: 0 2px 8px rgba(107,139,208,0.3);
 }
 .btn-throw:active, .btn-throw.pressed {
-  box-shadow: 0 0 24px rgba(107,139,208,0.7), 0 0 48px rgba(107,139,208,0.3);
+  box-shadow: 0 0 30px rgba(107,139,208,0.9), 0 0 60px rgba(107,139,208,0.4), inset 0 0 12px rgba(255,255,255,0.15);
 }
 
 /* Run button: wider, rectangular, below diamond */
@@ -499,8 +660,15 @@ body {
   background: radial-gradient(ellipse at 40% 35%, var(--purple), var(--purple-deep));
   box-shadow: 0 2px 8px rgba(155,107,190,0.3);
 }
+.btn-run .key-tag {
+  position: relative;
+  bottom: auto;
+  right: auto;
+  margin-left: 4px;
+  font-size: 0.65rem;
+}
 .btn-run:active, .btn-run.pressed {
-  box-shadow: 0 0 24px rgba(155,107,190,0.7), 0 0 48px rgba(155,107,190,0.3);
+  box-shadow: 0 0 30px rgba(155,107,190,0.9), 0 0 60px rgba(155,107,190,0.4), inset 0 0 12px rgba(255,255,255,0.15);
 }
 
 /* ============================================================
@@ -581,10 +749,10 @@ body {
   }
 
   .key-tag {
-    font-size: 0.65rem;
-    padding: 2px 6px;
-    bottom: -4px;
-    right: -4px;
+    font-size: 0.8rem;
+    padding: 3px 8px;
+    bottom: -8px;
+    right: -8px;
   }
 
   #hud {
@@ -1119,12 +1287,20 @@ body.is-tauri #dashboard-link {
 
 /* Button press ripple effect */
 @keyframes btnPulse {
-  0% { box-shadow: 0 0 0 0 rgba(255,255,255,0.3); }
-  100% { box-shadow: 0 0 0 12px rgba(255,255,255,0); }
+  0% { box-shadow: 0 0 0 0 rgba(255,255,255,0.5); }
+  50% { box-shadow: 0 0 0 8px rgba(255,255,255,0.2); }
+  100% { box-shadow: 0 0 0 18px rgba(255,255,255,0); }
+}
+
+@keyframes btnPop {
+  0% { transform: scale(1); }
+  30% { transform: scale(0.78); }
+  60% { transform: scale(0.85); }
+  100% { transform: scale(0.82); }
 }
 
 .action-btn.pressed {
-  animation: btnPulse 0.3s ease-out;
+  animation: btnPulse 0.35s ease-out, btnPop 0.15s ease-out;
 }
 
 /* Smooth screen transitions */
@@ -1167,17 +1343,19 @@ body.is-tauri #dashboard-link {
 /* --- Key Tags on Buttons (desktop only) --- */
 .key-tag {
   position: absolute;
-  bottom: -2px;
-  right: -2px;
-  font-size: 0.5rem;
+  bottom: -6px;
+  right: -6px;
+  font-size: 0.7rem;
   font-weight: 800;
   font-family: 'JetBrains Mono', monospace;
-  background: rgba(0,0,0,0.6);
-  color: #aaa;
-  padding: 1px 4px;
-  border-radius: 3px;
-  line-height: 1.2;
+  background: rgba(0,0,0,0.85);
+  color: #fff;
+  padding: 2px 6px;
+  border-radius: 4px;
+  line-height: 1.3;
   pointer-events: none;
+  border: 1px solid rgba(255,255,255,0.2);
+  text-shadow: 0 1px 2px rgba(0,0,0,0.5);
 }
 
 /* Hide key tags on touch devices */

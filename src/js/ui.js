@@ -13,7 +13,6 @@ const connectScreen   = document.getElementById('connect-screen');
 const controllerScreen = document.getElementById('controller-screen');
 const roomCodeInput   = document.getElementById('room-code');
 const joinBtn         = document.getElementById('join-btn');
-const demoBtn         = document.getElementById('demo-btn');
 const statusEl        = document.getElementById('connection-status');
 const menuBtn         = document.getElementById('menu-btn');
 const lagDisplay      = document.getElementById('lag-display');
@@ -41,10 +40,37 @@ function showConnect() {
   connectScreen.hidden = false;
 }
 
-// Demo button: show controller without connecting
-demoBtn.addEventListener('click', () => {
+// ============================================================
+// Role Picker Flow (Player vs Host)
+// ============================================================
+const rolePicker  = document.getElementById('role-picker');
+const playerFlow  = document.getElementById('player-flow');
+const hostFlow    = document.getElementById('host-flow');
+
+document.getElementById('pick-player').addEventListener('click', () => {
+  rolePicker.hidden = true;
+  playerFlow.hidden = false;
+  hostFlow.hidden = true;
+  roomCodeInput.focus();
+});
+
+document.getElementById('pick-host').addEventListener('click', () => {
+  rolePicker.hidden = true;
+  playerFlow.hidden = true;
+  hostFlow.hidden = false;
+});
+
+document.getElementById('back-to-roles').addEventListener('click', () => {
+  playerFlow.hidden = true;
+  hostFlow.hidden = true;
+  rolePicker.hidden = false;
   statusEl.textContent = '';
-  showController();
+});
+
+document.getElementById('back-to-roles-host').addEventListener('click', () => {
+  playerFlow.hidden = true;
+  hostFlow.hidden = true;
+  rolePicker.hidden = false;
 });
 
 // Join button: connect via direct IP or room code
