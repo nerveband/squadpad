@@ -3,6 +3,7 @@ name: Build SquadPad
 on:
   push:
     branches: [master, main]
+    tags: ['v*']
   pull_request:
     branches: [master, main]
 
@@ -32,6 +33,8 @@ jobs:
           - platform: windows-latest
             target: x86_64-pc-windows-msvc
     runs-on: ${{ matrix.platform }}
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -51,3 +54,8 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           args: --target ${{ matrix.target }}
+          tagName: ${{ github.ref_name }}
+          releaseName: 'SquadPad ${{ github.ref_name }}'
+          releaseBody: 'Download the SquadPad desktop app for your platform below.'
+          releaseDraft: false
+          prerelease: false

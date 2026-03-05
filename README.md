@@ -6,12 +6,6 @@ An unofficial web-based controller for [BombSquad](https://www.froemling.net/app
 
 Website: [squadpad.org](https://squadpad.org)
 
-![Connect screen](docs/screenshots/screenshot1.png)
-
-![Host dashboard](docs/screenshots/screenshot2.png)
-
-![SquadPad running alongside BombSquad](docs/screenshots/screenshot3.jpeg)
-
 
 ## For Players
 
@@ -242,6 +236,15 @@ See [docs/PROTOCOL.md](docs/PROTOCOL.md) for the full protocol reference coverin
 SquadPad uses [Umami](https://umami.is), a privacy-focused, open-source analytics tool. Umami does not use cookies, does not track users across sites, and does not collect personal information. Analytics are self-hosted. See the [Privacy Policy](https://squadpad.org/privacy.html) for details.
 
 The cloud relay temporarily holds connection data (room code, player name, IP for rate limiting) while you play and deletes everything on disconnect. No gameplay data is logged or stored.
+
+
+## Screenshots
+
+![Connect screen](docs/screenshots/screenshot1.png)
+
+![Host dashboard](docs/screenshots/screenshot2.png)
+
+![SquadPad running alongside BombSquad](docs/screenshots/screenshot3.jpeg)
 
 
 ## Credits
