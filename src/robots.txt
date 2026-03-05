@@ -1,0 +1,6 @@
+User-agent: *
+Allow: /
+Disallow: /js/
+Disallow: /css/
+
+Sitemap: https://squadpad.org/sitemap.xml

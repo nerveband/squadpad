@@ -3,10 +3,30 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>SquadPad</title>
+  <title>SquadPad - Play BombSquad from Any Browser | Free Web Controller</title>
   <meta name="theme-color" content="#0d0b1a">
-  <meta name="description" content="SquadPad - Unofficial BombSquad Web Controller">
+  <meta name="description" content="Turn your phone or computer into a BombSquad controller. No app install needed — open squadpad.org, enter a room code, and play. Free, open-source, works on any device.">
+  <meta name="keywords" content="BombSquad, controller, web controller, game controller, mobile controller, browser game, multiplayer, local multiplayer, party game">
+  <meta name="author" content="Ashraf Ali">
+  <link rel="canonical" href="https://squadpad.org/">
+  <meta name="robots" content="index, follow">
+
+  <!-- Open Graph -->
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://squadpad.org/">
+  <meta property="og:title" content="SquadPad - Play BombSquad from Any Browser">
+  <meta property="og:description" content="Turn your phone or computer into a BombSquad controller. No app install — just open, enter a code, and play.">
+  <meta property="og:site_name" content="SquadPad">
+  <meta property="og:image" content="https://squadpad.org/icon-squadpad.png">
+
+  <!-- Twitter Card -->
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="SquadPad - Play BombSquad from Any Browser">
+  <meta name="twitter:description" content="Turn your phone or computer into a BombSquad controller. No app install — just open, enter a code, and play.">
+  <meta name="twitter:image" content="https://squadpad.org/icon-squadpad.png">
+
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%92%A3%3C/text%3E%3C/svg%3E">
+  <link rel="apple-touch-icon" href="icon-squadpad.png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
@@ -17,12 +37,36 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <link rel="manifest" href="manifest.json">
   <script defer src="https://stats.wavedepth.com/script.js" data-website-id="72386a8a-fd30-462b-9a93-1070410b3abc"></script>
+
+  <!-- Structured Data -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "WebApplication",
+    "name": "SquadPad",
+    "url": "https://squadpad.org",
+    "description": "Turn your phone or computer into a BombSquad controller. No app install needed — open squadpad.org, enter a room code, and play.",
+    "applicationCategory": "GameApplication",
+    "operatingSystem": "Any",
+    "browserRequirements": "Requires a modern browser with WebSocket support",
+    "offers": {
+      "@type": "Offer",
+      "price": "0",
+      "priceCurrency": "USD"
+    },
+    "author": {
+      "@type": "Person",
+      "name": "Ashraf Ali",
+      "url": "https://ashrafali.net"
+    }
+  }
+  </script>
 </head>
 <body>
   <div id="app">
 
     <!-- Connect Screen -->
-    <div id="connect-screen">
+    <main id="connect-screen">
       <div class="connect-card">
         <h1 class="brand-title">SquadPad</h1>
         <p class="brand-subtitle">Control BombSquad from any browser or computer</p>
@@ -44,6 +88,7 @@
         <!-- Player flow: room code input -->
         <div id="player-flow" hidden>
           <button class="back-link" id="back-to-roles"><i class="ph-bold ph-arrow-left"></i> Back</button>
+          <label for="player-name" class="visually-hidden">Player name</label>
           <input type="text" id="player-name" placeholder="Your name (optional)" maxlength="10" autocomplete="off" spellcheck="false" class="name-input">
           <div class="connect-tabs">
             <button class="connect-tab active" data-tab="online"><i class="ph-bold ph-globe"></i> Online</button>
@@ -52,6 +97,7 @@
           <div id="tab-online" class="tab-content">
             <p class="flow-desc">Enter the two words from your host:</p>
             <div class="join-row">
+              <label for="room-word1" class="visually-hidden">Room code first word</label>
               <input
                 type="text"
                 id="room-word1"
@@ -61,6 +107,7 @@
                 spellcheck="false"
                 class="room-word"
               >
+              <label for="room-word2" class="visually-hidden">Room code second word</label>
               <input
                 type="text"
                 id="room-word2"
@@ -77,6 +124,7 @@
           <div id="tab-lan" class="tab-content" hidden>
             <p class="flow-desc">Enter the host's local IP address:</p>
             <div class="join-row">
+              <label for="lan-address" class="visually-hidden">Host IP address</label>
               <input
                 type="text"
                 id="lan-address"
@@ -88,7 +136,7 @@
             </div>
             <p class="step-hint"><i class="ph-bold ph-info"></i> Both devices must be on the same Wi-Fi network. The host's IP is shown in the SquadPad desktop app.</p>
           </div>
-          <div id="connection-status"></div>
+          <div id="connection-status" role="status" aria-live="polite"></div>
         </div>
 
         <!-- Host flow: download info -->
@@ -115,7 +163,7 @@
           <p>Made by <a href="https://ashrafali.net" target="_blank" rel="noopener">ashrafali.net</a> &middot; <a href="https://github.com/nerveband/squadpad" target="_blank" rel="noopener">Open Source</a> &middot; <a href="privacy.html" target="_blank" rel="noopener">Privacy</a></p>
         </div>
       </div>
-    </div>
+    </main>
 
     <!-- Controller Screen -->
     <div id="controller-screen" hidden>
@@ -135,7 +183,7 @@
         <div class="settings-card">
           <div class="settings-header">
             <h2>Controls</h2>
-            <button id="settings-close" class="btn-link"><i class="ph-bold ph-x"></i></button>
+            <button id="settings-close" class="btn-link" aria-label="Close settings"><i class="ph-bold ph-x"></i></button>
           </div>
           <p class="settings-desc">Click a key to remap it. Press any key to assign.</p>
           <div class="key-grid">
@@ -168,10 +216,10 @@
 
         <div id="button-zone">
           <div class="btn-diamond">
-            <button class="action-btn btn-throw" data-action="throw"><i class="ph-bold ph-hand-grabbing"></i><span class="key-tag">L</span></button>
-            <button class="action-btn btn-punch" data-action="punch"><i class="ph-bold ph-hand-fist"></i><span class="key-tag">J</span></button>
-            <button class="action-btn btn-bomb"  data-action="bomb"><i class="ph-bold ph-fire"></i><span class="key-tag">I</span></button>
-            <button class="action-btn btn-jump"  data-action="jump"><i class="ph-bold ph-arrow-fat-up"></i><span class="key-tag">K</span></button>
+            <button class="action-btn btn-throw" data-action="throw" aria-label="Throw"><i class="ph-bold ph-hand-grabbing"></i><span class="key-tag">L</span></button>
+            <button class="action-btn btn-punch" data-action="punch" aria-label="Punch"><i class="ph-bold ph-hand-fist"></i><span class="key-tag">J</span></button>
+            <button class="action-btn btn-bomb"  data-action="bomb" aria-label="Bomb"><i class="ph-bold ph-fire"></i><span class="key-tag">I</span></button>
+            <button class="action-btn btn-jump"  data-action="jump" aria-label="Jump"><i class="ph-bold ph-arrow-fat-up"></i><span class="key-tag">K</span></button>
           </div>
         </div>
       </div>
