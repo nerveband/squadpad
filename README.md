@@ -51,6 +51,50 @@ Browser Player --WebSocket--> BombPad Host --UDP:43210--> BombSquad
 Browser Player --WS--> Cloud Relay --WS--> BombPad Host --UDP--> BombSquad
 ```
 
+## Self-Hosting the Relay
+
+The relay server is ~200 lines of Node.js. You can run your own instead of using the public one.
+
+### Option 1: Docker (easiest)
+
+```bash
+cd relay
+docker build -t bombpad-relay .
+docker run -p 43212:43212 bombpad-relay
+```
+
+### Option 2: Node.js directly
+
+```bash
+cd relay
+npm install
+PORT=43212 node server.js
+```
+
+### Option 3: Fly.io (free hosting)
+
+```bash
+cd relay
+fly launch --name my-bombpad-relay
+fly deploy
+```
+
+### Pointing clients to your relay
+
+Players add `?relay=wss://your-relay.example.com` to the BombPad URL, or set it in localStorage:
+
+```js
+localStorage.setItem('bombpad_relay_url', 'wss://your-relay.example.com');
+```
+
+### Rate Limits (built-in)
+
+The relay has built-in abuse protection:
+- Max 5 room creations per IP per minute
+- Max 20 simultaneous connections per IP
+- Max 256 bytes per message (controller states are 3 bytes)
+- Idle rooms auto-close after 5 minutes
+
 ## License
 
 MIT

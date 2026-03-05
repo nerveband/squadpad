@@ -64,7 +64,8 @@ joinBtn.addEventListener('click', () => {
     connection.connect(wsUrl);
   } else {
     // Room code: connect via cloud relay
-    const relayUrl = 'wss://relay.bombpad.io'; // TODO: configure
+    // Users can set a custom relay URL in the settings or via URL param
+    const relayUrl = getRelayUrl();
     connection.connectRelay(relayUrl, code.toUpperCase());
   }
 });
@@ -339,6 +340,22 @@ export function updateLag(ms) {
   } else if (ms > 80) {
     lagDisplay.classList.add('lag-warn');
   }
+}
+
+// ============================================================
+// Relay URL Configuration
+// ============================================================
+// Users can set a custom relay via:
+//   1. URL parameter: ?relay=wss://my-relay.example.com
+//   2. localStorage: bombpad_relay_url
+//   3. Default: wss://relay.bombpad.io
+const DEFAULT_RELAY_URL = 'wss://relay.bombpad.io';
+
+function getRelayUrl() {
+  const params = new URLSearchParams(window.location.search);
+  return params.get('relay')
+    || localStorage.getItem('bombpad_relay_url')
+    || DEFAULT_RELAY_URL;
 }
 
 // ============================================================

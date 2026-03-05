@@ -14,9 +14,54 @@ import { WebSocketServer } from 'ws';
 const CODE_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 const MAX_PLAYERS_PER_ROOM = 7;
 const ROOM_IDLE_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes
+const MAX_MESSAGE_BYTES = 256;               // controller states are 3 bytes
+
+// Rate limiting defaults
+const RATE_LIMIT_WINDOW_MS = 60 * 1000;     // 1 minute window
+const MAX_ROOMS_PER_IP = 5;                  // max room creations per window
+const MAX_CONNECTIONS_PER_IP = 20;           // max simultaneous connections per IP
+
+// Simple in-memory rate limiter
+class RateLimiter {
+  constructor(maxPerWindow = MAX_ROOMS_PER_IP, windowMs = RATE_LIMIT_WINDOW_MS) {
+    this.maxPerWindow = maxPerWindow;
+    this.windowMs = windowMs;
+    this.hits = new Map(); // ip -> [timestamps]
+  }
+
+  // Returns true if the action is allowed, false if rate-limited
+  allow(ip) {
+    const now = Date.now();
+    const timestamps = this.hits.get(ip) || [];
+    // Remove expired entries
+    const valid = timestamps.filter(t => now - t < this.windowMs);
+    if (valid.length >= this.maxPerWindow) {
+      this.hits.set(ip, valid);
+      return false;
+    }
+    valid.push(now);
+    this.hits.set(ip, valid);
+    return true;
+  }
+
+  // Periodic cleanup of stale entries
+  cleanup() {
+    const now = Date.now();
+    for (const [ip, timestamps] of this.hits) {
+      const valid = timestamps.filter(t => now - t < this.windowMs);
+      if (valid.length === 0) this.hits.delete(ip);
+      else this.hits.set(ip, valid);
+    }
+  }
+}
 
 export function createRelay(options = {}) {
   const rooms = new Map();
+  const roomRateLimiter = new RateLimiter(
+    options.maxRoomsPerIp || MAX_ROOMS_PER_IP,
+    options.rateLimitWindowMs || RATE_LIMIT_WINDOW_MS
+  );
+  const connectionsPerIp = new Map(); // ip -> count
 
   const wssOptions = options.noServer ? { noServer: true } : { port: options.port || 43212 };
   const wss = new WebSocketServer(wssOptions);
@@ -50,12 +95,28 @@ export function createRelay(options = {}) {
   }
 
   // Handle new WebSocket connections
-  wss.on('connection', (ws) => {
+  wss.on('connection', (ws, req) => {
+    const ip = req?.headers?.['x-forwarded-for']?.split(',')[0]?.trim()
+      || req?.socket?.remoteAddress
+      || 'unknown';
+
+    // Enforce per-IP connection limit
+    const currentConns = connectionsPerIp.get(ip) || 0;
+    if (currentConns >= (options.maxConnectionsPerIp || MAX_CONNECTIONS_PER_IP)) {
+      ws.close(4029, 'Too many connections');
+      return;
+    }
+    connectionsPerIp.set(ip, currentConns + 1);
+
     let role = null;
     let roomCode = null;
     let playerId = null;
 
     ws.on('message', (data, isBinary) => {
+      // Enforce message size limit
+      const size = isBinary ? data.byteLength || data.length : data.length;
+      if (size > MAX_MESSAGE_BYTES) return;
+
       // Binary: forward between host and players
       if (isBinary) {
         const room = rooms.get(roomCode);
@@ -87,6 +148,11 @@ export function createRelay(options = {}) {
       try { msg = JSON.parse(data.toString()); } catch { return; }
 
       if (msg.type === 'host') {
+        // Rate limit room creation per IP
+        if (!roomRateLimiter.allow(ip)) {
+          ws.send(JSON.stringify({ type: 'error', reason: 'rate_limited' }));
+          return;
+        }
         roomCode = createRoom(ws);
         role = 'host';
         ws.send(JSON.stringify({ type: 'room', code: roomCode }));
@@ -114,6 +180,11 @@ export function createRelay(options = {}) {
     });
 
     ws.on('close', () => {
+      // Decrement connection count for this IP
+      const count = connectionsPerIp.get(ip) || 1;
+      if (count <= 1) connectionsPerIp.delete(ip);
+      else connectionsPerIp.set(ip, count - 1);
+
       if (!roomCode) return;
       const room = rooms.get(roomCode);
       if (!room) return;
@@ -136,8 +207,9 @@ export function createRelay(options = {}) {
     });
   });
 
-  // Clean up idle rooms every 60 seconds
+  // Clean up idle rooms and stale rate limit entries every 60 seconds
   const cleanupTimer = setInterval(() => {
+    roomRateLimiter.cleanup();
     const now = Date.now();
     for (const [code, room] of rooms) {
       if (now - room.lastActivity > ROOM_IDLE_TIMEOUT_MS) {
