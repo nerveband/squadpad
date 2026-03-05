@@ -11,13 +11,19 @@ import { encodeStateV2 } from './protocol.js';
 // ============================================================
 const connectScreen   = document.getElementById('connect-screen');
 const controllerScreen = document.getElementById('controller-screen');
-const roomCodeInput   = document.getElementById('room-code');
+const roomWord1       = document.getElementById('room-word1');
+const roomWord2       = document.getElementById('room-word2');
 const playerNameInput = document.getElementById('player-name');
 const joinBtn         = document.getElementById('join-btn');
 const statusEl        = document.getElementById('connection-status');
+function setStatus(msg, isError = false) {
+  statusEl.textContent = msg;
+  statusEl.classList.toggle('status-error', isError);
+}
 const menuBtn         = document.getElementById('menu-btn');
 const connectTimer    = document.getElementById('connect-timer');
 const lagDisplay      = document.getElementById('lag-display');
+const playerNameDisplay = document.getElementById('player-name-display');
 const joystickZone    = document.getElementById('joystick-zone');
 const joystickBase    = document.getElementById('joystick-base');
 const joystickThumb   = document.getElementById('joystick-thumb');
@@ -53,7 +59,7 @@ document.getElementById('pick-player').addEventListener('click', () => {
   rolePicker.hidden = true;
   playerFlow.hidden = false;
   hostFlow.hidden = true;
-  roomCodeInput.focus();
+  roomWord1.focus();
 });
 
 document.getElementById('pick-host').addEventListener('click', () => {
@@ -71,7 +77,7 @@ document.getElementById('back-to-roles').addEventListener('click', () => {
   playerFlow.hidden = true;
   hostFlow.hidden = true;
   rolePicker.hidden = false;
-  statusEl.textContent = '';
+  setStatus('');
 });
 
 document.getElementById('back-to-roles-host').addEventListener('click', () => {
@@ -80,28 +86,21 @@ document.getElementById('back-to-roles-host').addEventListener('click', () => {
   rolePicker.hidden = false;
 });
 
-// Join button: connect via direct IP or room code
+// Join button: connect via room words
 joinBtn.addEventListener('click', () => {
-  const code = roomCodeInput.value.trim();
-  if (!code) {
-    statusEl.textContent = 'Please enter a room code or IP address.';
+  const w1 = roomWord1.value.trim().toLowerCase();
+  const w2 = roomWord2.value.trim().toLowerCase();
+  if (!w1 || !w2) {
+    setStatus('Please enter both words.', true);
     return;
   }
-  statusEl.textContent = 'Connecting...';
+  const code = `${w1} ${w2}`;
+  setStatus('Connecting...');
   joinBtn.disabled = true;
 
-  // Detect if it's a direct IP address or a room code
-  if (code.includes('.') || code.includes(':')) {
-    // Direct IP: connect to host's WebSocket server
-    const wsUrl = code.startsWith('ws') ? code : `ws://${code}`;
-    connection.connect(wsUrl);
-  } else {
-    // Room code: connect via cloud relay
-    // Users can set a custom relay URL in the settings or via URL param
-    const relayUrl = getRelayUrl();
-    connection.connectRelay(relayUrl, code.toUpperCase(), playerNameInput.value.trim());
-    addToHistory(code.toUpperCase());
-  }
+  const relayUrl = getRelayUrl();
+  connection.connectRelay(relayUrl, code, playerNameInput.value.trim());
+  addToHistory(code);
 });
 
 // Menu button disconnects and returns to connect screen
@@ -231,8 +230,16 @@ buttonZone.addEventListener('touchstart', (e) => {
     btn.classList.add('pressed');
     controller.pressButton(action);
 
-    // Haptic feedback if available
-    if (navigator.vibrate) navigator.vibrate(10);
+    // Haptic feedback — different patterns per action
+    if (hapticsEnabled && navigator.vibrate) {
+      const hapticPatterns = {
+        punch: [20, 10, 15],   // double tap
+        bomb:  [30],            // strong tap
+        jump:  [8],             // light tap
+        throw: [12, 8, 12],    // toss feel
+      };
+      navigator.vibrate(hapticPatterns[action] || [10]);
+    }
   }
 }, { passive: false });
 
@@ -395,41 +402,69 @@ function updateConnectTimer() {
 // Connection Event Handlers
 // ============================================================
 connection.onConnect = () => {
-  statusEl.textContent = '';
+  setStatus('');
   joinBtn.disabled = false;
   startConnectTimer();
+  startPingLoop();
   showController();
 };
 
 connection.onDisconnect = () => {
   stopConnectTimer();
+  stopPingLoop();
   joinBtn.disabled = false;
+  if (document.getElementById('join-lan-btn')) document.getElementById('join-lan-btn').disabled = false;
   showConnect();
-  statusEl.textContent = 'Disconnected. Try again.';
+  setStatus('Disconnected. Try again.', true);
 };
 
 connection.onReconnecting = (attempt) => {
-  statusEl.textContent = `Reconnecting (${attempt}/5)...`;
+  setStatus(`Reconnecting (${attempt}/5)...`);
   // Stay on controller screen, don't switch back yet
 };
 
 connection.onReconnectFailed = () => {
   stopConnectTimer();
   showConnect();
-  statusEl.textContent = 'Connection lost. Tap Join to try again.';
+  setStatus('Connection lost. Tap Join to try again.', true);
   joinBtn.disabled = false;
 };
 
+// Map relay error reasons to user-friendly messages
+function getErrorMessage(msg) {
+  switch (msg.reason) {
+    case 'not_found':
+      return 'Room not found. Check the code and try again.';
+    case 'room_full':
+      return `Room is full (${msg.playerCount || 7}/${msg.playerCount || 7} players). Ask someone to leave and try again.`;
+    case 'rate_limited':
+      return 'Too many attempts. Wait a minute and try again.';
+    default:
+      return msg.message || 'Connection error.';
+  }
+}
+
 connection.onMessage = (data) => {
-  // Handle incoming messages from host
+  // Handle incoming messages from host/relay
   if (typeof data === 'string') {
     try {
       const msg = JSON.parse(data);
+      if (msg.type === 'pong' && msg.ts) {
+        updateLagDisplay(Date.now() - msg.ts);
+      }
       if (msg.type === 'lag') {
-        updateLag(Math.round(msg.ms));
+        updateLagDisplay(Math.round(msg.ms));
       }
       if (msg.type === 'error') {
-        statusEl.textContent = msg.message || 'Connection error.';
+        setStatus(getErrorMessage(msg), true);
+        joinBtn.disabled = false;
+        connection.disconnect();
+        showConnect();
+      }
+      if (msg.type === 'host_left') {
+        setStatus('The host has left the game.', true);
+        stopConnectTimer();
+        joinBtn.disabled = false;
         showConnect();
       }
     } catch { /* ignore non-JSON */ }
@@ -453,20 +488,98 @@ setInterval(() => {
 }, 100);
 
 // ============================================================
-// Room Code Input Formatting
+// Connect Tabs (Online / LAN)
 // ============================================================
-roomCodeInput.addEventListener('input', () => {
-  let val = roomCodeInput.value.toUpperCase().replace(/[^A-Z0-9]/g, '');
-  if (val.length > 4) {
-    val = val.slice(0, 4) + '-' + val.slice(4, 8);
+document.querySelectorAll('.connect-tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.connect-tab').forEach(t => t.classList.remove('active'));
+    tab.classList.add('active');
+    const target = tab.dataset.tab;
+    document.getElementById('tab-online').hidden = target !== 'online';
+    document.getElementById('tab-lan').hidden = target !== 'lan';
+    setStatus('');
+  });
+});
+
+// LAN Join button
+const joinLanBtn = document.getElementById('join-lan-btn');
+const lanAddressInput = document.getElementById('lan-address');
+
+joinLanBtn.addEventListener('click', () => {
+  const addr = lanAddressInput.value.trim();
+  if (!addr) {
+    setStatus('Please enter the host IP address.', true);
+    return;
   }
-  roomCodeInput.value = val;
+  setStatus('Connecting...');
+  joinLanBtn.disabled = true;
+  const wsUrl = addr.startsWith('ws') ? addr : `ws://${addr}`;
+  connection.connect(wsUrl, playerNameInput.value.trim());
 });
 
 // ============================================================
-// Lag Display Helper (will be called from connection module)
+// Room Word Input — auto-tab on space/enter, lowercase only
 // ============================================================
-export function updateLag(ms) {
+roomWord1.addEventListener('input', () => {
+  roomWord1.value = roomWord1.value.toLowerCase().replace(/[^a-z]/g, '');
+});
+roomWord1.addEventListener('keydown', (e) => {
+  if (e.key === ' ' || e.key === 'Tab') {
+    e.preventDefault();
+    roomWord2.focus();
+    roomWord2.select();
+  }
+  if (e.key === 'Enter' && roomWord1.value.trim()) {
+    e.preventDefault();
+    roomWord2.focus();
+  }
+});
+roomWord2.addEventListener('input', () => {
+  roomWord2.value = roomWord2.value.toLowerCase().replace(/[^a-z]/g, '');
+});
+roomWord2.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') {
+    e.preventDefault();
+    joinBtn.click();
+  }
+  // Backspace on empty field goes back to word 1
+  if (e.key === 'Backspace' && !roomWord2.value) {
+    e.preventDefault();
+    roomWord1.focus();
+  }
+});
+
+// ============================================================
+// Lag Display — measure WebSocket round-trip via ping/pong JSON
+// ============================================================
+let pingInterval = null;
+let lastPingTime = 0;
+
+function startPingLoop() {
+  stopPingLoop();
+  updateLagDisplay(null); // reset
+  pingInterval = setInterval(() => {
+    if (connection.connected) {
+      lastPingTime = Date.now();
+      try {
+        connection.ws.send(JSON.stringify({ type: 'ping', ts: lastPingTime }));
+      } catch { /* ignore */ }
+    }
+  }, 5000);
+}
+
+function stopPingLoop() {
+  if (pingInterval) clearInterval(pingInterval);
+  pingInterval = null;
+  updateLagDisplay(null);
+}
+
+function updateLagDisplay(ms) {
+  if (ms === null) {
+    lagDisplay.innerHTML = '<i class="ph-bold ph-wifi-high"></i> --ms';
+    lagDisplay.classList.remove('lag-warn', 'lag-bad');
+    return;
+  }
   lagDisplay.textContent = `${ms}ms`;
   lagDisplay.classList.remove('lag-warn', 'lag-bad');
   if (ms > 150) {
@@ -629,12 +742,51 @@ resetKeysBtn.addEventListener('click', () => {
 // Load saved key bindings on startup
 loadBindings();
 
+// Haptics toggle (on by default)
+let hapticsEnabled = localStorage.getItem('squadpad_haptics') !== 'off';
+const hapticsToggle = document.getElementById('haptics-toggle');
+function updateHapticsUI() {
+  if (hapticsToggle) {
+    hapticsToggle.textContent = hapticsEnabled ? 'On' : 'Off';
+    hapticsToggle.className = 'toggle-btn ' + (hapticsEnabled ? 'on' : 'off');
+  }
+}
+updateHapticsUI();
+if (hapticsToggle) {
+  hapticsToggle.addEventListener('click', () => {
+    hapticsEnabled = !hapticsEnabled;
+    localStorage.setItem('squadpad_haptics', hapticsEnabled ? 'on' : 'off');
+    updateHapticsUI();
+  });
+}
+
 // ============================================================
 // Player Name Persistence
 // ============================================================
 playerNameInput.value = localStorage.getItem('squadpad_player_name') || '';
 playerNameInput.addEventListener('input', () => {
   localStorage.setItem('squadpad_player_name', playerNameInput.value);
+  updatePlayerNameDisplay();
+});
+
+// ============================================================
+// HUD Player Name Display + Click to Rename
+// ============================================================
+function updatePlayerNameDisplay() {
+  const name = playerNameInput.value.trim();
+  playerNameDisplay.textContent = name;
+}
+updatePlayerNameDisplay();
+
+playerNameDisplay.addEventListener('click', () => {
+  const current = playerNameInput.value.trim();
+  const newName = prompt('Enter your name:', current);
+  if (newName !== null) {
+    const trimmed = newName.trim().slice(0, 10);
+    playerNameInput.value = trimmed;
+    localStorage.setItem('squadpad_player_name', trimmed);
+    updatePlayerNameDisplay();
+  }
 });
 
 // ============================================================
@@ -669,8 +821,10 @@ function renderHistory() {
 
   container.querySelectorAll('.history-chip').forEach(chip => {
     chip.addEventListener('click', () => {
-      roomCodeInput.value = chip.dataset.code;
-      roomCodeInput.focus();
+      const parts = chip.dataset.code.split(' ');
+      roomWord1.value = parts[0] || '';
+      roomWord2.value = parts[1] || '';
+      roomWord2.focus();
     });
   });
 }
@@ -694,12 +848,14 @@ const deepName = params.get('name');
 if (deepRoom) {
   rolePicker.hidden = true;
   playerFlow.hidden = false;
-  roomCodeInput.value = deepRoom.toUpperCase();
+  const parts = deepRoom.toLowerCase().split(/[\s+\-]/);
+  roomWord1.value = parts[0] || '';
+  roomWord2.value = parts[1] || '';
   if (deepName) {
     playerNameInput.value = deepName;
     localStorage.setItem('squadpad_player_name', deepName);
   }
-  roomCodeInput.focus();
+  roomWord2.focus();
 }
 
 // ============================================================

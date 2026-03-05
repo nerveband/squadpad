@@ -23,8 +23,9 @@ export class Connection {
     this._reconnectTimer = null;
   }
 
-  connect(url) {
+  connect(url, playerName) {
     this.mode = 'direct';
+    this.playerName = playerName || 'Player';
     this._lastUrl = url;
     this._userDisconnected = false;
     this._reconnectAttempts = 0;
@@ -60,6 +61,9 @@ export class Connection {
           room: this.roomCode,
           name: this.playerName || 'Player'
         }));
+      } else if (this.mode === 'direct') {
+        // Send player name to local WebSocket server
+        this.ws.send(JSON.stringify({ name: this.playerName || 'Player' }));
       }
       if (this.onConnect) this.onConnect();
     };

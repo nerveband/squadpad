@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" style="background:#0d0b1a">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -9,12 +9,14 @@
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/style.css">
   <link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/bold/style.css">
+  <script defer src="https://stats.wavedepth.com/script.js" data-website-id="72386a8a-fd30-462b-9a93-1070410b3abc"></script>
 </head>
 <body>
   <div id="dashboard">
     <header class="dash-header">
+      <a href="index.html" class="nav-link nav-back"><i class="ph-bold ph-arrow-left"></i> Back</a>
       <h1>SquadPad</h1>
-      <a href="index.html" class="nav-link"><i class="ph-bold ph-game-controller"></i> Controller</a>
+      <span class="dash-header-spacer"></span>
     </header>
 
     <main class="dash-flow">
@@ -27,7 +29,7 @@
           <p class="step-desc">Make sure BombSquad is running on your computer or local network.</p>
 
           <div class="step-actions">
-            <button id="scan-btn" class="dash-btn"><i class="ph-bold ph-radar"></i> Scan Network</button>
+            <button id="scan-btn" class="dash-btn primary"><i class="ph-bold ph-radar"></i> Scan Network</button>
             <span class="or-divider">or</span>
             <div class="input-inline">
               <input type="text" id="bs-addr" value="localhost" placeholder="IP address">
@@ -43,8 +45,8 @@
       <section class="dash-step" id="step-start">
         <div class="step-number">2</div>
         <div class="step-content">
-          <h2>Start the server</h2>
-          <p class="step-desc">This lets browser players connect to your BombSquad game.</p>
+          <h2>Start the server <span class="mode-tag">LAN</span></h2>
+          <p class="step-desc">Players on the same Wi-Fi can connect directly — no internet needed.</p>
 
           <div class="step-actions">
             <button id="toggle-server" class="dash-btn primary"><i class="ph-bold ph-play"></i> Start Server</button>
@@ -62,8 +64,8 @@
       <section class="dash-step" id="step-share">
         <div class="step-number">3</div>
         <div class="step-content">
-          <h2>Share with friends</h2>
-          <p class="step-desc">Give them this room code. They open squadpad.org, type it in, and play.</p>
+          <h2>Share with friends <span class="mode-tag online-tag">Online</span></h2>
+          <p class="step-desc">Optional: connect to the cloud relay so friends anywhere can join via squadpad.org.</p>
 
           <div class="step-actions">
             <button id="toggle-sharing" class="dash-btn primary" disabled><i class="ph-bold ph-globe"></i> Go Online</button>
@@ -71,17 +73,34 @@
 
           <div id="room-info" class="step-result" hidden>
             <p class="share-instructions"><i class="ph-bold ph-check-circle"></i> Tell your friends:</p>
-            <div class="share-box">
-              <div class="share-step-mini">
-                <span class="share-label">1. Go to</span>
-                <span class="share-value">squadpad.org</span>
-              </div>
-              <div class="share-step-mini">
-                <span class="share-label">2. Enter code</span>
-                <span id="room-code-value" class="room-code"></span>
+            <div class="share-layout">
+              <canvas id="qr-canvas" width="160" height="160"></canvas>
+              <div class="share-details">
+                <div class="share-step-mini">
+                  <span class="share-label">1. Go to</span>
+                  <span class="share-value">squadpad.org</span>
+                </div>
+                <div class="share-step-mini">
+                  <span class="share-label">2. Enter code</span>
+                  <span id="room-code-value" class="room-code"></span>
+                </div>
+                <button id="zoom-share-btn" class="dash-btn zoom-btn"><i class="ph-bold ph-arrows-out"></i> Present to Room</button>
               </div>
             </div>
-            <canvas id="qr-canvas" width="120" height="120"></canvas>
+          </div>
+
+          <!-- Zoom overlay for projecting to the room -->
+          <div id="share-zoom-overlay" hidden>
+            <button id="zoom-close" class="zoom-close-btn"><i class="ph-bold ph-x"></i></button>
+            <div class="zoom-content">
+              <canvas id="zoom-qr-canvas" width="320" height="320"></canvas>
+              <div class="zoom-info">
+                <h2 class="zoom-title">Join the game!</h2>
+                <p class="zoom-url">squadpad.org</p>
+                <p class="zoom-code-label">Room Code</p>
+                <p id="zoom-code" class="zoom-code"></p>
+              </div>
+            </div>
           </div>
         </div>
       </section>
@@ -97,7 +116,24 @@
         </div>
       </section>
 
+      <!-- Log View (collapsible) -->
+      <section class="dash-step" id="step-logs" hidden>
+        <div class="step-number"><i class="ph-bold ph-terminal"></i></div>
+        <div class="step-content">
+          <div class="log-header">
+            <h2>Activity Log</h2>
+            <button id="clear-logs" class="btn-link"><i class="ph-bold ph-trash"></i> Clear</button>
+          </div>
+          <div id="log-output" class="log-output">
+            <p class="empty-state">Logs will appear here when the server is running...</p>
+          </div>
+        </div>
+      </section>
+
     </main>
+    <footer class="dash-footer">
+      <a href="privacy.html" target="_blank" rel="noopener">Privacy</a> &middot; <a href="https://github.com/nerveband/squadpad" target="_blank" rel="noopener">Open Source</a>
+    </footer>
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js"></script>

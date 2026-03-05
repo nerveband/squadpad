@@ -41,15 +41,40 @@ pub async fn start_server(
             };
             let (mut ws_sender, mut ws_receiver) = ws_stream.split();
 
+            // Wait for first message — if text, treat as hello with name
+            let mut player_name = format!("Player{}", player_id);
+            let mut first_binary: Option<Vec<u8>> = None;
+
+            if let Some(Ok(msg)) = ws_receiver.next().await {
+                match msg {
+                    Message::Text(text) => {
+                        // Try to parse as JSON hello with player name
+                        if let Ok(parsed) = serde_json::from_str::<serde_json::Value>(&text) {
+                            if let Some(name) = parsed["name"].as_str() {
+                                let clean: String = name.replace('#', "").chars().take(10).collect();
+                                if !clean.is_empty() {
+                                    player_name = clean;
+                                }
+                            }
+                        }
+                    }
+                    Message::Binary(data) => {
+                        // No hello sent, first message is controller state
+                        first_binary = Some(data.to_vec());
+                    }
+                    _ => {}
+                }
+            }
+
             // Create a UDP client for this browser player
             let mut udp = match UdpClient::new() {
                 Ok(u) => u,
                 Err(_) => return,
             };
 
-            // Try to connect to BombSquad
-            let player_name = format!("WebPlayer{}", player_id);
-            match udp.connect(&bs_addr, &player_name) {
+            // Connect to BombSquad with name#uniqueid format
+            let bs_name = format!("{}#sp{}", player_name, player_id);
+            match udp.connect(&bs_addr, &bs_name) {
                 Ok(_) => {},
                 Err(e) => {
                     let _ = ws_sender.send(Message::Text(
@@ -78,6 +103,16 @@ pub async fn start_server(
             let _ = ws_sender.send(Message::Text(
                 serde_json::json!({"type": "connected", "playerId": player_id}).to_string().into()
             )).await;
+
+            // Process any first binary message that arrived before hello
+            if let Some(data) = first_binary {
+                if data.len() >= 3 {
+                    let mut p = players.lock().await;
+                    if let Some(player) = p.get_mut(&player_id) {
+                        player.udp.push_state(data[0], data[1], data[2]);
+                    }
+                }
+            }
 
             // Process incoming WebSocket messages (controller states).
             // Also run a 100ms process loop for UDP reliability.

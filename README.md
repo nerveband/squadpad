@@ -4,6 +4,12 @@ An unofficial web-based controller for [BombSquad](https://www.froemling.net/app
 
 Website: [squadpad.org](https://squadpad.org)
 
+![Connect screen](docs/screenshots/screenshot1.png)
+
+![Host dashboard](docs/screenshots/screenshot2.png)
+
+![SquadPad running alongside BombSquad](docs/screenshots/screenshot3.jpeg)
+
 
 ## For Players
 
@@ -192,18 +198,48 @@ Hosting:
 - Relay: Fly.io (squadpad-relay.fly.dev)
 
 
+## Protocol
+
+See [docs/PROTOCOL.md](docs/PROTOCOL.md) for the full protocol reference covering:
+
+- Browser ↔ Relay WebSocket protocol (JSON + binary)
+- Relay ↔ Host binary forwarding
+- Host ↔ BombSquad UDP protocol (V2, port 43210)
+- Relay room lifecycle, limits, and health check
+- Local WebSocket server for LAN play
+
+
 ## Tech Stack
 
 | Layer          | Technology                                    |
 |----------------|-----------------------------------------------|
 | Web UI         | HTML, CSS, vanilla JavaScript                 |
-| Desktop app    | Tauri 2.x (Rust backend, web frontend)        |
-| Relay server   | Node.js, ws (WebSocket library)               |
-| Tests          | Vitest                                        |
-| Hosting        | Netlify (web), Fly.io (relay)                 |
-| CI/CD          | GitHub Actions                                |
-| DNS            | Cloudflare                                    |
-| Design         | BombSquad color palette, Outfit + JetBrains Mono fonts, Phosphor Bold icons |
+| Desktop app    | [Tauri 2.x](https://v2.tauri.app/) (Rust backend, web frontend) |
+| Relay server   | Node.js, [ws](https://github.com/websockets/ws) (WebSocket library) |
+| Tests          | [Vitest](https://vitest.dev/)                 |
+| Hosting        | [Netlify](https://www.netlify.com/) (web), [Fly.io](https://fly.io/) (relay) |
+| CI/CD          | [GitHub Actions](https://github.com/features/actions) |
+| DNS            | [Cloudflare](https://www.cloudflare.com/)     |
+
+### Libraries & Tools
+
+| Library | Purpose | Link |
+|---------|---------|------|
+| [Tauri](https://v2.tauri.app/) | Desktop app framework (Rust + web) | [github.com/tauri-apps/tauri](https://github.com/tauri-apps/tauri) |
+| [tokio-tungstenite](https://crates.io/crates/tokio-tungstenite) | Async WebSocket client/server (Rust) | [github.com/snapview/tokio-tungstenite](https://github.com/snapview/tokio-tungstenite) |
+| [ws](https://www.npmjs.com/package/ws) | Node.js WebSocket library (relay server) | [github.com/websockets/ws](https://github.com/websockets/ws) |
+| [qrcode-generator](https://www.npmjs.com/package/qrcode-generator) | QR code rendering on host dashboard | [github.com/nicoleahmed/qrcode-generator](https://github.com/nicoleahmed/qrcode-generator) |
+| [Phosphor Icons](https://phosphoricons.com/) | Bold icon set for UI | [github.com/phosphor-icons/web](https://github.com/phosphor-icons/web) |
+| [Outfit](https://fonts.google.com/specimen/Outfit) | Primary UI font | Google Fonts |
+| [JetBrains Mono](https://fonts.google.com/specimen/JetBrains+Mono) | Monospace font for codes & data | Google Fonts |
+| [Vitest](https://vitest.dev/) | Unit testing framework | [github.com/vitest-dev/vitest](https://github.com/vitest-dev/vitest) |
+
+
+## Privacy & Analytics
+
+SquadPad uses [Umami](https://umami.is), a privacy-focused, open-source analytics tool. Umami does not use cookies, does not track users across sites, and does not collect personal information. Analytics are self-hosted. See the [Privacy Policy](https://squadpad.org/privacy.html) for details.
+
+The cloud relay temporarily holds connection data (room code, player name, IP for rate limiting) while you play and deletes everything on disconnect. No gameplay data is logged or stored.
 
 
 ## Credits

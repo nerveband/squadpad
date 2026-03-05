@@ -175,7 +175,10 @@ pub async fn connect(
                                         // Create a UdpClient for this remote player
                                         match UdpClient::new() {
                                             Ok(mut udp) => {
-                                                let player_name = format!("{}(relay)", name);
+                                                // Format: "Name#uniqueid" — BombSquad shows only the part before #
+                                                // Limit display name to 10 chars (BombSquad's limit)
+                                                let display_name: String = name.replace('#', "").chars().take(10).collect();
+                                                let player_name = format!("{}#sp{}", display_name, player_idx);
                                                 match udp.connect(&bombsquad_addr, &player_name) {
                                                     Ok(_) => {
                                                         let id = 1000 + player_idx as usize;

@@ -30,7 +30,7 @@ impl Default for AppState {
             server_running: false,
             online_room_code: None,
             bombsquad_addr: None,
-            max_players: 7,
+            max_players: 8,
         }
     }
 }

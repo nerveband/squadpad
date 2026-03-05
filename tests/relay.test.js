@@ -12,22 +12,23 @@ describe('Relay Server', () => {
     relay.close();
   });
 
-  it('generates room codes in XXXX-XXXX format', () => {
+  it('generates word-based room codes (adjective noun)', () => {
     const code = relay.generateCode();
-    expect(code).toMatch(/^[A-Z0-9]{4}-[A-Z0-9]{4}$/);
+    expect(code).toMatch(/^[a-z]+ [a-z]+$/);
   });
 
-  it('generates unique room codes', () => {
+  it('generates mostly unique room codes', () => {
     const codes = new Set();
     for (let i = 0; i < 100; i++) {
       codes.add(relay.generateCode());
     }
-    expect(codes.size).toBe(100);
+    // With ~14400 combinations, 100 draws should be nearly all unique
+    expect(codes.size).toBeGreaterThanOrEqual(95);
   });
 
   it('creates a room and returns a code', () => {
     const code = relay.createRoom(null);
-    expect(code).toMatch(/^[A-Z0-9]{4}-[A-Z0-9]{4}$/);
+    expect(code).toMatch(/^[a-z]+ [a-z]+$/);
     expect(relay.rooms.has(code)).toBe(true);
   });
 
@@ -52,12 +53,12 @@ describe('Relay Server', () => {
     expect(result.reason).toBe('not_found');
   });
 
-  it('rejects join when room is full (7 players)', () => {
+  it('rejects join when room is full (8 players)', () => {
     const code = relay.createRoom(null);
-    for (let i = 0; i < 7; i++) {
+    for (let i = 0; i < 8; i++) {
       relay.joinRoom(code, null, `P${i}`);
     }
-    const result = relay.joinRoom(code, null, 'P8');
+    const result = relay.joinRoom(code, null, 'P9');
     expect(result.success).toBe(false);
     expect(result.reason).toBe('room_full');
   });

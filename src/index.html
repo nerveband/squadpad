@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" style="background:#0d0b1a">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
@@ -16,6 +16,7 @@
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <link rel="manifest" href="manifest.json">
+  <script defer src="https://stats.wavedepth.com/script.js" data-website-id="72386a8a-fd30-462b-9a93-1070410b3abc"></script>
 </head>
 <body>
   <div id="app">
@@ -43,20 +44,50 @@
         <!-- Player flow: room code input -->
         <div id="player-flow" hidden>
           <button class="back-link" id="back-to-roles"><i class="ph-bold ph-arrow-left"></i> Back</button>
-          <p class="flow-desc">Enter the room code from your host:</p>
-          <input type="text" id="player-name" placeholder="Your name (optional)" maxlength="20" autocomplete="off" spellcheck="false" class="name-input">
-          <div class="join-row">
-            <input
-              type="text"
-              id="room-code"
-              placeholder="Room code"
-              maxlength="9"
-              autocomplete="off"
-              spellcheck="false"
-            >
-            <button id="join-btn" class="btn-primary"><i class="ph-bold ph-play"></i> Join</button>
+          <input type="text" id="player-name" placeholder="Your name (optional)" maxlength="10" autocomplete="off" spellcheck="false" class="name-input">
+          <div class="connect-tabs">
+            <button class="connect-tab active" data-tab="online"><i class="ph-bold ph-globe"></i> Online</button>
+            <button class="connect-tab" data-tab="lan"><i class="ph-bold ph-wifi-high"></i> LAN</button>
           </div>
-          <div id="history-chips" class="history-chips"></div>
+          <div id="tab-online" class="tab-content">
+            <p class="flow-desc">Enter the two words from your host:</p>
+            <div class="join-row">
+              <input
+                type="text"
+                id="room-word1"
+                placeholder="first word"
+                maxlength="12"
+                autocomplete="off"
+                spellcheck="false"
+                class="room-word"
+              >
+              <input
+                type="text"
+                id="room-word2"
+                placeholder="second word"
+                maxlength="12"
+                autocomplete="off"
+                spellcheck="false"
+                class="room-word"
+              >
+              <button id="join-btn" class="btn-primary"><i class="ph-bold ph-play"></i> Join</button>
+            </div>
+            <div id="history-chips" class="history-chips"></div>
+          </div>
+          <div id="tab-lan" class="tab-content" hidden>
+            <p class="flow-desc">Enter the host's local IP address:</p>
+            <div class="join-row">
+              <input
+                type="text"
+                id="lan-address"
+                placeholder="192.168.1.x:43211"
+                autocomplete="off"
+                spellcheck="false"
+              >
+              <button id="join-lan-btn" class="btn-primary"><i class="ph-bold ph-play"></i> Join</button>
+            </div>
+            <p class="step-hint"><i class="ph-bold ph-info"></i> Both devices must be on the same Wi-Fi network. The host's IP is shown in the SquadPad desktop app.</p>
+          </div>
           <div id="connection-status"></div>
         </div>
 
@@ -81,7 +112,7 @@
 
         <div class="connect-credits">
           <p>An unofficial controller for <a href="https://www.froemling.net/apps/bombsquad" target="_blank" rel="noopener">BombSquad</a></p>
-          <p>Made by <a href="https://ashrafali.net" target="_blank" rel="noopener">ashrafali.net</a> &middot; <a href="https://github.com/nerveband/squadpad" target="_blank" rel="noopener">Open Source</a></p>
+          <p>Made by <a href="https://ashrafali.net" target="_blank" rel="noopener">ashrafali.net</a> &middot; <a href="https://github.com/nerveband/squadpad" target="_blank" rel="noopener">Open Source</a> &middot; <a href="privacy.html" target="_blank" rel="noopener">Privacy</a></p>
         </div>
       </div>
     </div>
@@ -91,6 +122,7 @@
       <header id="hud">
         <button id="menu-btn" aria-label="Back"><i class="ph-bold ph-arrow-left"></i></button>
         <span id="game-name">SquadPad</span>
+        <button id="player-name-display" class="hud-name" title="Change name"></button>
         <div class="hud-right">
           <span id="connect-timer" class="connect-timer" hidden></span>
           <span id="lag-display"><i class="ph-bold ph-wifi-high"></i> --ms</span>
@@ -117,6 +149,11 @@
             <div class="key-row"><span class="key-label">Bomb</span><button class="key-bind" data-action="bomb">I</button></div>
             <div class="key-row"><span class="key-label">Run</span><button class="key-bind" data-action="run">Shift</button></div>
           </div>
+          <div class="settings-divider"></div>
+          <div class="key-row">
+            <span class="key-label">Haptic Feedback</span>
+            <button id="haptics-toggle" class="toggle-btn on">On</button>
+          </div>
           <button id="reset-keys" class="btn-link">Reset to defaults</button>
         </div>
       </div>
@@ -136,7 +173,6 @@
             <button class="action-btn btn-bomb"  data-action="bomb"><i class="ph-bold ph-fire"></i><span class="key-tag">I</span></button>
             <button class="action-btn btn-jump"  data-action="jump"><i class="ph-bold ph-arrow-fat-up"></i><span class="key-tag">K</span></button>
           </div>
-          <button class="action-btn btn-run" data-action="run"><i class="ph-bold ph-person-simple-run"></i> RUN <span class="key-tag">Shift</span></button>
         </div>
       </div>
     </div>

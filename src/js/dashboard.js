@@ -23,6 +23,7 @@ const qrCanvas = document.getElementById('qr-canvas');
 
 let serverRunning = false;
 let sharingOnline = false;
+let knownPlayerIds = new Set();
 
 const RELAY_URL = 'wss://squadpad-relay.fly.dev';
 
@@ -39,6 +40,7 @@ toggleServerBtn.addEventListener('click', async () => {
       toggleServerBtn.disabled = true;
       toggleServerBtn.innerHTML = '<i class="ph-bold ph-spinner"></i> Starting...';
       const url = await invoke('start_server', { bombsquadAddr: addr });
+      addLog(`Server started → ws://${url}`, 'join');
       serverRunning = true;
       serverStatus.textContent = 'Online';
       serverStatus.className = 'status-badge online';
@@ -70,6 +72,7 @@ toggleServerBtn.addEventListener('click', async () => {
         clearQrCode();
       }
       await invoke('stop_server');
+      addLog('Server stopped', 'leave');
       serverRunning = false;
       serverStatus.textContent = 'Offline';
       serverStatus.className = 'status-badge offline';
@@ -105,6 +108,20 @@ async function updatePlayers() {
   try {
     const players = await invoke('get_players');
     playerCount.textContent = players.length;
+
+    // Detect joins and leaves
+    const currentIds = new Set(players.map(p => p.id));
+    for (const p of players) {
+      if (!knownPlayerIds.has(p.id)) {
+        addLog(`${p.name} joined (${players.length} players)`, 'join');
+      }
+    }
+    for (const id of knownPlayerIds) {
+      if (!currentIds.has(id)) {
+        addLog(`Player left (${players.length} players)`, 'leave');
+      }
+    }
+    knownPlayerIds = currentIds;
 
     if (players.length === 0) {
       playersList.innerHTML = '<p class="empty-state">Waiting for players to join...</p>';
@@ -193,12 +210,13 @@ toggleSharingBtn.addEventListener('click', async () => {
       const roomCode = await invoke('share_online', { relayUrl: RELAY_URL });
       sharingOnline = true;
       roomCodeValue.textContent = roomCode;
+      addLog(`Online: room code "${roomCode}"`, 'relay');
       roomInfo.hidden = false;
       toggleSharingBtn.innerHTML = '<i class="ph-bold ph-stop"></i> Stop Sharing';
       toggleSharingBtn.classList.remove('primary');
       toggleSharingBtn.classList.add('danger');
       toggleSharingBtn.disabled = false;
-      renderQrCode(`https://squadpad.org?room=${roomCode}`);
+      renderQrCode(`https://squadpad.org?room=${roomCode}`, qrCanvas, 160);
     } catch (e) {
       toggleSharingBtn.innerHTML = '<i class="ph-bold ph-globe"></i> Go Online';
       toggleSharingBtn.disabled = false;
@@ -207,6 +225,7 @@ toggleSharingBtn.addEventListener('click', async () => {
   } else {
     try {
       await invoke('stop_sharing');
+      addLog('Stopped online sharing', 'leave');
       sharingOnline = false;
       roomInfo.hidden = true;
       roomCodeValue.textContent = '';
@@ -221,14 +240,17 @@ toggleSharingBtn.addEventListener('click', async () => {
 });
 
 // QR code rendering using qrcode-generator
-function renderQrCode(url) {
-  if (!qrCanvas || typeof qrcode !== 'function') return;
+function renderQrCode(url, canvas, size) {
+  canvas = canvas || qrCanvas;
+  size = size || canvas.width;
+  if (!canvas || typeof qrcode !== 'function') return;
+  canvas.width = size;
+  canvas.height = size;
   const qr = qrcode(0, 'M');
   qr.addData(url);
   qr.make();
 
-  const ctx = qrCanvas.getContext('2d');
-  const size = qrCanvas.width;
+  const ctx = canvas.getContext('2d');
   const moduleCount = qr.getModuleCount();
   const cellSize = size / moduleCount;
 
@@ -251,6 +273,66 @@ function clearQrCode() {
   const ctx = qrCanvas.getContext('2d');
   ctx.clearRect(0, 0, qrCanvas.width, qrCanvas.height);
 }
+
+// Share Zoom Overlay
+const zoomOverlay = document.getElementById('share-zoom-overlay');
+const zoomBtn = document.getElementById('zoom-share-btn');
+const zoomClose = document.getElementById('zoom-close');
+const zoomCode = document.getElementById('zoom-code');
+const zoomQrCanvas = document.getElementById('zoom-qr-canvas');
+
+zoomBtn.addEventListener('click', () => {
+  const code = roomCodeValue.textContent;
+  if (!code) return;
+  zoomCode.textContent = code;
+  renderQrCode(`https://squadpad.org?room=${code}`, zoomQrCanvas, 320);
+  zoomOverlay.hidden = false;
+});
+
+zoomClose.addEventListener('click', () => {
+  zoomOverlay.hidden = true;
+});
+
+// Escape key closes zoom
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && zoomOverlay && !zoomOverlay.hidden) {
+    zoomOverlay.hidden = true;
+  }
+});
+
+// ============================================================
+// Activity Log
+// ============================================================
+const logOutput = document.getElementById('log-output');
+const logStep = document.getElementById('step-logs');
+const clearLogsBtn = document.getElementById('clear-logs');
+
+function addLog(message, type = 'info') {
+  // Show log section when server starts
+  if (logStep.hidden) logStep.hidden = false;
+
+  // Remove empty state
+  const empty = logOutput.querySelector('.empty-state');
+  if (empty) empty.remove();
+
+  const time = new Date().toLocaleTimeString();
+  const entry = document.createElement('span');
+  entry.className = `log-entry log-${type}`;
+  entry.innerHTML = `<span class="log-time">${time}</span>${escapeHtml(message)}`;
+  logOutput.appendChild(entry);
+
+  // Auto-scroll to bottom
+  logOutput.scrollTop = logOutput.scrollHeight;
+
+  // Cap at 200 entries
+  while (logOutput.children.length > 200) {
+    logOutput.removeChild(logOutput.firstChild);
+  }
+}
+
+clearLogsBtn.addEventListener('click', () => {
+  logOutput.innerHTML = '<p class="empty-state">Logs cleared.</p>';
+});
 
 // Helpers
 function lagColor(ms) {
