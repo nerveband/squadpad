@@ -82,7 +82,11 @@ menuBtn.addEventListener('click', () => {
 // "Floating" joystick: base appears where the user first touches.
 // Movement is normalized to -1..1 based on distance from center.
 
-const JOYSTICK_RADIUS = 70; // half of 140px base
+// Dynamically compute joystick radius from the rendered base size
+function getJoystickRadius() {
+  return joystickBase.offsetWidth / 2 || 70;
+}
+let JOYSTICK_RADIUS = 70;
 let joystickActive = false;
 let joystickTouchId = null;
 let joystickCenterX = 0;
@@ -95,6 +99,7 @@ joystickZone.addEventListener('touchstart', (e) => {
   const touch = e.changedTouches[0];
   joystickTouchId = touch.identifier;
   joystickActive = true;
+  JOYSTICK_RADIUS = getJoystickRadius();
 
   // Move joystick base to where the user touched (floating mode)
   joystickCenterX = touch.clientX;
@@ -227,25 +232,79 @@ buttonZone.addEventListener('touchcancel', (e) => {
 }, { passive: false });
 
 // ============================================================
-// Keyboard Input
+// Keyboard Input + Visual Feedback
 // ============================================================
-document.addEventListener('keydown', (e) => {
-  if (e.repeat) return;         // skip auto-repeat
-  if (controllerScreen.hidden) return; // only when controller is visible
 
-  // F11 or double-tap for fullscreen
+// Map action names to button DOM elements for visual feedback
+const actionBtnMap = {};
+document.querySelectorAll('.action-btn[data-action]').forEach(btn => {
+  actionBtnMap[btn.dataset.action] = btn;
+});
+
+// Visually move the joystick thumb from keyboard input
+function updateJoystickVisual() {
+  const state = controller.getState();
+  // state.h/v are 0-255, center is ~128
+  const nx = (state.h - 127.5) / 127.5;  // -1..1
+  const ny = (state.v - 127.5) / 127.5;
+
+  const visualX = nx * JOYSTICK_RADIUS;
+  const visualY = ny * JOYSTICK_RADIUS;
+  joystickThumb.style.transform = `translate(${visualX}px, ${visualY}px)`;
+
+  // Show active state when any direction is held
+  if (Math.abs(nx) > 0.1 || Math.abs(ny) > 0.1) {
+    joystickBase.classList.add('active');
+  } else {
+    if (!joystickActive) joystickBase.classList.remove('active');
+  }
+}
+
+document.addEventListener('keydown', (e) => {
+  if (e.repeat) return;
+  if (controllerScreen.hidden) return;
+  if (settingsPanel && !settingsPanel.hidden) return; // don't control while settings open
+
   if (e.code === 'F11') {
     e.preventDefault();
     toggleFullscreen();
     return;
   }
 
+  const action = controller.keyBindings[e.code];
+  if (!action) return;
+
+  e.preventDefault();
   controller.handleKeyDown(e.code);
+
+  // Visual feedback: light up the button
+  if (actionBtnMap[action]) {
+    actionBtnMap[action].classList.add('pressed');
+  }
+
+  // Visual feedback: move joystick for WASD/arrows
+  if (['up', 'down', 'left', 'right'].includes(action)) {
+    updateJoystickVisual();
+  }
 }, { passive: false });
 
 document.addEventListener('keyup', (e) => {
   if (controllerScreen.hidden) return;
+
+  const action = controller.keyBindings[e.code];
+  if (!action) return;
+
   controller.handleKeyUp(e.code);
+
+  // Visual feedback: release the button
+  if (actionBtnMap[action]) {
+    actionBtnMap[action].classList.remove('pressed');
+  }
+
+  // Visual feedback: update joystick
+  if (['up', 'down', 'left', 'right'].includes(action)) {
+    updateJoystickVisual();
+  }
 });
 
 // ============================================================

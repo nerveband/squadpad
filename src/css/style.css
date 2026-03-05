@@ -67,15 +67,15 @@ body {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 16px;
-  padding: 40px 36px;
-  background: rgba(255,255,255,0.04);
+  gap: 14px;
+  padding: 36px 32px;
+  background: rgba(255,255,255,0.05);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
-  border: 1px solid rgba(255,255,255,0.08);
+  border: 1px solid rgba(255,255,255,0.1);
   border-radius: 16px;
-  width: 340px;
-  max-width: 90vw;
+  width: 420px;
+  max-width: 92vw;
   box-shadow: 0 8px 32px rgba(0,0,0,0.5);
   animation: fadeInUp 0.5s ease-out;
 }
@@ -98,26 +98,99 @@ body {
   margin-top: -8px;
 }
 
-.how-it-works {
-  font-size: 0.8rem;
-  color: #777;
-  line-height: 1.6;
-  text-align: center;
-  padding: 0 8px;
+/* --- Bento Grid (Player / Host cards) --- */
+.bento-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  width: 100%;
 }
-.how-it-works p {
+
+.bento-card {
+  padding: 16px 14px;
+  border-radius: 10px;
+  border: 1px solid rgba(255,255,255,0.08);
+  text-align: center;
+}
+
+.bento-player {
+  background: rgba(92,196,176,0.08);
+  border-color: rgba(92,196,176,0.15);
+}
+
+.bento-host {
+  background: rgba(155,107,190,0.08);
+  border-color: rgba(155,107,190,0.15);
+}
+
+.bento-icon {
+  font-size: 1.6rem;
+  margin-bottom: 6px;
+}
+
+.bento-player .bento-icon { color: var(--teal); }
+.bento-host .bento-icon { color: var(--purple); }
+
+.bento-card h3 {
+  font-size: 0.95rem;
+  font-weight: 800;
+  color: #fff;
   margin-bottom: 4px;
 }
-.how-it-works strong {
-  color: var(--text);
-  font-weight: 700;
+
+.bento-card p {
+  font-size: 0.78rem;
+  color: #aaa;
+  line-height: 1.4;
 }
-.how-it-works a {
+
+.bento-card a {
   color: var(--teal);
   text-decoration: none;
+  font-weight: 600;
 }
-.how-it-works a:hover {
+.bento-card a:hover {
   text-decoration: underline;
+}
+
+/* --- Join Row (input + button side by side) --- */
+.join-row {
+  display: flex;
+  gap: 8px;
+  width: 100%;
+}
+
+.join-row #room-code {
+  flex: 1;
+}
+
+.join-row .btn-primary {
+  width: auto;
+  padding: 14px 28px;
+  white-space: nowrap;
+}
+
+/* --- Credits Footer --- */
+.connect-credits {
+  margin-top: 8px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(255,255,255,0.06);
+  text-align: center;
+  width: 100%;
+}
+
+.connect-credits p {
+  font-size: 0.7rem;
+  color: #555;
+  line-height: 1.6;
+}
+
+.connect-credits a {
+  color: #888;
+  text-decoration: none;
+}
+.connect-credits a:hover {
+  color: var(--teal);
 }
 
 #room-code {
@@ -377,8 +450,9 @@ body {
 
 .action-btn:active,
 .action-btn.pressed {
-  transform: scale(0.85);
-  filter: brightness(1.4);
+  transform: scale(0.88);
+  filter: brightness(1.5) saturate(1.3);
+  border-color: rgba(255,255,255,0.4);
 }
 
 /* Color-coded buttons — BombSquad bomb palette */
@@ -387,7 +461,7 @@ body {
   box-shadow: 0 2px 8px rgba(92,196,176,0.3);
 }
 .btn-jump:active, .btn-jump.pressed {
-  box-shadow: 0 0 16px rgba(92,196,176,0.6);
+  box-shadow: 0 0 24px rgba(92,196,176,0.7), 0 0 48px rgba(92,196,176,0.3);
 }
 
 .btn-punch {
@@ -395,7 +469,7 @@ body {
   box-shadow: 0 2px 8px rgba(200,120,168,0.3);
 }
 .btn-punch:active, .btn-punch.pressed {
-  box-shadow: 0 0 16px rgba(200,120,168,0.6);
+  box-shadow: 0 0 24px rgba(200,120,168,0.7), 0 0 48px rgba(200,120,168,0.3);
 }
 
 .btn-bomb {
@@ -403,7 +477,7 @@ body {
   box-shadow: 0 2px 8px rgba(232,200,64,0.3);
 }
 .btn-bomb:active, .btn-bomb.pressed {
-  box-shadow: 0 0 16px rgba(232,200,64,0.6);
+  box-shadow: 0 0 24px rgba(232,200,64,0.7), 0 0 48px rgba(232,200,64,0.3);
 }
 
 .btn-throw {
@@ -411,7 +485,7 @@ body {
   box-shadow: 0 2px 8px rgba(107,139,208,0.3);
 }
 .btn-throw:active, .btn-throw.pressed {
-  box-shadow: 0 0 16px rgba(107,139,208,0.6);
+  box-shadow: 0 0 24px rgba(107,139,208,0.7), 0 0 48px rgba(107,139,208,0.3);
 }
 
 /* Run button: wider, rectangular, below diamond */
@@ -426,7 +500,7 @@ body {
   box-shadow: 0 2px 8px rgba(155,107,190,0.3);
 }
 .btn-run:active, .btn-run.pressed {
-  box-shadow: 0 0 16px rgba(155,107,190,0.6);
+  box-shadow: 0 0 24px rgba(155,107,190,0.7), 0 0 48px rgba(155,107,190,0.3);
 }
 
 /* ============================================================
@@ -469,14 +543,80 @@ body {
 }
 
 /* ============================================================
-   Responsive: Desktop (wide screens)
+   Responsive: Desktop (wide screens) - SCALE EVERYTHING UP
    ============================================================ */
-@media (min-width: 901px) {
-  #controller-screen {
-    max-width: 900px;
-    margin: 0 auto;
-    border-left: 1px solid rgba(255,255,255,0.04);
-    border-right: 1px solid rgba(255,255,255,0.04);
+@media (min-width: 768px) and (hover: hover) {
+  #controls {
+    padding: 24px 48px;
+  }
+
+  #joystick-base {
+    width: 200px;
+    height: 200px;
+  }
+
+  #joystick-thumb {
+    width: 80px;
+    height: 80px;
+  }
+
+  .action-btn {
+    width: 90px;
+    height: 90px;
+    font-size: 2rem;
+    border-width: 3px;
+  }
+
+  .btn-diamond {
+    grid-template-columns: 100px 100px 100px;
+    grid-template-rows: 100px 100px 100px;
+    gap: 8px;
+  }
+
+  .btn-run {
+    width: 200px;
+    height: 60px;
+    font-size: 1.2rem;
+    border-radius: 30px;
+  }
+
+  .key-tag {
+    font-size: 0.65rem;
+    padding: 2px 6px;
+    bottom: -4px;
+    right: -4px;
+  }
+
+  #hud {
+    padding: 10px 24px;
+  }
+
+  #menu-btn {
+    width: 44px;
+    height: 44px;
+    font-size: 1.4rem;
+  }
+
+  #game-name {
+    font-size: 1.2rem;
+  }
+
+  #lag-display {
+    font-size: 0.9rem;
+  }
+
+  #settings-btn {
+    padding: 8px 16px;
+    font-size: 0.95rem;
+  }
+
+  .kbd-hint {
+    font-size: 0.9rem;
+  }
+
+  /* Joystick needs larger radius for desktop */
+  #joystick-zone {
+    cursor: crosshair;
   }
 }
 
@@ -1008,20 +1148,21 @@ body.is-tauri #dashboard-link {
 }
 
 #settings-btn {
-  width: 32px;
-  height: 32px;
-  font-size: 1rem;
-  border: 1px solid rgba(255,255,255,0.08);
+  padding: 6px 12px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  font-family: inherit;
+  border: 1px solid rgba(255,255,255,0.12);
   border-radius: 6px;
-  background: rgba(255,255,255,0.03);
-  color: #666;
+  background: rgba(255,255,255,0.05);
+  color: #bbb;
   cursor: pointer;
   display: flex;
   align-items: center;
-  justify-content: center;
+  gap: 4px;
   transition: color 0.2s, background 0.2s;
 }
-#settings-btn:hover { color: #aaa; background: rgba(255,255,255,0.06); }
+#settings-btn:hover { color: #fff; background: rgba(255,255,255,0.1); }
 
 /* --- Key Tags on Buttons (desktop only) --- */
 .key-tag {
