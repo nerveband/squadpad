@@ -9,6 +9,7 @@ pub struct PlayerInfo {
     pub name: String,
     pub lag_ms: f32,
     #[serde(skip)]
+    #[allow(dead_code)]
     pub connected_at: Option<Instant>,
 }
 
@@ -18,6 +19,7 @@ pub struct AppState {
     pub server_running: bool,
     pub online_room_code: Option<String>,
     pub bombsquad_addr: Option<String>,
+    #[allow(dead_code)]
     pub max_players: usize,
 }
 

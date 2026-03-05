@@ -2,14 +2,15 @@
 
 An unofficial web-based controller for [BombSquad](https://www.froemling.net/apps/bombsquad). Open a browser, enter a room code, and play -- no app install required for players.
 
-Website: [squadpad.org](https://squadpad.netlify.app)
+Website: [squadpad.org](https://squadpad.org)
 
 
 ## For Players
 
-1. Open [squadpad.org](https://squadpad.netlify.app) on your phone or computer.
-2. Enter the room code the host gives you.
-3. Tap Connect -- you are in the game.
+1. Open [squadpad.org](https://squadpad.org) on your phone or computer.
+2. Click "I'm a Player".
+3. Enter the room code the host gives you.
+4. Tap Join -- you are in the game.
 
 On touch screens you get a virtual joystick and action buttons. On desktop you can use the keyboard:
 
@@ -27,14 +28,16 @@ Keyboard bindings can be changed in Settings (gear icon).
 
 ## For Hosts
 
-The host runs a small desktop app alongside BombSquad on the same machine.
+The host runs a small desktop app alongside BombSquad on the same machine. The desktop app bridges browser controllers to BombSquad over UDP.
 
-1. Download the SquadPad desktop app from the [Releases](https://github.com/nerveband/squadpad/releases) page (Windows, macOS, or Linux).
+1. Download the SquadPad desktop app from the [Releases](https://github.com/nerveband/squadpad/releases) page (macOS, Windows, or Linux).
 2. Start BombSquad and begin a party.
-3. Open SquadPad, click **Start Server**, and share the room code with your friends.
-4. Players connect from their browsers. Their inputs are forwarded into BombSquad over UDP.
+3. Open SquadPad and click "I'm a Host" -- this opens the Host Dashboard.
+4. In the dashboard, click **Start Server** to begin accepting player connections.
+5. Click **Go Online** to get a room code for internet play.
+6. Share the room code with your friends. They open [squadpad.org](https://squadpad.org), enter it, and play.
 
-The desktop app auto-discovers running BombSquad instances on the local network.
+The "Scan Network" button auto-discovers BombSquad instances on your LAN. If BombSquad is on the same machine, the default "localhost" works.
 
 
 ## How It Works
@@ -55,9 +58,50 @@ Browser (Player)  --WebSocket (direct)-->  SquadPad Host App  --UDP:43210-->  Bo
 
 Three components make this work:
 
-1. **Web Controller UI** -- Static HTML/CSS/JS served from Netlify. Renders touch controls and keyboard input, sends binary controller state over WebSocket.
-2. **SquadPad Desktop App** -- A Tauri 2.x app with a Rust backend. Runs a local WebSocket server, translates controller messages to BombSquad's UDP protocol, and optionally connects to the cloud relay for internet play.
+1. **Web Controller UI** -- Static HTML/CSS/JS served from Netlify at squadpad.org. Renders touch controls and keyboard input, sends binary controller state over WebSocket.
+2. **SquadPad Desktop App** -- A Tauri 2.x app with a Rust backend. Runs a local WebSocket server, translates controller messages to BombSquad's UDP protocol, and connects to the cloud relay for internet play.
 3. **Cloud Relay** -- A lightweight Node.js WebSocket relay hosted on Fly.io. Pairs players with hosts using room codes so neither side needs port forwarding.
+
+
+## Project Structure
+
+```
+squadpad/
+  src/                    Web frontend (shared between Tauri + Netlify)
+    index.html            Main page (player controller + role picker)
+    host.html             Host dashboard (Tauri-only, server controls)
+    css/style.css         All styles
+    js/
+      ui.js               Main app orchestrator
+      controller.js       Virtual joystick + buttons + keyboard input
+      connection.js       WebSocket connection to host/relay
+      protocol.js         BombSquad V2 protocol encoding/decoding
+      dashboard.js        Host dashboard logic (Tauri commands)
+  src-tauri/              Rust backend
+    src/
+      main.rs             Tauri entry point
+      lib.rs              Tauri command handlers
+      protocol.rs         BombSquad UDP protocol (Rust)
+      udp_client.rs       UDP socket management + discovery
+      websocket_server.rs WebSocket server for browser players
+      relay_client.rs     Cloud relay connection + binary bridge
+      state.rs            App state (players, settings)
+    Cargo.toml
+    tauri.conf.json
+  relay/                  Cloud relay server
+    server.js             WebSocket relay with room codes
+    package.json
+    Dockerfile
+    fly.toml
+  tests/                  Test suite (Vitest)
+    protocol.test.js
+    controller.test.js
+    connection.test.js
+    relay.test.js
+  .github/workflows/      CI/CD pipeline
+  netlify.toml            Netlify deploy config
+  docs/plans/             Design + implementation docs
+```
 
 
 ## Development
@@ -98,10 +142,11 @@ cd src-tauri && cargo tauri build
 
 Rust source lives in `src-tauri/src/`. Key modules:
 
-- `lib.rs` -- Tauri command handlers (discover games, start/stop server, manage players)
+- `lib.rs` -- Tauri command handlers (discover games, start/stop server, share online, manage players)
 - `protocol.rs` -- BombSquad binary protocol encoding
 - `udp_client.rs` -- UDP communication with BombSquad
 - `websocket_server.rs` -- Local WebSocket server for player connections
+- `relay_client.rs` -- Cloud relay connection and binary frame bridging
 - `state.rs` -- Shared application state
 
 ### Relay Server
@@ -143,9 +188,8 @@ GitHub Actions runs on every push and PR to `master`:
 
 Hosting:
 
-- Web UI auto-deploys to Netlify on push.
-- Relay runs on Fly.io.
-- DNS managed by Cloudflare.
+- Web UI: Netlify (squadpad.org via Cloudflare DNS)
+- Relay: Fly.io (squadpad-relay.fly.dev)
 
 
 ## Tech Stack

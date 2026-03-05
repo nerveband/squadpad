@@ -55,6 +55,11 @@ document.getElementById('pick-player').addEventListener('click', () => {
 });
 
 document.getElementById('pick-host').addEventListener('click', () => {
+  // In Tauri desktop app, go straight to the host dashboard
+  if (window.__TAURI__) {
+    window.location.href = 'host.html';
+    return;
+  }
   rolePicker.hidden = true;
   playerFlow.hidden = true;
   hostFlow.hidden = false;

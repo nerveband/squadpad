@@ -19,6 +19,7 @@ use crate::udp_client::UdpClient;
 
 /// Handle to a running relay connection — holds the abort handle and room code.
 pub struct RelayHandle {
+    #[allow(dead_code)]
     pub room_code: String,
     abort_tx: mpsc::Sender<()>,
 }

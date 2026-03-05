@@ -6,15 +6,15 @@ pub const PROTOCOL_VERSION: u8 = 121;
 pub const V2_REQUEST_FLAG: u8 = 50;
 pub const V2_RESPONSE_FLAG: u8 = 100;
 
-// Message types
-pub const MSG_PING: u8 = 0;
-pub const MSG_PONG: u8 = 1;
+// Message types (complete protocol - some used by future features like ping/pong)
+#[allow(dead_code)] pub const MSG_PING: u8 = 0;
+#[allow(dead_code)] pub const MSG_PONG: u8 = 1;
 pub const MSG_ID_REQUEST: u8 = 2;
 pub const MSG_ID_RESPONSE: u8 = 3;
 pub const MSG_DISCONNECT: u8 = 4;
-pub const MSG_STATE: u8 = 5;
+#[allow(dead_code)] pub const MSG_STATE: u8 = 5;
 pub const MSG_STATE_ACK: u8 = 6;
-pub const MSG_DISCONNECT_ACK: u8 = 7;
+#[allow(dead_code)] pub const MSG_DISCONNECT_ACK: u8 = 7;
 pub const MSG_GAME_QUERY: u8 = 8;
 pub const MSG_GAME_RESPONSE: u8 = 9;
 pub const MSG_STATE2: u8 = 10;
