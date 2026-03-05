@@ -2,42 +2,68 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>BombPad</title>
   <link rel="stylesheet" href="css/style.css">
+  <!-- Prevent iOS rubber-band scrolling and text selection -->
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
 </head>
 <body>
   <div id="app">
+
+    <!-- Connect Screen: shown by default -->
     <div id="connect-screen">
-      <h1>BombPad</h1>
-      <p>Unofficial BombSquad Controller</p>
-      <input type="text" id="room-code" placeholder="Room code (e.g. BOMB-7X3K)" maxlength="9" autocomplete="off">
-      <button id="join-btn">Join Game</button>
-      <div id="connection-status"></div>
+      <div class="connect-card">
+        <h1 class="brand-title">BombPad</h1>
+        <p class="brand-subtitle">Unofficial BombSquad Controller</p>
+
+        <input
+          type="text"
+          id="room-code"
+          placeholder="Room code (e.g. BOMB-7X3K)"
+          maxlength="9"
+          autocomplete="off"
+          spellcheck="false"
+        >
+        <button id="join-btn" class="btn-primary">Join Game</button>
+        <button id="demo-btn" class="btn-demo">Demo Mode</button>
+        <div id="connection-status"></div>
+      </div>
     </div>
 
+    <!-- Controller Screen: hidden until connected or demo -->
     <div id="controller-screen" hidden>
       <header id="hud">
-        <button id="menu-btn" aria-label="Menu">Menu</button>
+        <button id="menu-btn" aria-label="Menu">&#9776;</button>
         <span id="game-name">BombPad</span>
         <span id="lag-display">--ms</span>
       </header>
+
       <div id="controls">
-        <div id="joystick-zone"></div>
+        <!-- Left: Joystick area -->
+        <div id="joystick-zone">
+          <div id="joystick-base">
+            <div id="joystick-thumb"></div>
+          </div>
+          <span class="kbd-hint">WASD to move</span>
+        </div>
+
+        <!-- Right: Action buttons in diamond layout -->
         <div id="button-zone">
-          <button id="btn-throw" class="action-btn" data-action="throw">Throw</button>
-          <button id="btn-punch" class="action-btn" data-action="punch">Punch</button>
-          <button id="btn-bomb"  class="action-btn" data-action="bomb">Bomb</button>
-          <button id="btn-jump"  class="action-btn" data-action="jump">Jump</button>
-          <button id="btn-run"   class="action-btn" data-action="run">Run</button>
+          <div class="btn-diamond">
+            <button class="action-btn btn-throw" data-action="throw">Throw</button>
+            <button class="action-btn btn-punch" data-action="punch">Punch</button>
+            <button class="action-btn btn-bomb"  data-action="bomb">Bomb</button>
+            <button class="action-btn btn-jump"  data-action="jump">Jump</button>
+          </div>
+          <button class="action-btn btn-run" data-action="run">Run</button>
         </div>
       </div>
     </div>
+
   </div>
 
-  <script type="module" src="js/protocol.js"></script>
-  <script type="module" src="js/connection.js"></script>
-  <script type="module" src="js/controller.js"></script>
   <script type="module" src="js/ui.js"></script>
 </body>
 </html>
