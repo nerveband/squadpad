@@ -28,6 +28,7 @@
         >
         <button id="join-btn" class="btn-primary">Join Game</button>
         <button id="demo-btn" class="btn-demo">Demo Mode</button>
+        <a href="host.html" class="nav-link" id="dashboard-link">Dashboard</a>
         <div id="connection-status"></div>
       </div>
     </div>
@@ -64,6 +65,12 @@
 
   </div>
 
+  <script>
+    // Show dashboard link only when running inside Tauri
+    if (window.__TAURI__) {
+      document.body.classList.add('is-tauri');
+    }
+  </script>
   <script type="module" src="js/ui.js"></script>
 </body>
 </html>

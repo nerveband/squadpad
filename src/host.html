@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>BombPad - Dashboard</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div id="dashboard">
+    <header class="dash-header">
+      <h1>BombPad</h1>
+      <nav class="dash-nav">
+        <a href="index.html" class="nav-link">Controller</a>
+        <a href="host.html" class="nav-link active">Dashboard</a>
+      </nav>
+    </header>
+
+    <main class="dash-main">
+      <!-- Server Status Section -->
+      <section class="dash-card" id="server-section">
+        <h2>Server</h2>
+        <div class="server-controls">
+          <div class="status-row">
+            <span class="status-label">Status:</span>
+            <span id="server-status" class="status-badge offline">Offline</span>
+          </div>
+          <div class="input-row">
+            <label for="bs-addr">BombSquad Address:</label>
+            <input type="text" id="bs-addr" value="localhost" placeholder="IP or hostname">
+          </div>
+          <button id="toggle-server" class="dash-btn primary">Start Server</button>
+        </div>
+        <div id="server-info" hidden>
+          <p class="info-text">Players can connect at:</p>
+          <code id="local-url" class="url-display"></code>
+        </div>
+      </section>
+
+      <!-- Online Sharing Section -->
+      <section class="dash-card" id="sharing-section">
+        <h2>Share Online</h2>
+        <p class="section-desc">Let friends connect from anywhere via room code.</p>
+        <button id="toggle-sharing" class="dash-btn" disabled>Share Online</button>
+        <div id="room-info" hidden>
+          <div class="room-code-display">
+            <span class="room-label">Room Code:</span>
+            <span id="room-code-value" class="room-code"></span>
+          </div>
+          <canvas id="qr-canvas" width="150" height="150"></canvas>
+        </div>
+      </section>
+
+      <!-- Connected Players Section -->
+      <section class="dash-card" id="players-section">
+        <h2>Players <span id="player-count" class="badge">0</span></h2>
+        <div id="players-list" class="players-list">
+          <p class="empty-state">No players connected</p>
+        </div>
+      </section>
+
+      <!-- Game Discovery Section -->
+      <section class="dash-card" id="discovery-section">
+        <h2>Discover Games</h2>
+        <button id="scan-btn" class="dash-btn">Scan Network</button>
+        <div id="games-list" class="games-list"></div>
+      </section>
+    </main>
+  </div>
+
+  <script type="module" src="js/dashboard.js"></script>
+</body>
+</html>
