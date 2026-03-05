@@ -49,10 +49,22 @@ html, body {
 }
 body {
   font-family: 'Outfit', system-ui, sans-serif;
-  background:
-    url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E"),
-    var(--bg-deep);
+  background: var(--bg-deep);
   color: var(--text);
+}
+
+/* Animated background — connect screen only */
+#connect-screen {
+  background:
+    url('../bg-squadpad.png') center/120% no-repeat;
+  animation: bg-drift 40s ease-in-out infinite alternate;
+}
+@keyframes bg-drift {
+  0%   { background-position: 30% 30%; }
+  100% { background-position: 70% 70%; }
+}
+@media (prefers-reduced-motion: reduce) {
+  #connect-screen { animation: none; background-position: center; background-size: cover; }
 }
 
 #app {
@@ -792,6 +804,7 @@ body {
   overflow-x: hidden;
   -webkit-user-select: text;
   user-select: text;
+  background: url('../bg-squadpad.png') center/cover no-repeat fixed;
 }
 
 /* --- Dashboard Header --- */
