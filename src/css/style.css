@@ -89,7 +89,8 @@ body {
   flex-direction: column;
   align-items: center;
   gap: 18px;
-  padding: 40px 36px;
+  padding: 40px 36px 36px;
+  margin-top: 60px;
   background: rgba(255,255,255,0.05);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
@@ -99,21 +100,32 @@ body {
   max-width: 92vw;
   box-shadow: 0 8px 32px rgba(0,0,0,0.5);
   animation: fadeInUp 0.5s ease-out;
+  overflow: visible;
 }
 
 .brand-icon {
-  width: 80px;
-  height: 80px;
-  margin-bottom: 8px;
-  filter: drop-shadow(0 4px 20px rgba(155,107,190,0.3));
-  animation: floatBomb 4s ease-in-out infinite;
+  width: 140px;
+  height: 140px;
+  margin-top: -90px;
+  margin-bottom: -10px;
+  filter: drop-shadow(0 8px 30px rgba(155,107,190,0.4));
+  transition: transform 0.3s ease, filter 0.3s ease;
+  cursor: pointer;
+}
+.brand-icon:hover {
+  transform: scale(1.12) rotate(-8deg);
+  filter: drop-shadow(0 12px 40px rgba(155,107,190,0.6));
+}
+.brand-icon:active {
+  transform: scale(0.95) rotate(4deg);
+}
+@media (prefers-reduced-motion: no-preference) {
+  .brand-icon { animation: floatBomb 4s ease-in-out infinite; }
+  .brand-icon:hover { animation: none; }
 }
 @keyframes floatBomb {
   0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-6px); }
-}
-@media (prefers-reduced-motion: reduce) {
-  .brand-icon { animation: none; }
+  50% { transform: translateY(-8px); }
 }
 
 .brand-title {
@@ -1771,6 +1783,7 @@ body.is-tauri #dashboard-link {
     max-height: 98vh;
     overflow-y: auto;
   }
+  .brand-icon { width: 110px; height: 110px; margin-top: -70px; }
   .brand-title { font-size: 2rem; }
   .brand-subtitle { font-size: 0.85rem; margin-top: -4px; }
   .bento-card { padding: 16px 14px; }
