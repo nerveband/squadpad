@@ -53,18 +53,12 @@ body {
   color: var(--text);
 }
 
-/* Animated background — connect screen only */
-#connect-screen {
-  background:
-    url('../bg-squadpad.png') center/120% no-repeat;
-  animation: bg-drift 40s ease-in-out infinite alternate;
-}
 @keyframes bg-drift {
   0%   { background-position: 30% 30%; }
   100% { background-position: 70% 70%; }
 }
 @media (prefers-reduced-motion: reduce) {
-  #connect-screen { animation: none; background-position: center; background-size: cover; }
+  #connect-screen { animation: none !important; }
 }
 
 #app {
@@ -85,7 +79,9 @@ body {
     radial-gradient(ellipse at 50% 20%, rgba(155,107,190,0.12) 0%, transparent 50%),
     radial-gradient(ellipse at 30% 70%, rgba(92,196,176,0.06) 0%, transparent 50%),
     radial-gradient(ellipse at 70% 60%, rgba(232,200,64,0.05) 0%, transparent 50%),
+    url('../bg-squadpad.png') center/120% no-repeat,
     var(--bg-deep);
+  animation: bg-drift 40s ease-in-out infinite alternate;
 }
 
 .connect-card {
@@ -103,6 +99,21 @@ body {
   max-width: 92vw;
   box-shadow: 0 8px 32px rgba(0,0,0,0.5);
   animation: fadeInUp 0.5s ease-out;
+}
+
+.brand-icon {
+  width: 80px;
+  height: 80px;
+  margin-bottom: 8px;
+  filter: drop-shadow(0 4px 20px rgba(155,107,190,0.3));
+  animation: floatBomb 4s ease-in-out infinite;
+}
+@keyframes floatBomb {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-6px); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .brand-icon { animation: none; }
 }
 
 .brand-title {
