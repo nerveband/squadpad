@@ -98,10 +98,26 @@ body {
   margin-top: -8px;
 }
 
-.connect-hint {
+.how-it-works {
   font-size: 0.8rem;
-  color: #666;
-  margin-top: 4px;
+  color: #777;
+  line-height: 1.6;
+  text-align: center;
+  padding: 0 8px;
+}
+.how-it-works p {
+  margin-bottom: 4px;
+}
+.how-it-works strong {
+  color: var(--text);
+  font-weight: 700;
+}
+.how-it-works a {
+  color: var(--teal);
+  text-decoration: none;
+}
+.how-it-works a:hover {
+  text-decoration: underline;
 }
 
 #room-code {
@@ -252,20 +268,19 @@ body {
   position: relative;
 }
 
-/* --- Joystick Zone (left 40%) --- */
+/* --- Joystick Zone (left half) --- */
 #joystick-zone {
-  width: 40%;
+  width: 50%;
   height: 100%;
   display: flex;
   align-items: center;
   justify-content: center;
   position: relative;
-  /* Touch events captured in JS */
 }
 
 #joystick-base {
-  width: 120px;
-  height: 120px;
+  width: 140px;
+  height: 140px;
   border-radius: 50%;
   border: 2px solid rgba(155,107,190,0.15);
   background: rgba(155,107,190,0.03);
@@ -277,8 +292,8 @@ body {
 }
 
 #joystick-thumb {
-  width: 50px;
-  height: 50px;
+  width: 56px;
+  height: 56px;
   border-radius: 50%;
   background: radial-gradient(circle at 35% 30%, rgba(155,107,190,0.35), rgba(92,196,176,0.15));
   border: 2px solid rgba(155,107,190,0.3);
@@ -304,9 +319,9 @@ body {
   .kbd-hint { display: none; }
 }
 
-/* --- Button Zone (right 40%) --- */
+/* --- Button Zone (right half) --- */
 #button-zone {
-  width: 40%;
+  width: 50%;
   height: 100%;
   display: flex;
   flex-direction: column;
@@ -318,9 +333,9 @@ body {
 /* Diamond layout using CSS grid */
 .btn-diamond {
   display: grid;
-  grid-template-columns: 64px 64px 64px;
-  grid-template-rows: 64px 64px 64px;
-  gap: 4px;
+  grid-template-columns: 70px 70px 70px;
+  grid-template-rows: 70px 70px 70px;
+  gap: 6px;
   justify-items: center;
   align-items: center;
 }
@@ -333,8 +348,8 @@ body {
 
 /* Action buttons: shared styles */
 .action-btn {
-  width: 58px;
-  height: 58px;
+  width: 64px;
+  height: 64px;
   border-radius: 50%;
   border: 2px solid rgba(255,255,255,0.18);
   font-size: 1.3rem;
@@ -983,6 +998,150 @@ body.is-tauri #dashboard-link {
     transform: scale(1.1);
     filter: brightness(1.2);
   }
+}
+
+/* --- HUD Right Group --- */
+.hud-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+#settings-btn {
+  width: 32px;
+  height: 32px;
+  font-size: 1rem;
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 6px;
+  background: rgba(255,255,255,0.03);
+  color: #666;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.2s, background 0.2s;
+}
+#settings-btn:hover { color: #aaa; background: rgba(255,255,255,0.06); }
+
+/* --- Key Tags on Buttons (desktop only) --- */
+.key-tag {
+  position: absolute;
+  bottom: -2px;
+  right: -2px;
+  font-size: 0.5rem;
+  font-weight: 800;
+  font-family: 'JetBrains Mono', monospace;
+  background: rgba(0,0,0,0.6);
+  color: #aaa;
+  padding: 1px 4px;
+  border-radius: 3px;
+  line-height: 1.2;
+  pointer-events: none;
+}
+
+/* Hide key tags on touch devices */
+@media (hover: none) and (pointer: coarse) {
+  .key-tag { display: none; }
+}
+
+/* --- Settings Panel --- */
+#settings-panel {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0,0,0,0.8);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+}
+
+.settings-card {
+  background: rgba(30,25,50,0.95);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 12px;
+  padding: 24px;
+  width: 320px;
+  max-width: 90vw;
+  max-height: 80vh;
+  overflow-y: auto;
+}
+
+.settings-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.settings-header h2 {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.settings-desc {
+  font-size: 0.8rem;
+  color: #888;
+  margin-bottom: 16px;
+}
+
+.key-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 16px;
+}
+
+.key-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.key-label {
+  font-size: 0.85rem;
+  color: #ccc;
+}
+
+.key-bind {
+  padding: 6px 14px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  font-family: 'JetBrains Mono', monospace;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 6px;
+  color: var(--text);
+  cursor: pointer;
+  min-width: 60px;
+  text-align: center;
+  transition: border-color 0.2s, background 0.2s;
+}
+
+.key-bind:hover {
+  border-color: var(--purple);
+  background: rgba(155,107,190,0.1);
+}
+
+.key-bind.listening {
+  border-color: var(--gold);
+  background: rgba(232,200,64,0.1);
+  color: var(--gold);
+}
+
+.key-bind.listening::after {
+  content: '...';
+}
+
+#reset-keys {
+  display: block;
+  margin: 0 auto;
+  font-size: 0.75rem;
 }
 
 /* Icon inside buttons */

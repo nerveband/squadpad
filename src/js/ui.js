@@ -82,7 +82,7 @@ menuBtn.addEventListener('click', () => {
 // "Floating" joystick: base appears where the user first touches.
 // Movement is normalized to -1..1 based on distance from center.
 
-const JOYSTICK_RADIUS = 60; // half of 120px base
+const JOYSTICK_RADIUS = 70; // half of 140px base
 let joystickActive = false;
 let joystickTouchId = null;
 let joystickCenterX = 0;
@@ -357,6 +357,143 @@ function getRelayUrl() {
     || localStorage.getItem('squadpad_relay_url')
     || DEFAULT_RELAY_URL;
 }
+
+// ============================================================
+// Settings Panel (Key Remapping)
+// ============================================================
+const settingsBtn    = document.getElementById('settings-btn');
+const settingsPanel  = document.getElementById('settings-panel');
+const settingsClose  = document.getElementById('settings-close');
+const resetKeysBtn   = document.getElementById('reset-keys');
+const keyBindButtons = document.querySelectorAll('.key-bind');
+
+// Human-readable key names
+function prettyKey(code) {
+  if (code.startsWith('Key')) return code.slice(3);
+  if (code.startsWith('Arrow')) return code.slice(5);
+  if (code === 'ShiftLeft' || code === 'ShiftRight') return 'Shift';
+  if (code === 'Space') return 'Space';
+  if (code === 'Escape') return 'Esc';
+  if (code === 'Backquote') return '`';
+  return code.replace(/([a-z])([A-Z])/g, '$1 $2');
+}
+
+// Load saved bindings from localStorage
+function loadBindings() {
+  const saved = localStorage.getItem('squadpad_keys');
+  if (saved) {
+    try {
+      const parsed = JSON.parse(saved);
+      controller.keyBindings = parsed;
+    } catch { /* ignore corrupt data */ }
+  }
+  refreshBindingUI();
+}
+
+function saveBindings() {
+  localStorage.setItem('squadpad_keys', JSON.stringify(controller.keyBindings));
+}
+
+function refreshBindingUI() {
+  const reverse = {};
+  for (const [code, action] of Object.entries(controller.keyBindings)) {
+    if (!reverse[action]) reverse[action] = code;
+  }
+  keyBindButtons.forEach(btn => {
+    const action = btn.dataset.action;
+    const code = reverse[action];
+    btn.textContent = code ? prettyKey(code) : '—';
+  });
+  // Also update key-tags on action buttons
+  document.querySelectorAll('.action-btn .key-tag').forEach(tag => {
+    const action = tag.closest('.action-btn')?.dataset.action;
+    if (action) {
+      const code = reverse[action];
+      tag.textContent = code ? prettyKey(code) : '';
+    }
+  });
+  // Update WASD hint
+  const kbdHint = document.querySelector('.kbd-hint');
+  if (kbdHint) {
+    const up = reverse['up'] ? prettyKey(reverse['up']) : '?';
+    const left = reverse['left'] ? prettyKey(reverse['left']) : '?';
+    const down = reverse['down'] ? prettyKey(reverse['down']) : '?';
+    const right = reverse['right'] ? prettyKey(reverse['right']) : '?';
+    kbdHint.textContent = `${up}/${left}/${down}/${right} to move`;
+  }
+}
+
+let listeningBtn = null;
+
+function startListening(btn) {
+  if (listeningBtn) listeningBtn.classList.remove('listening');
+  listeningBtn = btn;
+  btn.textContent = '';
+  btn.classList.add('listening');
+}
+
+function handleRebind(e) {
+  if (!listeningBtn) return;
+  e.preventDefault();
+  e.stopPropagation();
+  const action = listeningBtn.dataset.action;
+  const code = e.code;
+
+  // Remove old bindings for this action
+  for (const [k, v] of Object.entries(controller.keyBindings)) {
+    if (v === action) delete controller.keyBindings[k];
+  }
+  // Set new binding
+  controller.keyBindings[code] = action;
+  saveBindings();
+  refreshBindingUI();
+  listeningBtn.classList.remove('listening');
+  listeningBtn = null;
+}
+
+settingsBtn.addEventListener('click', () => {
+  settingsPanel.hidden = !settingsPanel.hidden;
+  refreshBindingUI();
+});
+
+settingsClose.addEventListener('click', () => {
+  settingsPanel.hidden = true;
+  if (listeningBtn) {
+    listeningBtn.classList.remove('listening');
+    listeningBtn = null;
+  }
+});
+
+keyBindButtons.forEach(btn => {
+  btn.addEventListener('click', () => startListening(btn));
+});
+
+document.addEventListener('keydown', (e) => {
+  if (listeningBtn) {
+    handleRebind(e);
+    return;
+  }
+}, { capture: true });
+
+resetKeysBtn.addEventListener('click', () => {
+  localStorage.removeItem('squadpad_keys');
+  controller.keyBindings = {
+    KeyW: 'up',    ArrowUp: 'up',
+    KeyS: 'down',  ArrowDown: 'down',
+    KeyA: 'left',  ArrowLeft: 'left',
+    KeyD: 'right', ArrowRight: 'right',
+    KeyK: 'jump',     Space: 'jump',
+    KeyJ: 'punch',
+    KeyL: 'throw',
+    KeyI: 'bomb',
+    ShiftLeft: 'run',  ShiftRight: 'run',
+    Escape: 'menu',    Backquote: 'menu',
+  };
+  refreshBindingUI();
+});
+
+// Load saved key bindings on startup
+loadBindings();
 
 // ============================================================
 // Init

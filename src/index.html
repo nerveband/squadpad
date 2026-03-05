@@ -24,12 +24,15 @@
         <h1 class="brand-title">SquadPad</h1>
         <p class="brand-subtitle">Play BombSquad from your browser</p>
 
-        <p class="connect-hint">Ask your host for the room code</p>
+        <div class="how-it-works">
+          <p><strong>Player?</strong> Get a room code from whoever is hosting, type it below, and play.</p>
+          <p><strong>Host?</strong> Download the <a href="host.html" id="dashboard-link">SquadPad app</a> and start a server.</p>
+        </div>
 
         <input
           type="text"
           id="room-code"
-          placeholder="Enter code"
+          placeholder="Enter room code"
           maxlength="9"
           autocomplete="off"
           spellcheck="false"
@@ -38,8 +41,7 @@
         <div id="connection-status"></div>
 
         <div class="connect-footer">
-          <button id="demo-btn" class="btn-link">Try without connecting</button>
-          <a href="host.html" class="btn-link" id="dashboard-link"><i class="ph-bold ph-gear"></i> Host Settings</a>
+          <button id="demo-btn" class="btn-link">Try the controller without connecting</button>
         </div>
       </div>
     </div>
@@ -49,8 +51,34 @@
       <header id="hud">
         <button id="menu-btn" aria-label="Back"><i class="ph-bold ph-arrow-left"></i></button>
         <span id="game-name">SquadPad</span>
-        <span id="lag-display"><i class="ph-bold ph-wifi-high"></i> --ms</span>
+        <div class="hud-right">
+          <span id="lag-display"><i class="ph-bold ph-wifi-high"></i> --ms</span>
+          <button id="settings-btn" aria-label="Settings"><i class="ph-bold ph-gear"></i></button>
+        </div>
       </header>
+
+      <!-- Settings Panel (key remapping) -->
+      <div id="settings-panel" hidden>
+        <div class="settings-card">
+          <div class="settings-header">
+            <h2>Controls</h2>
+            <button id="settings-close" class="btn-link"><i class="ph-bold ph-x"></i></button>
+          </div>
+          <p class="settings-desc">Click a key to remap it. Press any key to assign.</p>
+          <div class="key-grid">
+            <div class="key-row"><span class="key-label">Move Up</span><button class="key-bind" data-action="up">W</button></div>
+            <div class="key-row"><span class="key-label">Move Down</span><button class="key-bind" data-action="down">S</button></div>
+            <div class="key-row"><span class="key-label">Move Left</span><button class="key-bind" data-action="left">A</button></div>
+            <div class="key-row"><span class="key-label">Move Right</span><button class="key-bind" data-action="right">D</button></div>
+            <div class="key-row"><span class="key-label">Jump</span><button class="key-bind" data-action="jump">K</button></div>
+            <div class="key-row"><span class="key-label">Punch</span><button class="key-bind" data-action="punch">J</button></div>
+            <div class="key-row"><span class="key-label">Throw</span><button class="key-bind" data-action="throw">L</button></div>
+            <div class="key-row"><span class="key-label">Bomb</span><button class="key-bind" data-action="bomb">I</button></div>
+            <div class="key-row"><span class="key-label">Run</span><button class="key-bind" data-action="run">Shift</button></div>
+          </div>
+          <button id="reset-keys" class="btn-link">Reset to defaults</button>
+        </div>
+      </div>
 
       <div id="controls">
         <div id="joystick-zone">
@@ -62,12 +90,12 @@
 
         <div id="button-zone">
           <div class="btn-diamond">
-            <button class="action-btn btn-throw" data-action="throw"><i class="ph-bold ph-hand-grabbing"></i></button>
-            <button class="action-btn btn-punch" data-action="punch"><i class="ph-bold ph-hand-fist"></i></button>
-            <button class="action-btn btn-bomb"  data-action="bomb"><i class="ph-bold ph-fire"></i></button>
-            <button class="action-btn btn-jump"  data-action="jump"><i class="ph-bold ph-arrow-fat-up"></i></button>
+            <button class="action-btn btn-throw" data-action="throw"><i class="ph-bold ph-hand-grabbing"></i><span class="key-tag">L</span></button>
+            <button class="action-btn btn-punch" data-action="punch"><i class="ph-bold ph-hand-fist"></i><span class="key-tag">J</span></button>
+            <button class="action-btn btn-bomb"  data-action="bomb"><i class="ph-bold ph-fire"></i><span class="key-tag">I</span></button>
+            <button class="action-btn btn-jump"  data-action="jump"><i class="ph-bold ph-arrow-fat-up"></i><span class="key-tag">K</span></button>
           </div>
-          <button class="action-btn btn-run" data-action="run"><i class="ph-bold ph-person-simple-run"></i> RUN</button>
+          <button class="action-btn btn-run" data-action="run"><i class="ph-bold ph-person-simple-run"></i> RUN <span class="key-tag">Shift</span></button>
         </div>
       </div>
     </div>
