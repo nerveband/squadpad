@@ -12,9 +12,11 @@ import { encodeStateV2 } from './protocol.js';
 const connectScreen   = document.getElementById('connect-screen');
 const controllerScreen = document.getElementById('controller-screen');
 const roomCodeInput   = document.getElementById('room-code');
+const playerNameInput = document.getElementById('player-name');
 const joinBtn         = document.getElementById('join-btn');
 const statusEl        = document.getElementById('connection-status');
 const menuBtn         = document.getElementById('menu-btn');
+const connectTimer    = document.getElementById('connect-timer');
 const lagDisplay      = document.getElementById('lag-display');
 const joystickZone    = document.getElementById('joystick-zone');
 const joystickBase    = document.getElementById('joystick-base');
@@ -97,7 +99,8 @@ joinBtn.addEventListener('click', () => {
     // Room code: connect via cloud relay
     // Users can set a custom relay URL in the settings or via URL param
     const relayUrl = getRelayUrl();
-    connection.connectRelay(relayUrl, code.toUpperCase());
+    connection.connectRelay(relayUrl, code.toUpperCase(), playerNameInput.value.trim());
+    addToHistory(code.toUpperCase());
   }
 });
 
@@ -362,18 +365,59 @@ document.getElementById('hud').addEventListener('touchend', (e) => {
 });
 
 // ============================================================
+// Connection Duration Timer
+// ============================================================
+let connectStartTime = null;
+let timerInterval = null;
+
+function startConnectTimer() {
+  connectStartTime = Date.now();
+  connectTimer.hidden = false;
+  timerInterval = setInterval(updateConnectTimer, 1000);
+  updateConnectTimer();
+}
+
+function stopConnectTimer() {
+  if (timerInterval) clearInterval(timerInterval);
+  timerInterval = null;
+  connectTimer.hidden = true;
+}
+
+function updateConnectTimer() {
+  if (!connectStartTime) return;
+  const elapsed = Math.floor((Date.now() - connectStartTime) / 1000);
+  const mins = Math.floor(elapsed / 60);
+  const secs = elapsed % 60;
+  connectTimer.textContent = `${mins}:${secs.toString().padStart(2, '0')}`;
+}
+
+// ============================================================
 // Connection Event Handlers
 // ============================================================
 connection.onConnect = () => {
   statusEl.textContent = '';
   joinBtn.disabled = false;
+  startConnectTimer();
   showController();
 };
 
 connection.onDisconnect = () => {
+  stopConnectTimer();
   joinBtn.disabled = false;
   showConnect();
   statusEl.textContent = 'Disconnected. Try again.';
+};
+
+connection.onReconnecting = (attempt) => {
+  statusEl.textContent = `Reconnecting (${attempt}/5)...`;
+  // Stay on controller screen, don't switch back yet
+};
+
+connection.onReconnectFailed = () => {
+  stopConnectTimer();
+  showConnect();
+  statusEl.textContent = 'Connection lost. Tap Join to try again.';
+  joinBtn.disabled = false;
 };
 
 connection.onMessage = (data) => {
@@ -584,6 +628,79 @@ resetKeysBtn.addEventListener('click', () => {
 
 // Load saved key bindings on startup
 loadBindings();
+
+// ============================================================
+// Player Name Persistence
+// ============================================================
+playerNameInput.value = localStorage.getItem('squadpad_player_name') || '';
+playerNameInput.addEventListener('input', () => {
+  localStorage.setItem('squadpad_player_name', playerNameInput.value);
+});
+
+// ============================================================
+// Connection History (last 5 room codes, 24h expiry)
+// ============================================================
+function getHistory() {
+  try {
+    return JSON.parse(localStorage.getItem('squadpad_history') || '[]')
+      .filter(h => Date.now() - h.ts < 24 * 60 * 60 * 1000)
+      .slice(0, 5);
+  } catch { return []; }
+}
+
+function addToHistory(code) {
+  let history = getHistory().filter(h => h.code !== code);
+  history.unshift({ code, ts: Date.now() });
+  history = history.slice(0, 5);
+  localStorage.setItem('squadpad_history', JSON.stringify(history));
+  renderHistory();
+}
+
+function renderHistory() {
+  const container = document.getElementById('history-chips');
+  if (!container) return;
+  const history = getHistory();
+  if (history.length === 0) { container.innerHTML = ''; return; }
+
+  container.innerHTML = history.map(h => {
+    const ago = formatTimeAgo(h.ts);
+    return `<button class="history-chip" data-code="${h.code}">${h.code} <span class="chip-time">${ago}</span></button>`;
+  }).join('');
+
+  container.querySelectorAll('.history-chip').forEach(chip => {
+    chip.addEventListener('click', () => {
+      roomCodeInput.value = chip.dataset.code;
+      roomCodeInput.focus();
+    });
+  });
+}
+
+function formatTimeAgo(ts) {
+  const mins = Math.floor((Date.now() - ts) / 60000);
+  if (mins < 1) return 'just now';
+  if (mins < 60) return `${mins}m ago`;
+  const hrs = Math.floor(mins / 60);
+  return `${hrs}h ago`;
+}
+
+renderHistory();
+
+// ============================================================
+// Deep Link: ?room=XXXX-XXXX skips role picker
+// ============================================================
+const params = new URLSearchParams(window.location.search);
+const deepRoom = params.get('room');
+const deepName = params.get('name');
+if (deepRoom) {
+  rolePicker.hidden = true;
+  playerFlow.hidden = false;
+  roomCodeInput.value = deepRoom.toUpperCase();
+  if (deepName) {
+    playerNameInput.value = deepName;
+    localStorage.setItem('squadpad_player_name', deepName);
+  }
+  roomCodeInput.focus();
+}
 
 // ============================================================
 // Init

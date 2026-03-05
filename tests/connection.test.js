@@ -1,10 +1,10 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { Connection } from '../src/js/connection.js';
 
 class MockWebSocket {
   constructor(url) { this.url = url; this.sent = []; this.binaryType = ''; this.readyState = 0; }
   send(data) { this.sent.push(data); }
-  close() { this.readyState = 3; }
+  close() { this.readyState = 3; if (this.onclose) this.onclose(); }
 }
 
 describe('Connection', () => {
@@ -17,13 +17,14 @@ describe('Connection', () => {
 
   it('connects to relay with room code', () => {
     const conn = new Connection(MockWebSocket);
-    conn.connectRelay('wss://relay.squadpad.org', 'SQPD-7X3K');
+    conn.connectRelay('wss://relay.squadpad.org', 'SQPD-7X3K', 'TestPlayer');
     expect(conn.ws.url).toBe('wss://relay.squadpad.org');
     conn.ws.onopen();
     expect(conn.ws.sent.length).toBe(1);
     const msg = JSON.parse(conn.ws.sent[0]);
     expect(msg.type).toBe('join');
     expect(msg.room).toBe('SQPD-7X3K');
+    expect(msg.name).toBe('TestPlayer');
   });
 
   it('sends binary state data', () => {
@@ -52,12 +53,12 @@ describe('Connection', () => {
     expect(connected).toBe(true);
   });
 
-  it('fires onDisconnect when socket closes', () => {
+  it('fires onDisconnect on user-initiated disconnect', () => {
     const conn = new Connection(MockWebSocket);
     let disconnected = false;
     conn.onDisconnect = () => { disconnected = true; };
     conn.connect('ws://localhost:43211');
-    conn.ws.onclose();
+    conn.disconnect();
     expect(disconnected).toBe(true);
   });
 
@@ -76,5 +77,74 @@ describe('Connection', () => {
     conn.connect('ws://localhost:43211');
     conn.ws.readyState = 1;
     expect(conn.connected).toBe(true);
+  });
+
+  it('attempts reconnect on unexpected close', () => {
+    vi.useFakeTimers();
+    const conn = new Connection(MockWebSocket);
+    let reconnectAttempt = 0;
+    conn.onReconnecting = (attempt) => { reconnectAttempt = attempt; };
+    conn.connect('ws://localhost:43211');
+    // Simulate unexpected close (not user-initiated)
+    conn.ws.onclose();
+    expect(reconnectAttempt).toBe(1);
+    vi.useRealTimers();
+  });
+
+  it('does not reconnect on user-initiated disconnect', () => {
+    vi.useFakeTimers();
+    const conn = new Connection(MockWebSocket);
+    let reconnectAttempt = 0;
+    conn.onReconnecting = (attempt) => { reconnectAttempt = attempt; };
+    conn.connect('ws://localhost:43211');
+    conn.disconnect();
+    expect(reconnectAttempt).toBe(0);
+    vi.useRealTimers();
+  });
+
+  it('fires onReconnectFailed after max attempts', () => {
+    vi.useFakeTimers();
+    const conn = new Connection(MockWebSocket);
+    let failed = false;
+    conn.onReconnectFailed = () => { failed = true; };
+    conn.connect('ws://localhost:43211');
+
+    // Exhaust all reconnect attempts
+    for (let i = 0; i < 5; i++) {
+      conn.ws.onclose();
+      vi.advanceTimersByTime(2000);
+    }
+    // The 6th close after all attempts are exhausted
+    conn.ws.onclose();
+    expect(failed).toBe(true);
+    vi.useRealTimers();
+  });
+
+  it('resets reconnect attempts on successful connect', () => {
+    vi.useFakeTimers();
+    const conn = new Connection(MockWebSocket);
+    let reconnectAttempt = 0;
+    conn.onReconnecting = (attempt) => { reconnectAttempt = attempt; };
+    conn.connect('ws://localhost:43211');
+
+    // Simulate unexpected close and reconnect
+    conn.ws.onclose();
+    expect(reconnectAttempt).toBe(1);
+
+    // Advance timer to trigger reconnect
+    vi.advanceTimersByTime(2000);
+
+    // Simulate successful reconnect
+    conn.ws.onopen();
+    expect(conn._reconnectAttempts).toBe(0);
+    vi.useRealTimers();
+  });
+
+  it('connectRelay defaults playerName to Player', () => {
+    const conn = new Connection(MockWebSocket);
+    conn.connectRelay('wss://relay.squadpad.org', 'SQPD-7X3K');
+    conn.ws.onopen();
+    const msg = JSON.parse(conn.ws.sent[0]);
+    expect(msg.name).toBe('Player');
   });
 });

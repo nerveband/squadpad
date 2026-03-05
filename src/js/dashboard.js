@@ -143,7 +143,14 @@ scanBtn.addEventListener('click', async () => {
   try {
     const games = await invoke('discover_games');
     if (games.length === 0) {
-      gamesList.innerHTML = '<p class="empty-state">No games found on the network</p>';
+      gamesList.innerHTML = `
+        <p class="empty-state">No games found on the network.</p>
+        <p class="permission-hint">
+          <strong>macOS users:</strong> If you clicked "Don't Allow" on the network permission prompt,
+          go to <em>System Settings &gt; Privacy &amp; Security &gt; Local Network</em> and
+          enable it for SquadPad, then click Scan again.
+        </p>
+      `;
     } else {
       gamesList.innerHTML = games.map(([name, addr]) => `
         <div class="game-row" data-addr="${escapeHtml(addr)}">
@@ -152,8 +159,17 @@ scanBtn.addEventListener('click', async () => {
         </div>
       `).join('');
 
+      // Auto-select the first game found
+      const firstRow = gamesList.querySelector('.game-row');
+      if (firstRow) {
+        bsAddr.value = firstRow.dataset.addr;
+        firstRow.style.borderColor = 'rgba(92,196,176,0.4)';
+      }
+
       gamesList.querySelectorAll('.game-row').forEach(row => {
         row.addEventListener('click', () => {
+          // Deselect all, select this one
+          gamesList.querySelectorAll('.game-row').forEach(r => r.style.borderColor = '');
           bsAddr.value = row.dataset.addr;
           row.style.borderColor = 'rgba(92,196,176,0.4)';
         });

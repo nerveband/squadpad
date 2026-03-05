@@ -14,6 +14,8 @@
   <link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/bold/style.css">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <link rel="manifest" href="manifest.json">
 </head>
 <body>
   <div id="app">
@@ -42,6 +44,7 @@
         <div id="player-flow" hidden>
           <button class="back-link" id="back-to-roles"><i class="ph-bold ph-arrow-left"></i> Back</button>
           <p class="flow-desc">Enter the room code from your host:</p>
+          <input type="text" id="player-name" placeholder="Your name (optional)" maxlength="20" autocomplete="off" spellcheck="false" class="name-input">
           <div class="join-row">
             <input
               type="text"
@@ -53,6 +56,7 @@
             >
             <button id="join-btn" class="btn-primary"><i class="ph-bold ph-play"></i> Join</button>
           </div>
+          <div id="history-chips" class="history-chips"></div>
           <div id="connection-status"></div>
         </div>
 
@@ -88,6 +92,7 @@
         <button id="menu-btn" aria-label="Back"><i class="ph-bold ph-arrow-left"></i></button>
         <span id="game-name">SquadPad</span>
         <div class="hud-right">
+          <span id="connect-timer" class="connect-timer" hidden></span>
           <span id="lag-display"><i class="ph-bold ph-wifi-high"></i> --ms</span>
           <button id="settings-btn"><i class="ph-bold ph-gear"></i> Settings</button>
         </div>
@@ -141,6 +146,9 @@
   <script>
     if (window.__TAURI__) {
       document.body.classList.add('is-tauri');
+    }
+    if ('serviceWorker' in navigator && !window.__TAURI__) {
+      navigator.serviceWorker.register('/sw.js').catch(() => {});
     }
   </script>
   <script type="module" src="js/ui.js"></script>
