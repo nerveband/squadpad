@@ -1,5 +1,7 @@
 # SquadPad
 
+![SquadPad - Play BombSquad from any browser](src/og-image.png)
+
 An unofficial web-based controller for [BombSquad](https://www.froemling.net/apps/bombsquad). Open a browser, enter a room code, and play -- no app install required for players.
 
 Website: [squadpad.org](https://squadpad.org)
