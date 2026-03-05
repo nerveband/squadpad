@@ -19,7 +19,12 @@ const playersStep = document.getElementById('step-players');
 const scanBtn = document.getElementById('scan-btn');
 const gamesList = document.getElementById('games-list');
 
+const qrCanvas = document.getElementById('qr-canvas');
+
 let serverRunning = false;
+let sharingOnline = false;
+
+const RELAY_URL = 'wss://squadpad-relay.fly.dev';
 
 // Start/stop the WebSocket server
 toggleServerBtn.addEventListener('click', async () => {
@@ -53,6 +58,17 @@ toggleServerBtn.addEventListener('click', async () => {
     }
   } else {
     try {
+      // Stop sharing first if active
+      if (sharingOnline) {
+        try { await invoke('stop_sharing'); } catch (_) {}
+        sharingOnline = false;
+        roomInfo.hidden = true;
+        roomCodeValue.textContent = '';
+        toggleSharingBtn.innerHTML = '<i class="ph-bold ph-globe"></i> Go Online';
+        toggleSharingBtn.classList.remove('danger');
+        toggleSharingBtn.classList.add('primary');
+        clearQrCode();
+      }
       await invoke('stop_server');
       serverRunning = false;
       serverStatus.textContent = 'Offline';
@@ -149,6 +165,76 @@ scanBtn.addEventListener('click', async () => {
   scanBtn.innerHTML = '<i class="ph-bold ph-radar"></i> Scan Network';
   scanBtn.disabled = false;
 });
+
+// Go Online / Stop Sharing
+toggleSharingBtn.addEventListener('click', async () => {
+  if (!invoke) return;
+
+  if (!sharingOnline) {
+    try {
+      toggleSharingBtn.disabled = true;
+      toggleSharingBtn.innerHTML = '<i class="ph-bold ph-spinner"></i> Connecting...';
+      const roomCode = await invoke('share_online', { relayUrl: RELAY_URL });
+      sharingOnline = true;
+      roomCodeValue.textContent = roomCode;
+      roomInfo.hidden = false;
+      toggleSharingBtn.innerHTML = '<i class="ph-bold ph-stop"></i> Stop Sharing';
+      toggleSharingBtn.classList.remove('primary');
+      toggleSharingBtn.classList.add('danger');
+      toggleSharingBtn.disabled = false;
+      renderQrCode(`https://squadpad.org?room=${roomCode}`);
+    } catch (e) {
+      toggleSharingBtn.innerHTML = '<i class="ph-bold ph-globe"></i> Go Online';
+      toggleSharingBtn.disabled = false;
+      showError(e);
+    }
+  } else {
+    try {
+      await invoke('stop_sharing');
+      sharingOnline = false;
+      roomInfo.hidden = true;
+      roomCodeValue.textContent = '';
+      toggleSharingBtn.innerHTML = '<i class="ph-bold ph-globe"></i> Go Online';
+      toggleSharingBtn.classList.remove('danger');
+      toggleSharingBtn.classList.add('primary');
+      clearQrCode();
+    } catch (e) {
+      showError(e);
+    }
+  }
+});
+
+// QR code rendering using qrcode-generator
+function renderQrCode(url) {
+  if (!qrCanvas || typeof qrcode !== 'function') return;
+  const qr = qrcode(0, 'M');
+  qr.addData(url);
+  qr.make();
+
+  const ctx = qrCanvas.getContext('2d');
+  const size = qrCanvas.width;
+  const moduleCount = qr.getModuleCount();
+  const cellSize = size / moduleCount;
+
+  ctx.clearRect(0, 0, size, size);
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(0, 0, size, size);
+
+  ctx.fillStyle = '#1a1a2e';
+  for (let row = 0; row < moduleCount; row++) {
+    for (let col = 0; col < moduleCount; col++) {
+      if (qr.isDark(row, col)) {
+        ctx.fillRect(col * cellSize, row * cellSize, cellSize, cellSize);
+      }
+    }
+  }
+}
+
+function clearQrCode() {
+  if (!qrCanvas) return;
+  const ctx = qrCanvas.getContext('2d');
+  ctx.clearRect(0, 0, qrCanvas.width, qrCanvas.height);
+}
 
 // Helpers
 function lagColor(ms) {

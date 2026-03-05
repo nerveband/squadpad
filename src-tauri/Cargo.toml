@@ -16,7 +16,7 @@ tauri-plugin-shell = "2"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 tokio = { version = "1", features = ["net", "sync", "time", "rt-multi-thread", "macros"] }
-tokio-tungstenite = "0.26"
+tokio-tungstenite = { version = "0.26", features = ["native-tls"] }
 futures-util = { version = "0.3", features = ["sink"] }
 rand = "0.8"
 local-ip-address = "0.6"

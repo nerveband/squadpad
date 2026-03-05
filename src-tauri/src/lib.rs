@@ -1,9 +1,11 @@
 mod protocol;
+mod relay_client;
 mod udp_client;
 mod websocket_server;
 mod state;
 
 use state::{new_shared_state, SharedState};
+use relay_client::SharedRelayHandle;
 use tauri::State;
 
 // Tauri commands exposed to the frontend
@@ -65,19 +67,53 @@ async fn kick_player(state: State<'_, SharedState>, player_id: usize) -> Result<
     Ok(())
 }
 
+#[tauri::command]
+async fn share_online(
+    relay_state: State<'_, SharedRelayHandle>,
+    app_state: State<'_, SharedState>,
+    relay_url: String,
+) -> Result<String, String> {
+    let relay = relay_state.inner().clone();
+    let room_code = relay_client::connect(relay_url, relay).await?;
+    // Store room code in app state
+    {
+        let mut s = app_state.lock().await;
+        s.online_room_code = Some(room_code.clone());
+    }
+    Ok(room_code)
+}
+
+#[tauri::command]
+async fn stop_sharing(
+    relay_state: State<'_, SharedRelayHandle>,
+    app_state: State<'_, SharedState>,
+) -> Result<(), String> {
+    let relay = relay_state.inner().clone();
+    relay_client::disconnect(relay).await?;
+    {
+        let mut s = app_state.lock().await;
+        s.online_room_code = None;
+    }
+    Ok(())
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let shared_state = new_shared_state();
+    let relay_state = relay_client::new_shared_relay();
 
     tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
         .manage(shared_state)
+        .manage(relay_state)
         .invoke_handler(tauri::generate_handler![
             discover_games,
             start_server,
             stop_server,
             get_players,
             kick_player,
+            share_online,
+            stop_sharing,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
