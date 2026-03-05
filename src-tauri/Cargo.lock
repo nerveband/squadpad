@@ -128,22 +128,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "bombpad"
-version = "0.1.0"
-dependencies = [
- "futures-util",
- "local-ip-address",
- "rand 0.8.5",
- "serde",
- "serde_json",
- "tauri",
- "tauri-build",
- "tauri-plugin-shell",
- "tokio",
- "tokio-tungstenite",
-]
-
-[[package]]
 name = "brotli"
 version = "8.0.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3200,6 +3184,22 @@ dependencies = [
  "gobject-sys",
  "libc",
  "system-deps",
+]
+
+[[package]]
+name = "squadpad"
+version = "0.1.0"
+dependencies = [
+ "futures-util",
+ "local-ip-address",
+ "rand 0.8.5",
+ "serde",
+ "serde_json",
+ "tauri",
+ "tauri-build",
+ "tauri-plugin-shell",
+ "tokio",
+ "tokio-tungstenite",
 ]
 
 [[package]]

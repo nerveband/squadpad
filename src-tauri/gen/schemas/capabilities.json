@@ -1,1 +1,1 @@
-{"default":{"identifier":"default","description":"Default permissions for BombPad","local":true,"windows":["main"],"permissions":["core:default","shell:allow-open"]}}
+{"default":{"identifier":"default","description":"Default permissions for SquadPad","local":true,"windows":["main"],"permissions":["core:default","shell:allow-open"]}}

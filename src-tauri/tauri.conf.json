@@ -1,8 +1,8 @@
 {
   "$schema": "https://raw.githubusercontent.com/nickerford/tauri-docs/tauri-v2/references/config.schema.json",
-  "productName": "BombPad",
+  "productName": "SquadPad",
   "version": "0.1.0",
-  "identifier": "io.bombpad.app",
+  "identifier": "net.squadpad.app",
   "build": {
     "frontendDist": "../src",
     "devUrl": "http://localhost:3000"
@@ -11,7 +11,7 @@
     "withGlobalTauri": true,
     "windows": [
       {
-        "title": "BombPad",
+        "title": "SquadPad",
         "width": 960,
         "height": 600,
         "resizable": true,

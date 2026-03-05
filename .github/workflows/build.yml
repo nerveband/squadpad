@@ -1,4 +1,4 @@
-name: Build BombPad
+name: Build SquadPad
 
 on:
   push:

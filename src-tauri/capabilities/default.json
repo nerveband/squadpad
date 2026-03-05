@@ -1,6 +1,6 @@
 {
   "identifier": "default",
-  "description": "Default permissions for BombPad",
+  "description": "Default permissions for SquadPad",
   "windows": ["main"],
   "permissions": [
     "core:default",

@@ -347,18 +347,18 @@ export function updateLag(ms) {
 // ============================================================
 // Users can set a custom relay via:
 //   1. URL parameter: ?relay=wss://my-relay.example.com
-//   2. localStorage: bombpad_relay_url
-//   3. Default: wss://relay.bombpad.io
-const DEFAULT_RELAY_URL = 'wss://relay.bombpad.io';
+//   2. localStorage: squadpad_relay_url
+//   3. Default: wss://relay.squadpad.net
+const DEFAULT_RELAY_URL = 'wss://relay.squadpad.net';
 
 function getRelayUrl() {
   const params = new URLSearchParams(window.location.search);
   return params.get('relay')
-    || localStorage.getItem('bombpad_relay_url')
+    || localStorage.getItem('squadpad_relay_url')
     || DEFAULT_RELAY_URL;
 }
 
 // ============================================================
 // Init
 // ============================================================
-console.log('BombPad UI loaded');
+console.log('SquadPad UI loaded');

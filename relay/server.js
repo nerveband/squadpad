@@ -1,5 +1,5 @@
-// BombPad cloud relay - forwards WebSocket messages between browser
-// players and the BombPad host app. Holds zero game logic.
+// SquadPad cloud relay - forwards WebSocket messages between browser
+// players and the SquadPad host app. Holds zero game logic.
 //
 // Room lifecycle:
 //   1. Host connects, sends { type: "host" }
@@ -236,5 +236,5 @@ const isMain = process.argv[1]?.endsWith('server.js');
 if (isMain) {
   const port = parseInt(process.env.PORT) || 43212;
   createRelay({ port });
-  console.log(`BombPad relay running on port ${port}`);
+  console.log(`SquadPad relay running on port ${port}`);
 }

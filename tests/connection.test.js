@@ -17,13 +17,13 @@ describe('Connection', () => {
 
   it('connects to relay with room code', () => {
     const conn = new Connection(MockWebSocket);
-    conn.connectRelay('wss://relay.bombpad.io', 'BOMB-7X3K');
-    expect(conn.ws.url).toBe('wss://relay.bombpad.io');
+    conn.connectRelay('wss://relay.squadpad.net', 'SQPD-7X3K');
+    expect(conn.ws.url).toBe('wss://relay.squadpad.net');
     conn.ws.onopen();
     expect(conn.ws.sent.length).toBe(1);
     const msg = JSON.parse(conn.ws.sent[0]);
     expect(msg.type).toBe('join');
-    expect(msg.room).toBe('BOMB-7X3K');
+    expect(msg.room).toBe('SQPD-7X3K');
   });
 
   it('sends binary state data', () => {

@@ -1,16 +1,16 @@
-# BombPad
+# SquadPad
 
 An unofficial web-based controller for [BombSquad](http://www.froemling.net/apps/bombsquad).
 
 ## What is it?
 
-BombPad lets anyone control BombSquad from a browser or desktop app. The host runs the BombPad app alongside BombSquad - friends join by opening a URL and typing a room code. No installs needed for players.
+SquadPad lets anyone control BombSquad from a browser or desktop app. The host runs the SquadPad app alongside BombSquad - friends join by opening a URL and typing a room code. No installs needed for players.
 
 ## How it works
 
-1. **Host** downloads and runs the BombPad desktop app
+1. **Host** downloads and runs the SquadPad desktop app
 2. Host clicks "Start Server" and shares the room code
-3. **Players** open bombpad.io in any browser and enter the code
+3. **Players** open squadpad.net in any browser and enter the code
 4. Everyone plays!
 
 ## Features
@@ -44,11 +44,11 @@ cd relay && npm install && npm start
 ## Architecture
 
 ```
-Browser Player --WebSocket--> BombPad Host --UDP:43210--> BombSquad
+Browser Player --WebSocket--> SquadPad Host --UDP:43210--> BombSquad
                                   |
                             (or via relay)
                                   |
-Browser Player --WS--> Cloud Relay --WS--> BombPad Host --UDP--> BombSquad
+Browser Player --WS--> Cloud Relay --WS--> SquadPad Host --UDP--> BombSquad
 ```
 
 ## Self-Hosting the Relay
@@ -59,8 +59,8 @@ The relay server is ~200 lines of Node.js. You can run your own instead of using
 
 ```bash
 cd relay
-docker build -t bombpad-relay .
-docker run -p 43212:43212 bombpad-relay
+docker build -t squadpad-relay .
+docker run -p 43212:43212 squadpad-relay
 ```
 
 ### Option 2: Node.js directly
@@ -75,16 +75,16 @@ PORT=43212 node server.js
 
 ```bash
 cd relay
-fly launch --name my-bombpad-relay
+fly launch --name my-squadpad-relay
 fly deploy
 ```
 
 ### Pointing clients to your relay
 
-Players add `?relay=wss://your-relay.example.com` to the BombPad URL, or set it in localStorage:
+Players add `?relay=wss://your-relay.example.com` to the SquadPad URL, or set it in localStorage:
 
 ```js
-localStorage.setItem('bombpad_relay_url', 'wss://your-relay.example.com');
+localStorage.setItem('squadpad_relay_url', 'wss://your-relay.example.com');
 ```
 
 ### Rate Limits (built-in)

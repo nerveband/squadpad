@@ -1,4 +1,4 @@
-app = "bombpad-relay"
+app = "squadpad-relay"
 primary_region = "iad"
 
 [build]

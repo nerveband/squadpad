@@ -1,4 +1,4 @@
-// Manages WebSocket connection to the BombPad host app or cloud relay.
+// Manages WebSocket connection to the SquadPad host app or cloud relay.
 // Sends controller state as binary frames.
 // Receives ACKs and status updates.
 

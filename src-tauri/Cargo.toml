@@ -1,10 +1,10 @@
 [package]
-name = "bombpad"
+name = "squadpad"
 version = "0.1.0"
 edition = "2021"
 
 [lib]
-name = "bombpad_lib"
+name = "squadpad_lib"
 crate-type = ["lib", "cdylib", "staticlib"]
 
 [build-dependencies]
