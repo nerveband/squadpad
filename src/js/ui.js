@@ -1,6 +1,6 @@
 // ui.js - Main app entry point.
 // Wires DOM events (touch, keyboard, fullscreen) to the Controller,
-// manages screen transitions, and sets up state-sending placeholder.
+// manages screen transitions, and sends state via WebSocket connection.
 
 import { Controller } from './controller.js';
 import { Connection } from './connection.js';
@@ -47,19 +47,31 @@ demoBtn.addEventListener('click', () => {
   showController();
 });
 
-// Join button placeholder (real connection is Task 5/9)
+// Join button: connect via direct IP or room code
 joinBtn.addEventListener('click', () => {
   const code = roomCodeInput.value.trim();
   if (!code) {
-    statusEl.textContent = 'Please enter a room code.';
+    statusEl.textContent = 'Please enter a room code or IP address.';
     return;
   }
   statusEl.textContent = 'Connecting...';
-  // TODO: initiate real connection in Task 9
+  joinBtn.disabled = true;
+
+  // Detect if it's a direct IP address or a room code
+  if (code.includes('.') || code.includes(':')) {
+    // Direct IP: connect to host's WebSocket server
+    const wsUrl = code.startsWith('ws') ? code : `ws://${code}`;
+    connection.connect(wsUrl);
+  } else {
+    // Room code: connect via cloud relay
+    const relayUrl = 'wss://relay.bombpad.io'; // TODO: configure
+    connection.connectRelay(relayUrl, code.toUpperCase());
+  }
 });
 
-// Menu button returns to connect screen
+// Menu button disconnects and returns to connect screen
 menuBtn.addEventListener('click', () => {
+  connection.disconnect();
   showConnect();
 });
 
@@ -259,22 +271,62 @@ document.getElementById('hud').addEventListener('touchend', (e) => {
 });
 
 // ============================================================
-// Controller State Sending (placeholder for Task 9)
+// Connection Event Handlers
+// ============================================================
+connection.onConnect = () => {
+  statusEl.textContent = '';
+  joinBtn.disabled = false;
+  showController();
+};
+
+connection.onDisconnect = () => {
+  joinBtn.disabled = false;
+  showConnect();
+  statusEl.textContent = 'Disconnected. Try again.';
+};
+
+connection.onMessage = (data) => {
+  // Handle incoming messages from host
+  if (typeof data === 'string') {
+    try {
+      const msg = JSON.parse(data);
+      if (msg.type === 'lag') {
+        updateLag(Math.round(msg.ms));
+      }
+      if (msg.type === 'error') {
+        statusEl.textContent = msg.message || 'Connection error.';
+        showConnect();
+      }
+    } catch { /* ignore non-JSON */ }
+  }
+};
+
+// ============================================================
+// Controller State Sending
 // ============================================================
 controller.onChange = (state) => {
   const encoded = encodeStateV2(state);
-  // TODO: send via connection when wired up
-  // connection.send(encoded);
+  connection.sendState(encoded);
 };
 
 // 10Hz keepalive interval - sends current state periodically
 setInterval(() => {
-  if (controllerScreen.hidden) return;
-  const state = controller.getState();
-  const encoded = encodeStateV2(state);
-  // TODO: send via connection when wired up
-  // connection.send(encoded);
+  if (connection.connected) {
+    const encoded = encodeStateV2(controller.getState());
+    connection.sendState(encoded);
+  }
 }, 100);
+
+// ============================================================
+// Room Code Input Formatting
+// ============================================================
+roomCodeInput.addEventListener('input', () => {
+  let val = roomCodeInput.value.toUpperCase().replace(/[^A-Z0-9]/g, '');
+  if (val.length > 4) {
+    val = val.slice(0, 4) + '-' + val.slice(4, 8);
+  }
+  roomCodeInput.value = val;
+});
 
 // ============================================================
 // Lag Display Helper (will be called from connection module)
