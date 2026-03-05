@@ -10,7 +10,7 @@ SquadPad lets anyone control BombSquad from a browser or desktop app. The host r
 
 1. **Host** downloads and runs the SquadPad desktop app
 2. Host clicks "Start Server" and shares the room code
-3. **Players** open squadpad.net in any browser and enter the code
+3. **Players** open squadpad.org in any browser and enter the code
 4. Everyone plays!
 
 ## Features

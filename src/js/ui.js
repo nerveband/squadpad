@@ -348,8 +348,8 @@ export function updateLag(ms) {
 // Users can set a custom relay via:
 //   1. URL parameter: ?relay=wss://my-relay.example.com
 //   2. localStorage: squadpad_relay_url
-//   3. Default: wss://relay.squadpad.net
-const DEFAULT_RELAY_URL = 'wss://relay.squadpad.net';
+//   3. Default: wss://relay.squadpad.org
+const DEFAULT_RELAY_URL = 'wss://relay.squadpad.org';
 
 function getRelayUrl() {
   const params = new URLSearchParams(window.location.search);

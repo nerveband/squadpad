@@ -17,8 +17,8 @@ describe('Connection', () => {
 
   it('connects to relay with room code', () => {
     const conn = new Connection(MockWebSocket);
-    conn.connectRelay('wss://relay.squadpad.net', 'SQPD-7X3K');
-    expect(conn.ws.url).toBe('wss://relay.squadpad.net');
+    conn.connectRelay('wss://relay.squadpad.org', 'SQPD-7X3K');
+    expect(conn.ws.url).toBe('wss://relay.squadpad.org');
     conn.ws.onopen();
     expect(conn.ws.sent.length).toBe(1);
     const msg = JSON.parse(conn.ws.sent[0]);
