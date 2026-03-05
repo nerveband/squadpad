@@ -1,6 +1,28 @@
 /* ============================================================
    SquadPad - Game Controller Theme
+   Palette inspired by BombSquad bomb: golden yellow, iridescent
+   purple-violet, teal-cyan, warm pink, deep indigo background.
    ============================================================ */
+
+/* --- Palette Variables --- */
+:root {
+  --bg-deep:       #0d0b1a;
+  --bg-card:       rgba(255,255,255,0.04);
+  --gold:          #E8C840;
+  --gold-dim:      #C4A830;
+  --purple:        #9B6BBE;
+  --purple-deep:   #6A3B8A;
+  --teal:          #5CC4B0;
+  --teal-deep:     #3A9A88;
+  --pink:          #C878A8;
+  --pink-deep:     #A05080;
+  --blue:          #6B8BD0;
+  --blue-deep:     #4868A8;
+  --text:          #e8e0f0;
+  --text-dim:      #9088a0;
+  --accent:        var(--gold);
+  --danger:        #E85448;
+}
 
 /* --- Reset & Base --- */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -16,8 +38,8 @@ body {
   font-family: 'Outfit', system-ui, sans-serif;
   background:
     url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E"),
-    #0a0a0f;
-  color: #e0e0e0;
+    var(--bg-deep);
+  color: var(--text);
 }
 
 #app {
@@ -35,8 +57,10 @@ body {
   justify-content: center;
   height: 100%;
   background:
-    radial-gradient(ellipse at 50% 30%, rgba(33,150,243,0.08) 0%, transparent 60%),
-    #0a0a0f;
+    radial-gradient(ellipse at 50% 20%, rgba(155,107,190,0.12) 0%, transparent 50%),
+    radial-gradient(ellipse at 30% 70%, rgba(92,196,176,0.06) 0%, transparent 50%),
+    radial-gradient(ellipse at 70% 60%, rgba(232,200,64,0.05) 0%, transparent 50%),
+    var(--bg-deep);
 }
 
 .connect-card {
@@ -61,7 +85,7 @@ body {
   font-size: 2.8rem;
   font-weight: 800;
   letter-spacing: -2px;
-  background: linear-gradient(135deg, #42A5F5 0%, #AB47BC 50%, #FF7043 100%);
+  background: linear-gradient(135deg, var(--teal) 0%, var(--purple) 45%, var(--gold) 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -96,8 +120,8 @@ body {
   color: #555;
 }
 #room-code:focus {
-  border-color: #2196F3;
-  box-shadow: 0 0 0 3px rgba(33,150,243,0.15);
+  border-color: var(--purple);
+  box-shadow: 0 0 0 3px rgba(155,107,190,0.2);
 }
 
 .btn-primary {
@@ -107,14 +131,14 @@ body {
   font-weight: 700;
   border: none;
   border-radius: 10px;
-  background: linear-gradient(135deg, #2196F3, #1976D2);
+  background: linear-gradient(135deg, var(--purple), var(--purple-deep));
   color: #fff;
   cursor: pointer;
   transition: transform 0.1s, box-shadow 0.2s;
 }
 .btn-primary:active {
   transform: scale(0.97);
-  box-shadow: 0 0 12px rgba(33,150,243,0.4);
+  box-shadow: 0 0 12px rgba(155,107,190,0.5);
 }
 
 .btn-demo {
@@ -136,7 +160,7 @@ body {
 
 #connection-status {
   font-size: 0.8rem;
-  color: #f44336;
+  color: var(--danger);
   min-height: 1.2em;
   text-align: center;
 }
@@ -149,9 +173,10 @@ body {
   display: flex;
   flex-direction: column;
   background:
-    radial-gradient(ellipse at 20% 80%, rgba(33,150,243,0.04) 0%, transparent 50%),
-    radial-gradient(ellipse at 80% 80%, rgba(244,67,54,0.04) 0%, transparent 50%),
-    #0a0a0f;
+    radial-gradient(ellipse at 20% 80%, rgba(92,196,176,0.05) 0%, transparent 50%),
+    radial-gradient(ellipse at 80% 80%, rgba(155,107,190,0.05) 0%, transparent 50%),
+    radial-gradient(ellipse at 50% 20%, rgba(232,200,64,0.03) 0%, transparent 40%),
+    var(--bg-deep);
 }
 
 /* --- HUD Bar --- */
@@ -193,12 +218,12 @@ body {
 #lag-display {
   font-family: 'JetBrains Mono', 'SF Mono', 'Consolas', monospace;
   font-size: 0.75rem;
-  color: #4CAF50;            /* default green = good */
+  color: var(--teal);            /* default teal = good */
   min-width: 50px;
   text-align: right;
 }
-#lag-display.lag-warn  { color: #FF9800; }
-#lag-display.lag-bad   { color: #f44336; }
+#lag-display.lag-warn  { color: var(--gold); }
+#lag-display.lag-bad   { color: var(--danger); }
 
 /* --- Controls Area --- */
 #controls {
@@ -226,8 +251,8 @@ body {
   width: 120px;
   height: 120px;
   border-radius: 50%;
-  border: 2px solid rgba(255,255,255,0.12);
-  background: rgba(255,255,255,0.03);
+  border: 2px solid rgba(155,107,190,0.15);
+  background: rgba(155,107,190,0.03);
   position: absolute;
   display: flex;
   align-items: center;
@@ -239,8 +264,8 @@ body {
   width: 50px;
   height: 50px;
   border-radius: 50%;
-  background: radial-gradient(circle at 40% 35%, rgba(255,255,255,0.25), rgba(255,255,255,0.08));
-  border: 2px solid rgba(255,255,255,0.2);
+  background: radial-gradient(circle at 35% 30%, rgba(155,107,190,0.35), rgba(92,196,176,0.15));
+  border: 2px solid rgba(155,107,190,0.3);
   backdrop-filter: blur(4px);
   -webkit-backdrop-filter: blur(4px);
   position: absolute;
@@ -295,16 +320,18 @@ body {
   width: 58px;
   height: 58px;
   border-radius: 50%;
-  border: 2px solid rgba(255,255,255,0.15);
-  font-size: 0.65rem;
+  border: 2px solid rgba(255,255,255,0.18);
+  font-size: 1.3rem;
   font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
   cursor: pointer;
   color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
   /* Larger touch target via padding trick - actual tap zone is bigger */
   position: relative;
-  transition: transform 0.08s, filter 0.08s, box-shadow 0.08s;
+  transition: transform 0.1s ease-out, filter 0.1s, box-shadow 0.1s;
   -webkit-tap-highlight-color: transparent;
 }
 /* Invisible touch-target expander */
@@ -319,41 +346,41 @@ body {
 
 .action-btn:active,
 .action-btn.pressed {
-  transform: scale(0.88);
-  filter: brightness(1.3);
+  transform: scale(0.85);
+  filter: brightness(1.4);
 }
 
-/* Color-coded buttons */
+/* Color-coded buttons — BombSquad bomb palette */
 .btn-jump {
-  background: radial-gradient(circle at 40% 35%, #66BB6A, #388E3C);
-  box-shadow: 0 2px 8px rgba(76,175,80,0.3);
+  background: radial-gradient(circle at 40% 35%, var(--teal), var(--teal-deep));
+  box-shadow: 0 2px 8px rgba(92,196,176,0.3);
 }
 .btn-jump:active, .btn-jump.pressed {
-  box-shadow: 0 0 16px rgba(76,175,80,0.6);
+  box-shadow: 0 0 16px rgba(92,196,176,0.6);
 }
 
 .btn-punch {
-  background: radial-gradient(circle at 40% 35%, #EF5350, #C62828);
-  box-shadow: 0 2px 8px rgba(244,67,54,0.3);
+  background: radial-gradient(circle at 40% 35%, var(--pink), var(--pink-deep));
+  box-shadow: 0 2px 8px rgba(200,120,168,0.3);
 }
 .btn-punch:active, .btn-punch.pressed {
-  box-shadow: 0 0 16px rgba(244,67,54,0.6);
+  box-shadow: 0 0 16px rgba(200,120,168,0.6);
 }
 
 .btn-bomb {
-  background: radial-gradient(circle at 40% 35%, #FFA726, #E65100);
-  box-shadow: 0 2px 8px rgba(255,152,0,0.3);
+  background: radial-gradient(circle at 40% 35%, var(--gold), var(--gold-dim));
+  box-shadow: 0 2px 8px rgba(232,200,64,0.3);
 }
 .btn-bomb:active, .btn-bomb.pressed {
-  box-shadow: 0 0 16px rgba(255,152,0,0.6);
+  box-shadow: 0 0 16px rgba(232,200,64,0.6);
 }
 
 .btn-throw {
-  background: radial-gradient(circle at 40% 35%, #42A5F5, #1565C0);
-  box-shadow: 0 2px 8px rgba(33,150,243,0.3);
+  background: radial-gradient(circle at 40% 35%, var(--blue), var(--blue-deep));
+  box-shadow: 0 2px 8px rgba(107,139,208,0.3);
 }
 .btn-throw:active, .btn-throw.pressed {
-  box-shadow: 0 0 16px rgba(33,150,243,0.6);
+  box-shadow: 0 0 16px rgba(107,139,208,0.6);
 }
 
 /* Run button: wider, rectangular, below diamond */
@@ -361,12 +388,14 @@ body {
   width: 130px;
   height: 44px;
   border-radius: 22px;
-  font-size: 0.75rem;
-  background: radial-gradient(ellipse at 40% 35%, #AB47BC, #6A1B9A);
-  box-shadow: 0 2px 8px rgba(156,39,176,0.3);
+  font-size: 0.9rem;
+  letter-spacing: 1px;
+  font-weight: 800;
+  background: radial-gradient(ellipse at 40% 35%, var(--purple), var(--purple-deep));
+  box-shadow: 0 2px 8px rgba(155,107,190,0.3);
 }
 .btn-run:active, .btn-run.pressed {
-  box-shadow: 0 0 16px rgba(156,39,176,0.6);
+  box-shadow: 0 0 16px rgba(155,107,190,0.6);
 }
 
 /* ============================================================
@@ -394,7 +423,7 @@ body {
   .action-btn {
     width: 50px;
     height: 50px;
-    font-size: 0.55rem;
+    font-size: 1.1rem;
   }
   .btn-diamond {
     grid-template-columns: 54px 54px 54px;
@@ -404,7 +433,7 @@ body {
   .btn-run {
     width: 110px;
     height: 38px;
-    font-size: 0.65rem;
+    font-size: 0.8rem;
   }
 }
 
@@ -450,7 +479,7 @@ body {
   font-size: 1.4rem;
   font-weight: 800;
   letter-spacing: -0.5px;
-  background: linear-gradient(135deg, #2196F3, #9C27B0);
+  background: linear-gradient(135deg, var(--teal), var(--purple));
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -545,23 +574,23 @@ body {
 }
 
 .dash-btn.primary {
-  background: linear-gradient(135deg, #2196F3, #1976D2);
+  background: linear-gradient(135deg, var(--purple), var(--purple-deep));
   border-color: transparent;
   color: #fff;
 }
 
 .dash-btn.primary:hover:not(:disabled) {
-  background: linear-gradient(135deg, #42A5F5, #2196F3);
+  background: linear-gradient(135deg, #B080D0, var(--purple));
 }
 
 .dash-btn.danger {
-  background: linear-gradient(135deg, #f44336, #C62828);
+  background: linear-gradient(135deg, var(--danger), #C03030);
   border-color: transparent;
   color: #fff;
 }
 
 .dash-btn.danger:hover:not(:disabled) {
-  background: linear-gradient(135deg, #EF5350, #f44336);
+  background: linear-gradient(135deg, #F06058, var(--danger));
 }
 
 /* --- Status Badge --- */
@@ -576,15 +605,15 @@ body {
 }
 
 .status-badge.online {
-  background: rgba(76,175,80,0.15);
-  color: #4CAF50;
-  border: 1px solid rgba(76,175,80,0.3);
+  background: rgba(92,196,176,0.15);
+  color: var(--teal);
+  border: 1px solid rgba(92,196,176,0.3);
 }
 
 .status-badge.offline {
-  background: rgba(244,67,54,0.15);
-  color: #f44336;
-  border: 1px solid rgba(244,67,54,0.3);
+  background: rgba(232,84,72,0.15);
+  color: var(--danger);
+  border: 1px solid rgba(232,84,72,0.3);
 }
 
 /* --- Status / Input Rows --- */
@@ -622,8 +651,8 @@ body {
 }
 
 .input-row input:focus {
-  border-color: #2196F3;
-  box-shadow: 0 0 0 2px rgba(33,150,243,0.15);
+  border-color: var(--purple);
+  box-shadow: 0 0 0 2px rgba(155,107,190,0.15);
 }
 
 .server-controls {
@@ -641,7 +670,7 @@ body {
   background: rgba(255,255,255,0.04);
   border: 1px solid rgba(255,255,255,0.08);
   border-radius: 6px;
-  color: #4CAF50;
+  color: var(--teal);
   word-break: break-all;
 }
 
@@ -673,7 +702,7 @@ body {
   font-weight: 800;
   letter-spacing: 4px;
   color: #fff;
-  background: linear-gradient(135deg, #2196F3, #9C27B0);
+  background: linear-gradient(135deg, var(--teal), var(--purple));
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -720,18 +749,18 @@ body {
   text-align: right;
 }
 
-.lag-good { color: #4CAF50; }
-.lag-ok   { color: #FF9800; }
-.lag-bad  { color: #f44336; }
+.lag-good { color: var(--teal); }
+.lag-ok   { color: var(--gold); }
+.lag-bad  { color: var(--danger); }
 
 .kick-btn {
   width: 28px;
   height: 28px;
   font-size: 0.75rem;
-  border: 1px solid rgba(244,67,54,0.2);
+  border: 1px solid rgba(232,84,72,0.2);
   border-radius: 6px;
-  background: rgba(244,67,54,0.08);
-  color: #f44336;
+  background: rgba(232,84,72,0.08);
+  color: var(--danger);
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -740,8 +769,8 @@ body {
 }
 
 .kick-btn:hover {
-  background: rgba(244,67,54,0.2);
-  border-color: rgba(244,67,54,0.4);
+  background: rgba(232,84,72,0.2);
+  border-color: rgba(232,84,72,0.4);
 }
 
 /* --- Games List --- */
@@ -765,8 +794,8 @@ body {
 }
 
 .game-row:hover {
-  background: rgba(33,150,243,0.08);
-  border-color: rgba(33,150,243,0.2);
+  background: rgba(155,107,190,0.08);
+  border-color: rgba(155,107,190,0.2);
 }
 
 .game-name {
@@ -799,10 +828,10 @@ body {
   padding: 0 6px;
   font-size: 0.7rem;
   font-weight: 700;
-  background: rgba(33,150,243,0.15);
-  color: #2196F3;
+  background: rgba(155,107,190,0.15);
+  color: var(--purple);
   border-radius: 11px;
-  border: 1px solid rgba(33,150,243,0.25);
+  border: 1px solid rgba(155,107,190,0.25);
 }
 
 /* --- Dashboard Link in Controller (Tauri-only) --- */
@@ -826,13 +855,13 @@ body.is-tauri #dashboard-link {
 
 /* Subtle pulse on joystick base when active */
 @keyframes joyPulse {
-  0%, 100% { box-shadow: 0 0 20px rgba(33,150,243,0.15); }
-  50% { box-shadow: 0 0 30px rgba(33,150,243,0.25); }
+  0%, 100% { box-shadow: 0 0 20px rgba(155,107,190,0.2); }
+  50% { box-shadow: 0 0 30px rgba(92,196,176,0.25); }
 }
 
 #joystick-base.active {
   animation: joyPulse 1.5s ease-in-out infinite;
-  border-color: rgba(33,150,243,0.5);
+  border-color: rgba(155,107,190,0.5);
 }
 
 /* Button press ripple effect */
@@ -853,9 +882,33 @@ body.is-tauri #dashboard-link {
 /* Button hover states for desktop */
 @media (hover: hover) {
   .action-btn:hover {
-    transform: scale(1.05);
-    filter: brightness(1.15);
+    transform: scale(1.1);
+    filter: brightness(1.2);
   }
+}
+
+/* Icon inside buttons */
+.action-btn i,
+.btn-primary i,
+.btn-demo i,
+.dash-btn i,
+.nav-link i,
+.dash-card h2 i {
+  vertical-align: middle;
+}
+
+.btn-primary i,
+.btn-demo i {
+  font-size: 1.1em;
+  margin-right: 4px;
+}
+
+.dash-btn i {
+  margin-right: 4px;
+}
+
+.nav-link i {
+  margin-right: 2px;
 }
 
 /* ============================================================
