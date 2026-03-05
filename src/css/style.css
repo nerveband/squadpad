@@ -13,8 +13,10 @@ html, body {
   user-select: none;
 }
 body {
-  font-family: system-ui, -apple-system, sans-serif;
-  background: #0a0a0f;
+  font-family: 'Outfit', system-ui, sans-serif;
+  background:
+    url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E"),
+    #0a0a0f;
   color: #e0e0e0;
 }
 
@@ -43,22 +45,27 @@ body {
   align-items: center;
   gap: 16px;
   padding: 40px 36px;
-  background: rgba(255,255,255,0.03);
-  border: 1px solid rgba(255,255,255,0.06);
+  background: rgba(255,255,255,0.04);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255,255,255,0.08);
   border-radius: 16px;
   width: 340px;
   max-width: 90vw;
   box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+  animation: fadeInUp 0.5s ease-out;
 }
 
 .brand-title {
-  font-size: 2.4rem;
+  font-family: 'Outfit', sans-serif;
+  font-size: 2.8rem;
   font-weight: 800;
-  letter-spacing: -1px;
-  background: linear-gradient(135deg, #2196F3, #9C27B0);
+  letter-spacing: -2px;
+  background: linear-gradient(135deg, #42A5F5 0%, #AB47BC 50%, #FF7043 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
+  text-shadow: none;
 }
 
 .brand-subtitle {
@@ -71,7 +78,7 @@ body {
   width: 100%;
   padding: 14px 16px;
   font-size: 1.3rem;
-  font-family: 'SF Mono', 'Menlo', 'Consolas', monospace;
+  font-family: 'JetBrains Mono', 'SF Mono', 'Consolas', monospace;
   text-align: center;
   text-transform: uppercase;
   letter-spacing: 3px;
@@ -184,7 +191,7 @@ body {
 }
 
 #lag-display {
-  font-family: 'SF Mono', 'Menlo', 'Consolas', monospace;
+  font-family: 'JetBrains Mono', 'SF Mono', 'Consolas', monospace;
   font-size: 0.75rem;
   color: #4CAF50;            /* default green = good */
   min-width: 50px;
@@ -227,17 +234,15 @@ body {
   justify-content: center;
   transition: border-color 0.15s, box-shadow 0.15s;
 }
-#joystick-base.active {
-  border-color: rgba(33,150,243,0.5);
-  box-shadow: 0 0 20px rgba(33,150,243,0.15);
-}
 
 #joystick-thumb {
   width: 50px;
   height: 50px;
   border-radius: 50%;
-  background: radial-gradient(circle at 40% 35%, #555, #333);
-  border: 1px solid rgba(255,255,255,0.15);
+  background: radial-gradient(circle at 40% 35%, rgba(255,255,255,0.25), rgba(255,255,255,0.08));
+  border: 2px solid rgba(255,255,255,0.2);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
   position: absolute;
   pointer-events: none;
   transition: transform 0.05s linear;
@@ -250,7 +255,7 @@ body {
   transform: translateX(-50%);
   font-size: 0.7rem;
   color: #444;
-  font-family: 'SF Mono', 'Menlo', 'Consolas', monospace;
+  font-family: 'JetBrains Mono', 'SF Mono', 'Consolas', monospace;
   pointer-events: none;
 }
 /* Hide keyboard hints on touch devices */
@@ -631,7 +636,7 @@ body {
 .url-display {
   display: block;
   padding: 10px 14px;
-  font-family: 'SF Mono', 'Menlo', 'Consolas', monospace;
+  font-family: 'JetBrains Mono', 'SF Mono', 'Consolas', monospace;
   font-size: 0.85rem;
   background: rgba(255,255,255,0.04);
   border: 1px solid rgba(255,255,255,0.08);
@@ -663,7 +668,7 @@ body {
 }
 
 .room-code {
-  font-family: 'SF Mono', 'Menlo', 'Consolas', monospace;
+  font-family: 'JetBrains Mono', 'SF Mono', 'Consolas', monospace;
   font-size: 1.8rem;
   font-weight: 800;
   letter-spacing: 4px;
@@ -709,7 +714,7 @@ body {
 }
 
 .player-lag {
-  font-family: 'SF Mono', 'Menlo', 'Consolas', monospace;
+  font-family: 'JetBrains Mono', 'SF Mono', 'Consolas', monospace;
   font-size: 0.75rem;
   min-width: 48px;
   text-align: right;
@@ -771,7 +776,7 @@ body {
 }
 
 .game-addr {
-  font-family: 'SF Mono', 'Menlo', 'Consolas', monospace;
+  font-family: 'JetBrains Mono', 'SF Mono', 'Consolas', monospace;
   font-size: 0.75rem;
   color: #888;
 }
@@ -807,6 +812,50 @@ body {
 
 body.is-tauri #dashboard-link {
   display: inline-block;
+}
+
+/* ============================================================
+   Animations
+   ============================================================ */
+
+/* Page load animation */
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Subtle pulse on joystick base when active */
+@keyframes joyPulse {
+  0%, 100% { box-shadow: 0 0 20px rgba(33,150,243,0.15); }
+  50% { box-shadow: 0 0 30px rgba(33,150,243,0.25); }
+}
+
+#joystick-base.active {
+  animation: joyPulse 1.5s ease-in-out infinite;
+  border-color: rgba(33,150,243,0.5);
+}
+
+/* Button press ripple effect */
+@keyframes btnPulse {
+  0% { box-shadow: 0 0 0 0 rgba(255,255,255,0.3); }
+  100% { box-shadow: 0 0 0 12px rgba(255,255,255,0); }
+}
+
+.action-btn.pressed {
+  animation: btnPulse 0.3s ease-out;
+}
+
+/* Smooth screen transitions */
+#connect-screen, #controller-screen {
+  transition: opacity 0.3s ease;
+}
+
+/* Button hover states for desktop */
+@media (hover: hover) {
+  .action-btn:hover {
+    transform: scale(1.05);
+    filter: brightness(1.15);
+  }
 }
 
 /* ============================================================
