@@ -1,0 +1,13 @@
+{
+  "name": "bombpad",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "npx serve src --listen 3000",
+    "test": "npx vitest run",
+    "test:watch": "npx vitest"
+  },
+  "devDependencies": {
+    "vitest": "^3.0.0"
+  }
+}
