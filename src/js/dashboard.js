@@ -15,6 +15,7 @@ const roomInfo = document.getElementById('room-info');
 const roomCodeValue = document.getElementById('room-code-value');
 const playersList = document.getElementById('players-list');
 const playerCount = document.getElementById('player-count');
+const playersStep = document.getElementById('step-players');
 const scanBtn = document.getElementById('scan-btn');
 const gamesList = document.getElementById('games-list');
 
@@ -23,24 +24,31 @@ let serverRunning = false;
 // Start/stop the WebSocket server
 toggleServerBtn.addEventListener('click', async () => {
   if (!invoke) {
-    showFallback('Tauri commands not available (running in browser?)');
+    showFallback();
     return;
   }
 
   if (!serverRunning) {
     try {
       const addr = bsAddr.value || 'localhost';
+      toggleServerBtn.disabled = true;
+      toggleServerBtn.innerHTML = '<i class="ph-bold ph-spinner"></i> Starting...';
       const url = await invoke('start_server', { bombsquadAddr: addr });
       serverRunning = true;
       serverStatus.textContent = 'Online';
       serverStatus.className = 'status-badge online';
-      toggleServerBtn.textContent = 'Stop Server';
+      toggleServerBtn.innerHTML = '<i class="ph-bold ph-stop"></i> Stop Server';
+      toggleServerBtn.classList.remove('primary');
       toggleServerBtn.classList.add('danger');
+      toggleServerBtn.disabled = false;
       localUrl.textContent = `ws://${url}`;
       serverInfo.hidden = false;
       toggleSharingBtn.disabled = false;
+      playersStep.hidden = false;
       startPlayerPolling();
     } catch (e) {
+      toggleServerBtn.innerHTML = '<i class="ph-bold ph-play"></i> Start Server';
+      toggleServerBtn.disabled = false;
       showError(e);
     }
   } else {
@@ -49,10 +57,12 @@ toggleServerBtn.addEventListener('click', async () => {
       serverRunning = false;
       serverStatus.textContent = 'Offline';
       serverStatus.className = 'status-badge offline';
-      toggleServerBtn.textContent = 'Start Server';
+      toggleServerBtn.innerHTML = '<i class="ph-bold ph-play"></i> Start Server';
       toggleServerBtn.classList.remove('danger');
+      toggleServerBtn.classList.add('primary');
       serverInfo.hidden = true;
       toggleSharingBtn.disabled = true;
+      playersStep.hidden = true;
       stopPlayerPolling();
     } catch (e) {
       showError(e);
@@ -70,7 +80,7 @@ function startPlayerPolling() {
 
 function stopPlayerPolling() {
   if (pollInterval) clearInterval(pollInterval);
-  playersList.innerHTML = '<p class="empty-state">No players connected</p>';
+  playersList.innerHTML = '<p class="empty-state">Waiting for players to join...</p>';
   playerCount.textContent = '0';
 }
 
@@ -81,7 +91,7 @@ async function updatePlayers() {
     playerCount.textContent = players.length;
 
     if (players.length === 0) {
-      playersList.innerHTML = '<p class="empty-state">No players connected</p>';
+      playersList.innerHTML = '<p class="empty-state">Waiting for players to join...</p>';
       return;
     }
 
@@ -89,7 +99,7 @@ async function updatePlayers() {
       <div class="player-row">
         <span class="player-name">${escapeHtml(p.name)}</span>
         <span class="player-lag ${lagColor(p.lag_ms)}">${Math.round(p.lag_ms)}ms</span>
-        <button class="kick-btn" data-id="${p.id}" title="Kick player">&#10005;</button>
+        <button class="kick-btn" data-id="${p.id}" title="Remove player"><i class="ph-bold ph-x"></i></button>
       </div>
     `).join('');
 
@@ -109,15 +119,15 @@ async function updatePlayers() {
 // Scan for BombSquad games on LAN
 scanBtn.addEventListener('click', async () => {
   if (!invoke) {
-    showFallback('Tauri commands not available');
+    showFallback();
     return;
   }
-  scanBtn.textContent = 'Scanning...';
+  scanBtn.innerHTML = '<i class="ph-bold ph-spinner"></i> Scanning...';
   scanBtn.disabled = true;
   try {
     const games = await invoke('discover_games');
     if (games.length === 0) {
-      gamesList.innerHTML = '<p class="empty-state">No games found</p>';
+      gamesList.innerHTML = '<p class="empty-state">No games found on the network</p>';
     } else {
       gamesList.innerHTML = games.map(([name, addr]) => `
         <div class="game-row" data-addr="${escapeHtml(addr)}">
@@ -126,17 +136,17 @@ scanBtn.addEventListener('click', async () => {
         </div>
       `).join('');
 
-      // Click a game to set it as the BombSquad address
       gamesList.querySelectorAll('.game-row').forEach(row => {
         row.addEventListener('click', () => {
           bsAddr.value = row.dataset.addr;
+          row.style.borderColor = 'rgba(92,196,176,0.4)';
         });
       });
     }
   } catch (e) {
     showError(e);
   }
-  scanBtn.textContent = 'Scan Network';
+  scanBtn.innerHTML = '<i class="ph-bold ph-radar"></i> Scan Network';
   scanBtn.disabled = false;
 });
 
@@ -157,6 +167,14 @@ function showError(msg) {
   console.error(msg);
 }
 
-function showFallback(msg) {
-  console.warn(msg);
+function showFallback() {
+  // Running in browser without Tauri - show helpful message
+  document.querySelector('.dash-flow').innerHTML = `
+    <div class="browser-notice">
+      <i class="ph-bold ph-desktop-tower" style="font-size:2rem;color:var(--purple)"></i>
+      <h2>Host Setup requires the SquadPad desktop app</h2>
+      <p>This page is for hosts running the SquadPad app alongside BombSquad.</p>
+      <p>If you're a <strong>player</strong>, go to the <a href="index.html" style="color:var(--teal)">controller page</a> and enter your room code.</p>
+    </div>
+  `;
 }

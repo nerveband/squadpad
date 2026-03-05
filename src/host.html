@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>SquadPad - Dashboard</title>
+  <title>SquadPad - Host Setup</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
@@ -14,61 +14,89 @@
   <div id="dashboard">
     <header class="dash-header">
       <h1>SquadPad</h1>
-      <nav class="dash-nav">
-        <a href="index.html" class="nav-link"><i class="ph-bold ph-game-controller"></i> Controller</a>
-        <a href="host.html" class="nav-link active"><i class="ph-bold ph-gauge"></i> Dashboard</a>
-      </nav>
+      <a href="index.html" class="nav-link"><i class="ph-bold ph-game-controller"></i> Controller</a>
     </header>
 
-    <main class="dash-main">
-      <!-- Server Status Section -->
-      <section class="dash-card" id="server-section">
-        <h2><i class="ph-bold ph-hard-drives"></i> Server</h2>
-        <div class="server-controls">
-          <div class="status-row">
-            <span class="status-label">Status:</span>
+    <main class="dash-flow">
+
+      <!-- Step 1: Find BombSquad -->
+      <section class="dash-step" id="step-find">
+        <div class="step-number">1</div>
+        <div class="step-content">
+          <h2>Find your BombSquad game</h2>
+          <p class="step-desc">Make sure BombSquad is running on your computer or local network.</p>
+
+          <div class="step-actions">
+            <button id="scan-btn" class="dash-btn"><i class="ph-bold ph-radar"></i> Scan Network</button>
+            <span class="or-divider">or</span>
+            <div class="input-inline">
+              <input type="text" id="bs-addr" value="localhost" placeholder="IP address">
+            </div>
+          </div>
+
+          <div id="games-list" class="games-list"></div>
+          <p class="step-hint"><i class="ph-bold ph-info"></i> Usually just leave it as "localhost" if BombSquad is on this computer.</p>
+        </div>
+      </section>
+
+      <!-- Step 2: Start Server -->
+      <section class="dash-step" id="step-start">
+        <div class="step-number">2</div>
+        <div class="step-content">
+          <h2>Start the server</h2>
+          <p class="step-desc">This lets browser players connect to your BombSquad game.</p>
+
+          <div class="step-actions">
+            <button id="toggle-server" class="dash-btn primary"><i class="ph-bold ph-play"></i> Start Server</button>
             <span id="server-status" class="status-badge offline">Offline</span>
           </div>
-          <div class="input-row">
-            <label for="bs-addr">BombSquad Address:</label>
-            <input type="text" id="bs-addr" value="localhost" placeholder="IP or hostname">
+
+          <div id="server-info" class="step-result" hidden>
+            <p><i class="ph-bold ph-check-circle"></i> Server running! LAN players can connect at:</p>
+            <code id="local-url" class="url-display"></code>
           </div>
-          <button id="toggle-server" class="dash-btn primary"><i class="ph-bold ph-play"></i> Start Server</button>
-        </div>
-        <div id="server-info" hidden>
-          <p class="info-text">Players can connect at:</p>
-          <code id="local-url" class="url-display"></code>
         </div>
       </section>
 
-      <!-- Online Sharing Section -->
-      <section class="dash-card" id="sharing-section">
-        <h2><i class="ph-bold ph-share-network"></i> Share Online</h2>
-        <p class="section-desc">Let friends connect from anywhere via room code.</p>
-        <button id="toggle-sharing" class="dash-btn" disabled><i class="ph-bold ph-globe"></i> Share Online</button>
-        <div id="room-info" hidden>
-          <div class="room-code-display">
-            <span class="room-label">Room Code:</span>
-            <span id="room-code-value" class="room-code"></span>
+      <!-- Step 3: Share -->
+      <section class="dash-step" id="step-share">
+        <div class="step-number">3</div>
+        <div class="step-content">
+          <h2>Share with friends</h2>
+          <p class="step-desc">Give them this room code. They open squadpad.org, type it in, and play.</p>
+
+          <div class="step-actions">
+            <button id="toggle-sharing" class="dash-btn primary" disabled><i class="ph-bold ph-globe"></i> Go Online</button>
           </div>
-          <canvas id="qr-canvas" width="150" height="150"></canvas>
+
+          <div id="room-info" class="step-result" hidden>
+            <p class="share-instructions"><i class="ph-bold ph-check-circle"></i> Tell your friends:</p>
+            <div class="share-box">
+              <div class="share-step-mini">
+                <span class="share-label">1. Go to</span>
+                <span class="share-value">squadpad.org</span>
+              </div>
+              <div class="share-step-mini">
+                <span class="share-label">2. Enter code</span>
+                <span id="room-code-value" class="room-code"></span>
+              </div>
+            </div>
+            <canvas id="qr-canvas" width="120" height="120"></canvas>
+          </div>
         </div>
       </section>
 
-      <!-- Connected Players Section -->
-      <section class="dash-card" id="players-section">
-        <h2><i class="ph-bold ph-users-three"></i> Players <span id="player-count" class="badge">0</span></h2>
-        <div id="players-list" class="players-list">
-          <p class="empty-state">No players connected</p>
+      <!-- Players (only visible when server is running) -->
+      <section class="dash-step" id="step-players" hidden>
+        <div class="step-number"><i class="ph-bold ph-users-three"></i></div>
+        <div class="step-content">
+          <h2>Connected Players <span id="player-count" class="badge">0</span></h2>
+          <div id="players-list" class="players-list">
+            <p class="empty-state">Waiting for players to join...</p>
+          </div>
         </div>
       </section>
 
-      <!-- Game Discovery Section -->
-      <section class="dash-card" id="discovery-section">
-        <h2><i class="ph-bold ph-magnifying-glass"></i> Discover Games</h2>
-        <button id="scan-btn" class="dash-btn"><i class="ph-bold ph-radar"></i> Scan Network</button>
-        <div id="games-list" class="games-list"></div>
-      </section>
     </main>
   </div>
 

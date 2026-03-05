@@ -12,44 +12,47 @@
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/style.css">
   <link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/bold/style.css">
-  <!-- Prevent iOS rubber-band scrolling and text selection -->
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="mobile-web-app-capable" content="yes">
 </head>
 <body>
   <div id="app">
 
-    <!-- Connect Screen: shown by default -->
+    <!-- Connect Screen -->
     <div id="connect-screen">
       <div class="connect-card">
         <h1 class="brand-title">SquadPad</h1>
-        <p class="brand-subtitle">Unofficial BombSquad Controller</p>
+        <p class="brand-subtitle">Play BombSquad from your browser</p>
+
+        <p class="connect-hint">Ask your host for the room code</p>
 
         <input
           type="text"
           id="room-code"
-          placeholder="Room code (e.g. SQPD-7X3K)"
+          placeholder="Enter code"
           maxlength="9"
           autocomplete="off"
           spellcheck="false"
         >
-        <button id="join-btn" class="btn-primary"><i class="ph-bold ph-sign-in"></i> Join Game</button>
-        <button id="demo-btn" class="btn-demo"><i class="ph-bold ph-game-controller"></i> Demo Mode</button>
-        <a href="host.html" class="nav-link" id="dashboard-link"><i class="ph-bold ph-gauge"></i> Dashboard</a>
+        <button id="join-btn" class="btn-primary"><i class="ph-bold ph-play"></i> Join</button>
         <div id="connection-status"></div>
+
+        <div class="connect-footer">
+          <button id="demo-btn" class="btn-link">Try without connecting</button>
+          <a href="host.html" class="btn-link" id="dashboard-link"><i class="ph-bold ph-gear"></i> Host Settings</a>
+        </div>
       </div>
     </div>
 
-    <!-- Controller Screen: hidden until connected or demo -->
+    <!-- Controller Screen -->
     <div id="controller-screen" hidden>
       <header id="hud">
-        <button id="menu-btn" aria-label="Menu"><i class="ph-bold ph-list"></i></button>
+        <button id="menu-btn" aria-label="Back"><i class="ph-bold ph-arrow-left"></i></button>
         <span id="game-name">SquadPad</span>
         <span id="lag-display"><i class="ph-bold ph-wifi-high"></i> --ms</span>
       </header>
 
       <div id="controls">
-        <!-- Left: Joystick area -->
         <div id="joystick-zone">
           <div id="joystick-base">
             <div id="joystick-thumb"></div>
@@ -57,7 +60,6 @@
           <span class="kbd-hint">WASD to move</span>
         </div>
 
-        <!-- Right: Action buttons in diamond layout -->
         <div id="button-zone">
           <div class="btn-diamond">
             <button class="action-btn btn-throw" data-action="throw"><i class="ph-bold ph-hand-grabbing"></i></button>
@@ -73,7 +75,6 @@
   </div>
 
   <script>
-    // Show dashboard link only when running inside Tauri
     if (window.__TAURI__) {
       document.body.classList.add('is-tauri');
     }

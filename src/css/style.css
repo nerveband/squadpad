@@ -93,9 +93,15 @@ body {
 }
 
 .brand-subtitle {
-  font-size: 0.85rem;
-  color: #888;
+  font-size: 0.9rem;
+  color: var(--text-dim);
   margin-top: -8px;
+}
+
+.connect-hint {
+  font-size: 0.8rem;
+  color: #666;
+  margin-top: 4px;
 }
 
 #room-code {
@@ -141,21 +147,31 @@ body {
   box-shadow: 0 0 12px rgba(155,107,190,0.5);
 }
 
-.btn-demo {
+.connect-footer {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-top: 4px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(255,255,255,0.06);
   width: 100%;
-  padding: 10px;
-  font-size: 0.85rem;
-  font-weight: 600;
-  border: 1px solid rgba(255,255,255,0.1);
-  border-radius: 10px;
-  background: transparent;
-  color: #888;
-  cursor: pointer;
-  transition: color 0.2s, border-color 0.2s;
+  justify-content: center;
 }
-.btn-demo:hover {
-  color: #ccc;
-  border-color: rgba(255,255,255,0.2);
+
+.btn-link {
+  font-size: 0.8rem;
+  font-weight: 600;
+  font-family: inherit;
+  border: none;
+  background: transparent;
+  color: #666;
+  cursor: pointer;
+  padding: 4px 0;
+  text-decoration: none;
+  transition: color 0.2s;
+}
+.btn-link:hover {
+  color: var(--text-dim);
 }
 
 #connection-status {
@@ -513,39 +529,185 @@ body {
   border-color: rgba(255,255,255,0.1);
 }
 
-/* --- Dashboard Main Grid --- */
-.dash-main {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 16px;
+/* --- Dashboard Guided Flow --- */
+.dash-flow {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
   padding: 20px;
+  max-width: 640px;
+  margin: 0 auto;
   flex: 1;
 }
 
-@media (max-width: 700px) {
-  .dash-main {
-    grid-template-columns: 1fr;
+.dash-step {
+  display: flex;
+  gap: 16px;
+  padding: 20px 0;
+  border-bottom: 1px solid rgba(255,255,255,0.05);
+}
+
+.dash-step:last-child {
+  border-bottom: none;
+}
+
+.step-number {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: rgba(155,107,190,0.15);
+  color: var(--purple);
+  font-size: 1rem;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  border: 1px solid rgba(155,107,190,0.25);
+}
+
+.step-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.step-content h2 {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: #e0e0e0;
+}
+
+.step-desc {
+  font-size: 0.85rem;
+  color: #888;
+}
+
+.step-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.or-divider {
+  font-size: 0.75rem;
+  color: #555;
+  font-style: italic;
+}
+
+.input-inline input {
+  padding: 8px 12px;
+  font-size: 0.85rem;
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 6px;
+  color: #e0e0e0;
+  outline: none;
+  width: 150px;
+  transition: border-color 0.2s;
+}
+
+.input-inline input:focus {
+  border-color: var(--purple);
+  box-shadow: 0 0 0 2px rgba(155,107,190,0.15);
+}
+
+.step-hint {
+  font-size: 0.75rem;
+  color: #555;
+}
+
+.step-hint i {
+  color: var(--teal);
+  margin-right: 2px;
+}
+
+.step-result {
+  margin-top: 4px;
+  padding: 12px 14px;
+  background: rgba(92,196,176,0.06);
+  border: 1px solid rgba(92,196,176,0.12);
+  border-radius: 8px;
+}
+
+.step-result p {
+  font-size: 0.85rem;
+  color: var(--teal);
+  margin-bottom: 6px;
+}
+
+.step-result i.ph-check-circle {
+  margin-right: 4px;
+}
+
+/* --- Share Box --- */
+.share-box {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 8px 0;
+}
+
+.share-step-mini {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.share-label {
+  font-size: 0.8rem;
+  color: #888;
+  min-width: 80px;
+}
+
+.share-value {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #e0e0e0;
+}
+
+.share-instructions {
+  font-weight: 600;
+}
+
+@media (max-width: 500px) {
+  .dash-flow {
+    padding: 12px;
+  }
+  .dash-step {
+    padding: 14px 0;
+  }
+  .step-actions {
+    flex-direction: column;
+    align-items: flex-start;
   }
 }
 
-/* --- Dashboard Card --- */
-.dash-card {
-  background: rgba(255,255,255,0.03);
-  border: 1px solid rgba(255,255,255,0.06);
-  border-radius: 12px;
-  padding: 20px;
+/* --- Browser Notice (when dashboard opened in browser) --- */
+.browser-notice {
   display: flex;
   flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
   gap: 12px;
+  padding: 60px 20px;
+  color: #aaa;
 }
 
-.dash-card h2 {
-  font-size: 1rem;
+.browser-notice h2 {
+  font-size: 1.1rem;
   font-weight: 700;
-  color: #ccc;
-  display: flex;
-  align-items: center;
-  gap: 8px;
+  color: #e0e0e0;
+}
+
+.browser-notice p {
+  font-size: 0.9rem;
+  max-width: 400px;
+  line-height: 1.5;
 }
 
 /* --- Dashboard Buttons --- */
@@ -616,50 +778,6 @@ body {
   border: 1px solid rgba(232,84,72,0.3);
 }
 
-/* --- Status / Input Rows --- */
-.status-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.status-label {
-  font-size: 0.85rem;
-  color: #888;
-}
-
-.input-row {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.input-row label {
-  font-size: 0.75rem;
-  color: #888;
-}
-
-.input-row input {
-  padding: 8px 12px;
-  font-size: 0.85rem;
-  background: rgba(255,255,255,0.05);
-  border: 1px solid rgba(255,255,255,0.1);
-  border-radius: 6px;
-  color: #e0e0e0;
-  outline: none;
-  transition: border-color 0.2s;
-}
-
-.input-row input:focus {
-  border-color: var(--purple);
-  box-shadow: 0 0 0 2px rgba(155,107,190,0.15);
-}
-
-.server-controls {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
 
 /* --- URL Display --- */
 .url-display {
@@ -672,28 +790,6 @@ body {
   border-radius: 6px;
   color: var(--teal);
   word-break: break-all;
-}
-
-.info-text {
-  font-size: 0.8rem;
-  color: #888;
-}
-
-.section-desc {
-  font-size: 0.8rem;
-  color: #666;
-}
-
-/* --- Room Code --- */
-.room-code-display {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.room-label {
-  font-size: 0.85rem;
-  color: #888;
 }
 
 .room-code {
@@ -834,13 +930,15 @@ body {
   border: 1px solid rgba(155,107,190,0.25);
 }
 
-/* --- Dashboard Link in Controller (Tauri-only) --- */
+/* --- Dashboard Link (Tauri-only) --- */
 #dashboard-link {
   display: none;
 }
 
 body.is-tauri #dashboard-link {
-  display: inline-block;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
 }
 
 /* ============================================================
