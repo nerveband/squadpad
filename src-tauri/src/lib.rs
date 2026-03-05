@@ -74,7 +74,8 @@ async fn share_online(
     relay_url: String,
 ) -> Result<String, String> {
     let relay = relay_state.inner().clone();
-    let room_code = relay_client::connect(relay_url, relay).await?;
+    let state = app_state.inner().clone();
+    let room_code = relay_client::connect(relay_url, relay, state).await?;
     // Store room code in app state
     {
         let mut s = app_state.lock().await;
