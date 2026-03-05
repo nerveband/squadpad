@@ -434,7 +434,7 @@ export function updateLag(ms) {
 //   1. URL parameter: ?relay=wss://my-relay.example.com
 //   2. localStorage: squadpad_relay_url
 //   3. Default: wss://relay.squadpad.org
-const DEFAULT_RELAY_URL = 'wss://relay.squadpad.org';
+const DEFAULT_RELAY_URL = 'wss://squadpad-relay.fly.dev';
 
 function getRelayUrl() {
   const params = new URLSearchParams(window.location.search);
