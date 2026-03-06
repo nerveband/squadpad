@@ -1,7 +1,13 @@
+import { useCallback } from 'react';
 import { StyleSheet, View } from 'react-native';
+import { Gesture, GestureDetector } from 'react-native-gesture-handler';
+import Animated, { useSharedValue, withSpring, withTiming, runOnJS, SharedValue } from 'react-native-reanimated';
 import { ArrowUp, HandFist, FireSimple, ArrowsOutSimple } from 'phosphor-react-native';
-import { ActionButton, ActionButtonConfig } from './ActionButton';
+import { ButtonVisual, ActionButtonConfig, BUTTON_SIZE } from './ActionButton';
+import { playHaptic } from '../controller/haptics';
 import { Colors } from '../theme/colors';
+
+const BUTTON_GAP = 8;
 
 const BUTTONS: ActionButtonConfig[] = [
   {
@@ -30,51 +36,96 @@ const BUTTONS: ActionButtonConfig[] = [
   },
 ];
 
+function useButtonAnim() {
+  return { scale: useSharedValue(1), pressed: useSharedValue(0) };
+}
+
+function createGesture(
+  scale: SharedValue<number>,
+  pressed: SharedValue<number>,
+  onPress: () => void,
+  onRelease: () => void,
+) {
+  return Gesture.Manual()
+    .onTouchesDown(() => {
+      scale.value = withSpring(0.85, { damping: 15, stiffness: 400 });
+      pressed.value = withTiming(1, { duration: 50 });
+      runOnJS(onPress)();
+    })
+    .onTouchesUp(() => {
+      scale.value = withSpring(1, { damping: 12, stiffness: 280 });
+      pressed.value = withTiming(0, { duration: 180 });
+      runOnJS(onRelease)();
+    })
+    .onTouchesCancelled(() => {
+      scale.value = withSpring(1, { damping: 12, stiffness: 280 });
+      pressed.value = withTiming(0, { duration: 180 });
+      runOnJS(onRelease)();
+    })
+    .shouldCancelWhenOutside(false);
+}
+
 interface ActionButtonsProps {
   onPressIn: (name: string) => void;
   onPressOut: (name: string) => void;
   hapticsEnabled?: boolean;
 }
 
-export function ActionButtons({ onPressIn, onPressOut, hapticsEnabled }: ActionButtonsProps) {
-  // Diamond layout: throw top, punch+bomb middle, jump bottom.
-  // Tap zones fill entire rows — you don't need to aim at the circle.
-  // Padding compresses the diamond so buttons are visually close.
+export function ActionButtons({ onPressIn, onPressOut, hapticsEnabled = true }: ActionButtonsProps) {
+  const b0 = useButtonAnim(); // throw (top)
+  const b1 = useButtonAnim(); // punch (left)
+  const b2 = useButtonAnim(); // bomb  (right)
+  const b3 = useButtonAnim(); // jump  (bottom)
+
+  const press = useCallback((name: string) => {
+    playHaptic(name, hapticsEnabled, 'medium');
+    onPressIn(name);
+  }, [hapticsEnabled, onPressIn]);
+
+  const release = useCallback((name: string) => {
+    onPressOut(name);
+  }, [onPressOut]);
+
+  const g0 = createGesture(b0.scale, b0.pressed, () => press('throw'),  () => release('throw'));
+  const g1 = createGesture(b1.scale, b1.pressed, () => press('punch'),  () => release('punch'));
+  const g2 = createGesture(b2.scale, b2.pressed, () => press('bomb'),   () => release('bomb'));
+  const g3 = createGesture(b3.scale, b3.pressed, () => press('jump'),   () => release('jump'));
+
+  // Two layers:
+  //   1. Tap zones — invisible, fill all space (quadrants)
+  //   2. Visual diamond — tight cluster centered, passes touches through
   return (
     <View style={styles.container}>
-      <View style={styles.topRow}>
-        <ActionButton
-          config={BUTTONS[0]}
-          onPressIn={onPressIn}
-          onPressOut={onPressOut}
-          hapticsEnabled={hapticsEnabled}
-        />
-      </View>
-      <View style={styles.middleRow}>
-        <View style={styles.halfLeft}>
-          <ActionButton
-            config={BUTTONS[1]}
-            onPressIn={onPressIn}
-            onPressOut={onPressOut}
-            hapticsEnabled={hapticsEnabled}
-          />
+      {/* Layer 1: Tap zones (quadrants of the full area) */}
+      <View style={styles.tapLayer}>
+        <GestureDetector gesture={g0}>
+          <Animated.View style={styles.topZone} />
+        </GestureDetector>
+        <View style={styles.midZones}>
+          <GestureDetector gesture={g1}>
+            <Animated.View style={styles.leftZone} />
+          </GestureDetector>
+          <GestureDetector gesture={g2}>
+            <Animated.View style={styles.rightZone} />
+          </GestureDetector>
         </View>
-        <View style={styles.halfRight}>
-          <ActionButton
-            config={BUTTONS[2]}
-            onPressIn={onPressIn}
-            onPressOut={onPressOut}
-            hapticsEnabled={hapticsEnabled}
-          />
-        </View>
+        <GestureDetector gesture={g3}>
+          <Animated.View style={styles.bottomZone} />
+        </GestureDetector>
       </View>
-      <View style={styles.bottomRow}>
-        <ActionButton
-          config={BUTTONS[3]}
-          onPressIn={onPressIn}
-          onPressOut={onPressOut}
-          hapticsEnabled={hapticsEnabled}
-        />
+
+      {/* Layer 2: Visual buttons — tight diamond, no touch handling */}
+      <View style={styles.visualLayer} pointerEvents="none">
+        <View style={styles.diamondTop}>
+          <ButtonVisual config={BUTTONS[0]} scale={b0.scale} pressed={b0.pressed} />
+        </View>
+        <View style={styles.diamondMid}>
+          <ButtonVisual config={BUTTONS[1]} scale={b1.scale} pressed={b1.pressed} />
+          <ButtonVisual config={BUTTONS[2]} scale={b2.scale} pressed={b2.pressed} />
+        </View>
+        <View style={styles.diamondBottom}>
+          <ButtonVisual config={BUTTONS[3]} scale={b3.scale} pressed={b3.pressed} />
+        </View>
       </View>
     </View>
   );
@@ -83,32 +134,42 @@ export function ActionButtons({ onPressIn, onPressOut, hapticsEnabled }: ActionB
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    paddingVertical: '6%',
   },
-  topRow: {
-    flex: 0.85,
-    alignItems: 'center',
-    justifyContent: 'flex-end',
+  // --- Tap zones: fill all available space ---
+  tapLayer: {
+    ...StyleSheet.absoluteFillObject,
   },
-  middleRow: {
+  topZone: {
+    flex: 1,
+  },
+  midZones: {
     flex: 1,
     flexDirection: 'row',
   },
-  halfLeft: {
+  leftZone: {
     flex: 1,
-    alignItems: 'flex-end',
-    justifyContent: 'center',
-    paddingRight: 2,
   },
-  halfRight: {
+  rightZone: {
     flex: 1,
-    alignItems: 'flex-start',
-    justifyContent: 'center',
-    paddingLeft: 2,
   },
-  bottomRow: {
-    flex: 0.85,
+  bottomZone: {
+    flex: 1,
+  },
+  // --- Visual diamond: centered, compact ---
+  visualLayer: {
+    ...StyleSheet.absoluteFillObject,
+    justifyContent: 'center',
     alignItems: 'center',
-    justifyContent: 'flex-start',
+    gap: BUTTON_GAP,
+  },
+  diamondTop: {
+    alignItems: 'center',
+  },
+  diamondMid: {
+    flexDirection: 'row',
+    gap: BUTTON_GAP,
+  },
+  diamondBottom: {
+    alignItems: 'center',
   },
 });

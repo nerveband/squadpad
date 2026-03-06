@@ -1,10 +1,8 @@
 import { StyleSheet, View } from 'react-native';
-import { Gesture, GestureDetector } from 'react-native-gesture-handler';
-import Animated, { useSharedValue, useAnimatedStyle, withSpring, withTiming, runOnJS } from 'react-native-reanimated';
+import Animated, { SharedValue, useAnimatedStyle } from 'react-native-reanimated';
 import { LinearGradient } from 'expo-linear-gradient';
-import { playHaptic } from '../controller/haptics';
 
-const BUTTON_SIZE = 82;
+export const BUTTON_SIZE = 82;
 
 export interface ActionButtonConfig {
   name: string;
@@ -13,45 +11,14 @@ export interface ActionButtonConfig {
   glowColor: string;
 }
 
-interface ActionButtonProps {
+interface ButtonVisualProps {
   config: ActionButtonConfig;
-  onPressIn: (name: string) => void;
-  onPressOut: (name: string) => void;
-  hapticsEnabled?: boolean;
-  hapticIntensity?: 'low' | 'medium' | 'high';
+  scale: SharedValue<number>;
+  pressed: SharedValue<number>;
 }
 
-export function ActionButton({ config, onPressIn, onPressOut, hapticsEnabled = true, hapticIntensity = 'medium' }: ActionButtonProps) {
-  const scale = useSharedValue(1);
-  const pressed = useSharedValue(0);
-
-  const doPress = () => {
-    playHaptic(config.name, hapticsEnabled, hapticIntensity);
-    onPressIn(config.name);
-  };
-
-  const doRelease = () => {
-    onPressOut(config.name);
-  };
-
-  const tap = Gesture.Manual()
-    .onTouchesDown(() => {
-      scale.value = withSpring(0.85, { damping: 15, stiffness: 400 });
-      pressed.value = withTiming(1, { duration: 50 });
-      runOnJS(doPress)();
-    })
-    .onTouchesUp(() => {
-      scale.value = withSpring(1, { damping: 12, stiffness: 280 });
-      pressed.value = withTiming(0, { duration: 180 });
-      runOnJS(doRelease)();
-    })
-    .onTouchesCancelled(() => {
-      scale.value = withSpring(1, { damping: 12, stiffness: 280 });
-      pressed.value = withTiming(0, { duration: 180 });
-      runOnJS(doRelease)();
-    })
-    .shouldCancelWhenOutside(false);
-
+/** Visual-only button circle. No gesture handling — that lives in ActionButtons. */
+export function ButtonVisual({ config, scale, pressed }: ButtonVisualProps) {
   const animatedStyle = useAnimatedStyle(() => ({
     transform: [{ scale: scale.value }],
   }));
@@ -72,62 +39,46 @@ export function ActionButton({ config, onPressIn, onPressOut, hapticsEnabled = t
   }));
 
   return (
-    <GestureDetector gesture={tap}>
-      {/* Tap zone fills entire parent — slap anywhere in the zone */}
-      <Animated.View style={styles.tapZone}>
-        {/* Visual button stays centered and compact */}
-        <Animated.View style={[styles.visualBtn, animatedStyle]}>
-          <Animated.View
-            style={[styles.glow, { shadowColor: config.glowColor }, glowStyle]}
-          />
-          <Animated.View
-            style={[styles.face, { shadowColor: config.colors[0] }, borderStyle]}
-          >
-            <LinearGradient
-              colors={[config.colors[0], config.colors[1]]}
-              start={{ x: 0.3, y: 0.15 }}
-              end={{ x: 0.8, y: 0.95 }}
-              style={styles.gradient}
-            />
-            {/* Glossy shine highlight */}
-            <LinearGradient
-              colors={['rgba(255,255,255,0.30)', 'rgba(255,255,255,0.06)', 'transparent']}
-              locations={[0, 0.45, 1]}
-              start={{ x: 0.25, y: 0 }}
-              end={{ x: 0.75, y: 0.65 }}
-              style={styles.shine}
-            />
-            <Animated.View style={[styles.brightnessOverlay, brightnessStyle]} />
-            <Animated.View style={[styles.insetGlow, brightnessStyle]} />
-            <View style={styles.iconContainer}>
-              {config.icon}
-            </View>
-          </Animated.View>
-        </Animated.View>
+    <Animated.View style={[styles.visualBtn, animatedStyle]}>
+      <Animated.View
+        style={[styles.glow, { shadowColor: config.glowColor }, glowStyle]}
+      />
+      <Animated.View
+        style={[styles.face, { shadowColor: config.colors[0] }, borderStyle]}
+      >
+        <LinearGradient
+          colors={[config.colors[0], config.colors[1]]}
+          start={{ x: 0.3, y: 0.15 }}
+          end={{ x: 0.8, y: 0.95 }}
+          style={styles.gradient}
+        />
+        {/* Glossy shine highlight */}
+        <LinearGradient
+          colors={['rgba(255,255,255,0.30)', 'rgba(255,255,255,0.06)', 'transparent']}
+          locations={[0, 0.45, 1]}
+          start={{ x: 0.25, y: 0 }}
+          end={{ x: 0.75, y: 0.65 }}
+          style={styles.shine}
+        />
+        <Animated.View style={[styles.brightnessOverlay, brightnessStyle]} />
+        <Animated.View style={[styles.insetGlow, brightnessStyle]} />
+        <View style={styles.iconContainer}>
+          {config.icon}
+        </View>
       </Animated.View>
-    </GestureDetector>
+    </Animated.View>
   );
 }
 
 const styles = StyleSheet.create({
-  tapZone: {
-    flex: 1,
-    alignSelf: 'stretch',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
   visualBtn: {
-    width: BUTTON_SIZE + 22,
-    height: BUTTON_SIZE + 22,
+    width: BUTTON_SIZE,
+    height: BUTTON_SIZE,
     alignItems: 'center',
     justifyContent: 'center',
   },
   glow: {
     ...StyleSheet.absoluteFillObject,
-    top: 11,
-    left: 11,
-    right: 11,
-    bottom: 11,
     borderRadius: BUTTON_SIZE / 2,
     shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 0.45,
