@@ -230,20 +230,6 @@ document.getElementById('hud').addEventListener('touchend', (e) => {
   lastTapTime = now;
 });
 
-// ============================================================
-// Connect Tabs (Online / LAN)
-// ============================================================
-document.querySelectorAll('.connect-tab').forEach(tab => {
-  tab.addEventListener('click', () => {
-    document.querySelectorAll('.connect-tab').forEach(t => t.classList.remove('active'));
-    tab.classList.add('active');
-    const target = tab.dataset.tab;
-    document.getElementById('tab-online').hidden = target !== 'online';
-    document.getElementById('tab-lan').hidden = target !== 'lan';
-    setStatus('');
-  });
-});
-
 // LAN Join button
 const joinLanBtn = document.getElementById('join-lan-btn');
 const lanAddressInput = document.getElementById('lan-address');

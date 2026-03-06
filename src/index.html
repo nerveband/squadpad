@@ -94,52 +94,33 @@
           <button class="back-link" id="back-to-roles"><i class="ph-bold ph-arrow-left"></i> Back</button>
           <label for="player-name" class="visually-hidden">Player name</label>
           <input type="text" id="player-name" placeholder="Your name (optional)" maxlength="10" autocomplete="off" spellcheck="false" class="name-input">
-          <div class="connect-tabs">
-            <button class="connect-tab active" data-tab="online"><i class="ph-bold ph-globe"></i> Online</button>
-            <button class="connect-tab" data-tab="lan"><i class="ph-bold ph-wifi-high"></i> LAN</button>
+
+          <p class="flow-desc">Enter the room code from your host:</p>
+          <div class="join-row">
+            <label for="room-word1" class="visually-hidden">Room code first word</label>
+            <input type="text" id="room-word1" placeholder="first word" maxlength="12" autocomplete="off" spellcheck="false" class="room-word">
+            <label for="room-word2" class="visually-hidden">Room code second word</label>
+            <input type="text" id="room-word2" placeholder="second word" maxlength="12" autocomplete="off" spellcheck="false" class="room-word">
+            <button id="join-btn" class="btn-primary"><i class="ph-bold ph-play"></i> Join</button>
           </div>
-          <div id="tab-online" class="tab-content">
-            <p class="flow-desc">Enter the two words from your host:</p>
-            <div class="join-row">
-              <label for="room-word1" class="visually-hidden">Room code first word</label>
-              <input
-                type="text"
-                id="room-word1"
-                placeholder="first word"
-                maxlength="12"
-                autocomplete="off"
-                spellcheck="false"
-                class="room-word"
-              >
-              <label for="room-word2" class="visually-hidden">Room code second word</label>
-              <input
-                type="text"
-                id="room-word2"
-                placeholder="second word"
-                maxlength="12"
-                autocomplete="off"
-                spellcheck="false"
-                class="room-word"
-              >
-              <button id="join-btn" class="btn-primary"><i class="ph-bold ph-play"></i> Join</button>
+          <div id="history-chips" class="history-chips"></div>
+
+          <p class="connect-help"><i class="ph-bold ph-info"></i> Don't have a code? A host needs to run the <a href="https://github.com/nerveband/squadpad/releases" target="_blank" rel="noopener">SquadPad desktop app</a> alongside BombSquad to generate one.</p>
+
+          <!-- Advanced: Direct LAN Connect -->
+          <details class="advanced-section">
+            <summary class="advanced-toggle"><i class="ph-bold ph-gear"></i> Advanced: Direct Connect</summary>
+            <div class="advanced-content">
+              <p class="flow-desc">Connect directly to a host on your local network:</p>
+              <div class="join-row">
+                <label for="lan-address" class="visually-hidden">Host IP address</label>
+                <input type="text" id="lan-address" placeholder="192.168.1.x:43211" autocomplete="off" spellcheck="false">
+                <button id="join-lan-btn" class="btn-primary"><i class="ph-bold ph-play"></i> Join</button>
+              </div>
+              <p class="step-hint"><i class="ph-bold ph-info"></i> Both devices must be on the same Wi-Fi. The host's IP is shown in the SquadPad desktop app.</p>
             </div>
-            <div id="history-chips" class="history-chips"></div>
-          </div>
-          <div id="tab-lan" class="tab-content" hidden>
-            <p class="flow-desc">Enter the host's local IP address:</p>
-            <div class="join-row">
-              <label for="lan-address" class="visually-hidden">Host IP address</label>
-              <input
-                type="text"
-                id="lan-address"
-                placeholder="192.168.1.x:43211"
-                autocomplete="off"
-                spellcheck="false"
-              >
-              <button id="join-lan-btn" class="btn-primary"><i class="ph-bold ph-play"></i> Join</button>
-            </div>
-            <p class="step-hint"><i class="ph-bold ph-info"></i> Both devices must be on the same Wi-Fi network. The host's IP is shown in the SquadPad desktop app.</p>
-          </div>
+          </details>
+
           <div id="connection-status" role="status" aria-live="polite"></div>
         </div>
 
