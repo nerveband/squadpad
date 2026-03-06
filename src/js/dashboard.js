@@ -1,3 +1,5 @@
+import { initControllerUI } from './controller-ui.js';
+
 // Host dashboard logic. Communicates with the Tauri backend
 // via window.__TAURI__.core.invoke() to control the WebSocket server
 // and manage connected browser players.
@@ -42,6 +44,7 @@ toggleServerBtn.addEventListener('click', async () => {
       const url = await invoke('start_server', { bombsquadAddr: addr });
       addLog(`Server started → ws://${url}`, 'join');
       serverRunning = true;
+      playLocallyBtn.disabled = false;
       serverStatus.textContent = 'Online';
       serverStatus.className = 'status-badge online';
       toggleServerBtn.innerHTML = '<i class="ph-bold ph-stop"></i> Stop Server';
@@ -74,6 +77,8 @@ toggleServerBtn.addEventListener('click', async () => {
       await invoke('stop_server');
       addLog('Server stopped', 'leave');
       serverRunning = false;
+      playLocallyBtn.disabled = true;
+      if (controllerInstance) backToDashboard();
       serverStatus.textContent = 'Offline';
       serverStatus.className = 'status-badge offline';
       toggleServerBtn.innerHTML = '<i class="ph-bold ph-play"></i> Start Server';
@@ -362,3 +367,54 @@ function showFallback() {
     </div>
   `;
 }
+
+// ============================================================
+// Play Locally — embedded controller view
+// ============================================================
+const playLocallyBtn = document.getElementById('play-locally-btn');
+const localControllerScreen = document.getElementById('local-controller-screen');
+const dashHeader = document.querySelector('.dash-header');
+const dashFlow = document.querySelector('.dash-flow');
+const dashFooter = document.querySelector('.dash-footer');
+let controllerInstance = null;
+
+playLocallyBtn.addEventListener('click', () => {
+  if (!serverRunning) return;
+
+  // Hide dashboard, show controller
+  dashHeader.hidden = true;
+  dashFlow.hidden = true;
+  dashFooter.hidden = true;
+  localControllerScreen.hidden = false;
+
+  // Initialize controller and auto-connect to local server
+  controllerInstance = initControllerUI({
+    joystickZone: document.getElementById('local-joystick-zone'),
+    joystickBase: document.getElementById('local-joystick-base'),
+    joystickThumb: document.getElementById('local-joystick-thumb'),
+    buttonZone: document.getElementById('local-button-zone'),
+    controllerScreen: localControllerScreen,
+    settingsPanel: null,
+    lagDisplay: document.getElementById('local-lag-display'),
+    connectTimer: document.getElementById('local-connect-timer'),
+    onDisconnect: backToDashboard,
+    hapticsEnabled: true,
+  });
+
+  // Auto-connect to local WebSocket server
+  const wsUrl = localUrl.textContent || 'ws://localhost:43211';
+  controllerInstance.connection.connect(wsUrl, 'Host');
+});
+
+function backToDashboard() {
+  if (controllerInstance) {
+    controllerInstance.destroy();
+    controllerInstance = null;
+  }
+  localControllerScreen.hidden = true;
+  dashHeader.hidden = false;
+  dashFlow.hidden = false;
+  dashFooter.hidden = false;
+}
+
+document.getElementById('back-to-dash').addEventListener('click', backToDashboard);

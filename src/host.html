@@ -21,7 +21,9 @@
     <header class="dash-header">
       <a href="index.html" class="nav-link nav-back"><i class="ph-bold ph-arrow-left"></i> Back</a>
       <h1>SquadPad</h1>
-      <span class="dash-header-spacer"></span>
+      <button id="play-locally-btn" class="dash-btn play-locally-btn" disabled>
+        <i class="ph-bold ph-game-controller"></i> Play Locally
+      </button>
     </header>
 
     <main class="dash-flow">
@@ -140,6 +142,34 @@
     <footer class="dash-footer">
       <a href="privacy.html" target="_blank" rel="noopener">Privacy</a> &middot; <a href="https://github.com/nerveband/squadpad" target="_blank" rel="noopener">Open Source</a>
     </footer>
+
+    <!-- Play Locally: embedded controller (hidden until activated) -->
+    <div id="local-controller-screen" class="local-controller-screen" hidden>
+      <header id="local-hud" class="local-hud">
+        <button id="back-to-dash" class="dash-btn"><i class="ph-bold ph-arrow-left"></i> Dashboard</button>
+        <span class="hud-game-name">SquadPad</span>
+        <div class="hud-right">
+          <span id="local-connect-timer" class="connect-timer" hidden></span>
+          <span id="local-lag-display"><i class="ph-bold ph-wifi-high"></i> --ms</span>
+        </div>
+      </header>
+      <div id="local-controls" class="local-controls">
+        <div id="local-joystick-zone" class="joystick-zone">
+          <div id="local-joystick-base" class="joystick-base">
+            <div id="local-joystick-thumb" class="joystick-thumb"></div>
+          </div>
+          <span class="kbd-hint">WASD to move</span>
+        </div>
+        <div id="local-button-zone" class="button-zone">
+          <div class="btn-diamond">
+            <button class="action-btn btn-throw" data-action="throw" aria-label="Throw"><i class="ph-bold ph-hand-grabbing"></i><span class="key-tag">L</span></button>
+            <button class="action-btn btn-punch" data-action="punch" aria-label="Punch"><i class="ph-bold ph-hand-fist"></i><span class="key-tag">J</span></button>
+            <button class="action-btn btn-bomb" data-action="bomb" aria-label="Bomb"><i class="ph-bold ph-fire"></i><span class="key-tag">I</span></button>
+            <button class="action-btn btn-jump" data-action="jump" aria-label="Jump"><i class="ph-bold ph-arrow-fat-up"></i><span class="key-tag">K</span></button>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js"></script>

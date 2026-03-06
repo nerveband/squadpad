@@ -1988,6 +1988,95 @@ details[open] .advanced-toggle::after {
 }
 
 /* ============================================================
+   Play Locally button in dashboard header
+   ============================================================ */
+.play-locally-btn {
+  font-size: 0.8rem;
+  padding: 6px 14px;
+  border-radius: 8px;
+  background: rgba(155,107,190,0.15);
+  border: 1px solid rgba(155,107,190,0.3);
+  color: var(--purple);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.play-locally-btn:hover:not(:disabled) {
+  background: rgba(155,107,190,0.25);
+}
+.play-locally-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* ============================================================
+   Local controller screen overlay
+   ============================================================ */
+.local-controller-screen {
+  position: fixed;
+  inset: 0;
+  background: var(--bg-deep);
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+}
+.local-hud {
+  display: flex;
+  align-items: center;
+  padding: 8px 16px;
+  gap: 12px;
+  background: rgba(0,0,0,0.3);
+  flex-shrink: 0;
+}
+.hud-game-name {
+  flex: 1;
+  font-weight: 600;
+  font-size: 1rem;
+}
+.local-controls {
+  flex: 1;
+  display: flex;
+  touch-action: none;
+}
+
+/* Shared classes for joystick/buttons when used outside #controls */
+.joystick-zone {
+  flex: 1;
+  position: relative;
+  overflow: hidden;
+}
+.joystick-base {
+  position: absolute;
+  width: 140px;
+  height: 140px;
+  border-radius: 50%;
+  border: 2px solid rgba(255,255,255,0.1);
+  background: rgba(255,255,255,0.03);
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: opacity 0.15s;
+  opacity: 0.6;
+}
+.joystick-base.active { opacity: 1; }
+.joystick-thumb {
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  background: var(--purple);
+  opacity: 0.7;
+  transition: transform 0.05s;
+}
+.button-zone {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* ============================================================
    Utility: hidden attribute override
    ============================================================ */
 [hidden] {
