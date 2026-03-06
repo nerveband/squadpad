@@ -317,6 +317,18 @@ body {
   to { opacity: 1; transform: translateX(0); }
 }
 
+.flow-heading {
+  font-size: 1.1rem;
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+.flow-explainer {
+  font-size: 0.85rem;
+  color: var(--text-dim);
+  line-height: 1.5;
+  margin-bottom: 16px;
+}
+
 /* --- Host Steps --- */
 .host-steps {
   display: flex;
