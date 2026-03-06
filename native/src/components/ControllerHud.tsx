@@ -92,12 +92,12 @@ export function ControllerHud({
       <Animated.View
         entering={SlideInRight.duration(200)}
         exiting={SlideOutRight.duration(200)}
-        style={[hudStyles.panel, { paddingTop: Math.max(insets.top + 8, Spacing.xl) }]}
+        style={[hudStyles.panel, { paddingTop: Math.max(insets.top, 50) + 16 }]}
       >
         <View style={hudStyles.header}>
           <Text style={hudStyles.title}>Controller</Text>
-          <Pressable onPress={onClose} hitSlop={12}>
-            <X size={20} color={Colors.text} weight="bold" />
+          <Pressable onPress={onClose} hitSlop={20} style={hudStyles.closeBtn}>
+            <X size={22} color={Colors.text} weight="bold" />
           </Pressable>
         </View>
 
@@ -192,6 +192,14 @@ const hudStyles = StyleSheet.create({
     color: Colors.text,
     fontSize: FontSize.lg,
     fontWeight: FontWeight.bold,
+  },
+  closeBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(255,255,255,0.06)',
   },
   section: {
     marginBottom: Spacing.lg,
