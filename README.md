@@ -2,70 +2,70 @@
 
 ![SquadPad - Play BombSquad from any browser](src/og-image.png)
 
-An unofficial web-based controller for [BombSquad](https://www.froemling.net/apps/bombsquad). Open a browser, enter a room code, and play -- no app install required for players.
+An unofficial web-based controller for [BombSquad](https://www.froemling.net/apps/bombsquad). Open a browser, enter a room code, and play. No app install needed for players.
 
 Website: [squadpad.org](https://squadpad.org)
 
 
-## For Players
+## For players
 
 1. Open [squadpad.org](https://squadpad.org) on your phone or computer.
 2. Click "I'm a Player".
-3. Enter the room code the host gives you.
-4. Tap Join -- you are in the game.
+3. Enter the room code from your host.
+4. Tap Join. You're in.
 
-On touch screens you get a virtual joystick and action buttons. On desktop you can use the keyboard:
+Touch screens get a virtual joystick and action buttons. On desktop, use the keyboard:
 
-| Key   | Action |
-|-------|--------|
-| W/A/S/D | Move |
-| K     | Jump   |
-| J     | Punch  |
-| L     | Throw  |
-| I     | Bomb   |
-| Shift | Run    |
+| Key     | Action |
+|---------|--------|
+| W/A/S/D | Move   |
+| K       | Jump   |
+| J       | Punch  |
+| L       | Throw  |
+| I       | Bomb   |
+| Shift   | Run    |
 
-Keyboard bindings can be changed in Settings (gear icon).
-
-
-## For Hosts
-
-The host runs a small desktop app alongside BombSquad on the same machine. The desktop app bridges browser controllers to BombSquad over UDP.
-
-1. Download the SquadPad desktop app from the [Releases](https://github.com/nerveband/squadpad/releases) page (macOS, Windows, or Linux).
-2. Start BombSquad and begin a party.
-3. Open SquadPad and click "I'm a Host" -- this opens the Host Dashboard.
-4. In the dashboard, click **Start Server** to begin accepting player connections.
-5. Click **Go Online** to get a room code for internet play.
-6. Share the room code with your friends. They open [squadpad.org](https://squadpad.org), enter it, and play.
-
-The "Scan Network" button auto-discovers BombSquad instances on your LAN. If BombSquad is on the same machine, the default "localhost" works.
+You can remap keys in Settings (gear icon).
 
 
-## How It Works
+## For hosts
+
+The host runs a small desktop app alongside BombSquad on the same machine. It bridges browser controllers to the game over UDP.
+
+1. Download SquadPad from the [Releases](https://github.com/nerveband/squadpad/releases) page (macOS or Windows).
+2. Start BombSquad on your computer.
+3. Open SquadPad. It goes straight to the Host Dashboard.
+4. Click **Start Server** to accept player connections.
+5. Click **Go Online** to get a room code.
+6. Share the code with friends. They go to [squadpad.org](https://squadpad.org), enter it, and play.
+
+The "Scan Network" button auto-discovers BombSquad on your LAN. If BombSquad is on the same machine, the default "localhost" works.
+
+
+## How it works
 
 ```
-                        Internet play
-                        =============
+                    Internet play
+                    =============
 
-Browser (Player)  --WebSocket-->  Cloud Relay  --WebSocket-->  SquadPad Host App  --UDP:43210-->  BombSquad
-                                  (Fly.io)                     (your machine)                     (Game)
+Browser (Player)  --WebSocket-->  Cloud Relay  --WebSocket-->  SquadPad Host  --UDP:43210-->  BombSquad
+                                  (Fly.io)                     (your machine)                  (Game)
 
 
-                        LAN play
-                        ========
+                    LAN play
+                    ========
 
-Browser (Player)  --WebSocket (direct)-->  SquadPad Host App  --UDP:43210-->  BombSquad
+Browser (Player)  --WebSocket (direct)-->  SquadPad Host  --UDP:43210-->  BombSquad
 ```
 
-Three components make this work:
+Three pieces:
 
-1. **Web Controller UI** -- Static HTML/CSS/JS served from Netlify at squadpad.org. Renders touch controls and keyboard input, sends binary controller state over WebSocket.
-2. **SquadPad Desktop App** -- A Tauri 2.x app with a Rust backend. Runs a local WebSocket server, translates controller messages to BombSquad's UDP protocol, and connects to the cloud relay for internet play.
-3. **Cloud Relay** -- A lightweight Node.js WebSocket relay hosted on Fly.io. Pairs players with hosts using room codes so neither side needs port forwarding.
+1. **Web controller** at squadpad.org. Static HTML/CSS/JS on Netlify. Renders touch controls and keyboard input, sends binary controller state over WebSocket.
+2. **Desktop app** built with Tauri 2.x (Rust backend). Runs a local WebSocket server, translates controller messages to BombSquad's UDP protocol, and connects to the cloud relay for internet play.
+3. **Cloud relay** on Fly.io. A lightweight Node.js WebSocket server that pairs players with hosts using room codes, so nobody needs port forwarding.
 
 
-## Project Structure
+## Project structure
 
 ```
 squadpad/
@@ -75,6 +75,7 @@ squadpad/
     css/style.css         All styles
     js/
       ui.js               Main app orchestrator
+      controller-ui.js    Shared controller module (joystick, buttons, state)
       controller.js       Virtual joystick + buttons + keyboard input
       connection.js       WebSocket connection to host/relay
       protocol.js         BombSquad V2 protocol encoding/decoding
@@ -111,47 +112,37 @@ squadpad/
 ### Prerequisites
 
 - Node.js 20+
-- Rust toolchain (for the Tauri desktop app)
+- Rust toolchain (for the desktop app)
 - Tauri CLI: `cargo install tauri-cli`
 
-### Web Controller UI
+### Web controller
 
 ```bash
-# Install dependencies
 npm install
-
-# Start local dev server on port 3000
-npm run dev
-
-# Run tests (Vitest)
-npm test
-
-# Run tests in watch mode
-npm run test:watch
+npm run dev        # local server on port 3000
+npm test           # run tests (Vitest)
+npm run test:watch # watch mode
 ```
 
-The web UI is plain HTML/CSS/JS in the `src/` directory -- no build step, no framework.
+The web UI is plain HTML/CSS/JS in `src/`. No build step, no framework.
 
-### Tauri Desktop App
+### Desktop app
 
 ```bash
-# Development mode (opens app window + hot-reloads web UI)
-cd src-tauri && cargo tauri dev
-
-# Production build
-cd src-tauri && cargo tauri build
+cd src-tauri && cargo tauri dev    # dev mode with hot-reload
+cd src-tauri && cargo tauri build  # production build
 ```
 
-Rust source lives in `src-tauri/src/`. Key modules:
+Rust source is in `src-tauri/src/`. Key modules:
 
-- `lib.rs` -- Tauri command handlers (discover games, start/stop server, share online, manage players)
-- `protocol.rs` -- BombSquad binary protocol encoding
-- `udp_client.rs` -- UDP communication with BombSquad
-- `websocket_server.rs` -- Local WebSocket server for player connections
-- `relay_client.rs` -- Cloud relay connection and binary frame bridging
-- `state.rs` -- Shared application state
+- `lib.rs` has Tauri command handlers (discover games, start/stop server, share online, manage players)
+- `protocol.rs` handles BombSquad binary protocol encoding
+- `udp_client.rs` manages UDP communication with BombSquad
+- `websocket_server.rs` runs the local WebSocket server for players
+- `relay_client.rs` connects to the cloud relay and bridges binary frames
+- `state.rs` holds shared application state
 
-### Relay Server
+### Relay server
 
 ```bash
 cd relay
@@ -175,7 +166,7 @@ fly launch --name my-squadpad-relay
 fly deploy
 ```
 
-Players can point to a custom relay by appending `?relay=wss://your-relay.example.com` to the SquadPad URL, or via localStorage:
+Players can point to a custom relay by appending `?relay=wss://your-relay.example.com` to the URL, or via localStorage:
 
 ```js
 localStorage.setItem('squadpad_relay_url', 'wss://your-relay.example.com');
@@ -185,57 +176,57 @@ localStorage.setItem('squadpad_relay_url', 'wss://your-relay.example.com');
 
 GitHub Actions runs on every push and PR to `master`:
 
-- **test** -- `npm install && npm test` (Node.js 20, Ubuntu)
-- **build** -- Tauri cross-platform build for macOS (ARM + x86), Linux, and Windows
+- **test** runs `npm install && npm test` (Node.js 20, Ubuntu)
+- **build** does Tauri cross-platform builds for macOS (ARM + x86) and Windows
 
 Hosting:
 
-- Web UI: Netlify (squadpad.org via Cloudflare DNS)
-- Relay: Fly.io (squadpad-relay.fly.dev)
+- Web UI on Netlify (squadpad.org via Cloudflare DNS)
+- Relay on Fly.io (squadpad-relay.fly.dev)
 
 
 ## Protocol
 
-See [docs/PROTOCOL.md](docs/PROTOCOL.md) for the full protocol reference covering:
+See [docs/PROTOCOL.md](docs/PROTOCOL.md) for the full protocol reference:
 
-- Browser ↔ Relay WebSocket protocol (JSON + binary)
-- Relay ↔ Host binary forwarding
-- Host ↔ BombSquad UDP protocol (V2, port 43210)
+- Browser to relay WebSocket protocol (JSON + binary)
+- Relay to host binary forwarding
+- Host to BombSquad UDP protocol (V2, port 43210)
 - Relay room lifecycle, limits, and health check
 - Local WebSocket server for LAN play
 
 
-## Tech Stack
+## Tech stack
 
-| Layer          | Technology                                    |
-|----------------|-----------------------------------------------|
-| Web UI         | HTML, CSS, vanilla JavaScript                 |
-| Desktop app    | [Tauri 2.x](https://v2.tauri.app/) (Rust backend, web frontend) |
-| Relay server   | Node.js, [ws](https://github.com/websockets/ws) (WebSocket library) |
-| Tests          | [Vitest](https://vitest.dev/)                 |
-| Hosting        | [Netlify](https://www.netlify.com/) (web), [Fly.io](https://fly.io/) (relay) |
-| CI/CD          | [GitHub Actions](https://github.com/features/actions) |
-| DNS            | [Cloudflare](https://www.cloudflare.com/)     |
+| Layer        | Technology                                                            |
+|--------------|-----------------------------------------------------------------------|
+| Web UI       | HTML, CSS, vanilla JavaScript                                         |
+| Desktop app  | [Tauri 2.x](https://v2.tauri.app/) (Rust backend, web frontend)      |
+| Relay server | Node.js, [ws](https://github.com/websockets/ws)                      |
+| Tests        | [Vitest](https://vitest.dev/)                                         |
+| Hosting      | [Netlify](https://www.netlify.com/) (web), [Fly.io](https://fly.io/) (relay) |
+| CI/CD        | [GitHub Actions](https://github.com/features/actions)                 |
+| DNS          | [Cloudflare](https://www.cloudflare.com/)                             |
 
-### Libraries & Tools
+### Libraries
 
-| Library | Purpose | Link |
-|---------|---------|------|
-| [Tauri](https://v2.tauri.app/) | Desktop app framework (Rust + web) | [github.com/tauri-apps/tauri](https://github.com/tauri-apps/tauri) |
-| [tokio-tungstenite](https://crates.io/crates/tokio-tungstenite) | Async WebSocket client/server (Rust) | [github.com/snapview/tokio-tungstenite](https://github.com/snapview/tokio-tungstenite) |
-| [ws](https://www.npmjs.com/package/ws) | Node.js WebSocket library (relay server) | [github.com/websockets/ws](https://github.com/websockets/ws) |
-| [qrcode-generator](https://www.npmjs.com/package/qrcode-generator) | QR code rendering on host dashboard | [github.com/nicoleahmed/qrcode-generator](https://github.com/nicoleahmed/qrcode-generator) |
-| [Phosphor Icons](https://phosphoricons.com/) | Bold icon set for UI | [github.com/phosphor-icons/web](https://github.com/phosphor-icons/web) |
-| [Outfit](https://fonts.google.com/specimen/Outfit) | Primary UI font | Google Fonts |
-| [JetBrains Mono](https://fonts.google.com/specimen/JetBrains+Mono) | Monospace font for codes & data | Google Fonts |
-| [Vitest](https://vitest.dev/) | Unit testing framework | [github.com/vitest-dev/vitest](https://github.com/vitest-dev/vitest) |
+| Library | What it does |
+|---------|-------------|
+| [Tauri](https://v2.tauri.app/) | Desktop app framework (Rust + web) |
+| [tokio-tungstenite](https://crates.io/crates/tokio-tungstenite) | Async WebSocket client/server in Rust |
+| [ws](https://www.npmjs.com/package/ws) | Node.js WebSocket library for the relay |
+| [qrcode-generator](https://www.npmjs.com/package/qrcode-generator) | QR code rendering on the host dashboard |
+| [Phosphor Icons](https://phosphoricons.com/) | Icon set for the UI |
+| [Outfit](https://fonts.google.com/specimen/Outfit) | Primary UI font |
+| [JetBrains Mono](https://fonts.google.com/specimen/JetBrains+Mono) | Monospace font for codes and data |
+| [Vitest](https://vitest.dev/) | Unit testing framework |
 
 
-## Privacy & Analytics
+## Privacy
 
-SquadPad uses [Umami](https://umami.is), a privacy-focused, open-source analytics tool. Umami does not use cookies, does not track users across sites, and does not collect personal information. Analytics are self-hosted. See the [Privacy Policy](https://squadpad.org/privacy.html) for details.
+SquadPad uses [Umami](https://umami.is) for analytics. Umami is open-source, doesn't use cookies, doesn't track across sites, and doesn't collect personal info. It's self-hosted. See the [Privacy Policy](https://squadpad.org/privacy.html).
 
-The cloud relay temporarily holds connection data (room code, player name, IP for rate limiting) while you play and deletes everything on disconnect. No gameplay data is logged or stored.
+The cloud relay holds connection data (room code, player name, IP for rate limiting) only while you're playing. Everything is deleted on disconnect. No gameplay data is logged.
 
 
 ## Screenshots
@@ -251,11 +242,11 @@ The cloud relay temporarily holds connection data (room code, player name, IP fo
 
 Made by [Ashraf Ali](https://ashrafali.net).
 
-BombSquad is created by Eric Froemling -- [froemling.net/apps/bombsquad](https://www.froemling.net/apps/bombsquad).
+BombSquad is created by Eric Froemling. [froemling.net/apps/bombsquad](https://www.froemling.net/apps/bombsquad).
 
-SquadPad is an independent project and is not affiliated with or endorsed by Eric Froemling or BombSquad.
+SquadPad is an independent project, not affiliated with or endorsed by Eric Froemling or BombSquad.
 
 
 ## License
 
-MIT -- see [LICENSE](LICENSE) for details.
+MIT. See [LICENSE](LICENSE).
