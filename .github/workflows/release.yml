@@ -1,24 +1,11 @@
-name: Build SquadPad
+name: Release SquadPad
 
 on:
   push:
-    branches: [master, main]
-  pull_request:
-    branches: [master, main]
+    tags: ['v*']
 
 jobs:
-  test:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 20
-      - run: npm install
-      - run: npm test
-
-  build:
-    needs: test
+  release:
     strategy:
       fail-fast: false
       matrix:
@@ -32,6 +19,8 @@ jobs:
           - platform: windows-latest
             target: x86_64-pc-windows-msvc
     runs-on: ${{ matrix.platform }}
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -49,5 +38,16 @@ jobs:
       - uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
         with:
           args: --target ${{ matrix.target }}
+          tagName: ${{ github.ref_name }}
+          releaseName: 'SquadPad ${{ github.ref_name }}'
+          releaseBody: 'Download the SquadPad desktop app for your platform below.'
+          releaseDraft: false
+          prerelease: false
