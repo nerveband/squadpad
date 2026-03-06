@@ -233,7 +233,8 @@
 
   <script>
     if (window.__TAURI__) {
-      document.body.classList.add('is-tauri');
+      // Desktop app goes straight to host dashboard — no role picker
+      window.location.replace('host.html');
     }
     if ('serviceWorker' in navigator && !window.__TAURI__) {
       navigator.serviceWorker.register('/sw.js').catch(() => {});
