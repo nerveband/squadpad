@@ -1,7 +1,7 @@
 import { View, Text, StyleSheet, Pressable, ScrollView } from 'react-native';
 import { X, GearSix } from 'phosphor-react-native';
 import Animated, { FadeIn, FadeOut, SlideInRight, SlideOutRight } from 'react-native-reanimated';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Colors } from '../theme/colors';
 import { FontSize, FontWeight, Fonts } from '../theme/typography';
 import { Spacing, Radius } from '../theme/spacing';
@@ -68,8 +68,6 @@ export function ControllerHud({
   host,
   onAllSettings,
 }: ControllerHudProps) {
-  const insets = useSafeAreaInsets();
-
   if (!visible) return null;
 
   const lagColor = lagMs == null ? Colors.textDim
@@ -92,20 +90,21 @@ export function ControllerHud({
       <Animated.View
         entering={SlideInRight.duration(200)}
         exiting={SlideOutRight.duration(200)}
-        style={[hudStyles.panel, { paddingTop: Math.max(insets.top, 50) + 16 }]}
+        style={hudStyles.panel}
       >
-        <View style={hudStyles.header}>
-          <Text style={hudStyles.title}>Controller</Text>
-          <Pressable onPress={onClose} hitSlop={20} style={hudStyles.closeBtn}>
-            <X size={22} color={Colors.text} weight="bold" />
-          </Pressable>
-        </View>
+        <SafeAreaView style={{ flex: 1 }} edges={['top', 'bottom']}>
+          <View style={hudStyles.header}>
+            <Text style={hudStyles.title}>Controller</Text>
+            <Pressable onPress={onClose} hitSlop={20} style={hudStyles.closeBtn}>
+              <X size={22} color={Colors.text} weight="bold" />
+            </Pressable>
+          </View>
 
-        <ScrollView
-          showsVerticalScrollIndicator={false}
-          bounces={false}
-          contentContainerStyle={{ paddingBottom: Math.max(insets.bottom, 20) + 16 }}
-        >
+          <ScrollView
+            showsVerticalScrollIndicator={false}
+            bounces={false}
+            contentContainerStyle={{ paddingBottom: 16 }}
+          >
           {/* Connection info */}
           <View style={hudStyles.section}>
             <Text style={hudStyles.sectionLabel}>Connection</Text>
@@ -159,6 +158,7 @@ export function ControllerHud({
             </Pressable>
           )}
         </ScrollView>
+        </SafeAreaView>
       </Animated.View>
     </>
   );
