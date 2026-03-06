@@ -1424,17 +1424,6 @@ body {
   color: var(--teal);
 }
 
-/* --- Dashboard Link (Tauri-only) --- */
-#dashboard-link {
-  display: none;
-}
-
-body.is-tauri #dashboard-link {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-}
-
 /* ============================================================
    Animations
    ============================================================ */
