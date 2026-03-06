@@ -1,7 +1,7 @@
 {
   "$schema": "https://raw.githubusercontent.com/nickerford/tauri-docs/tauri-v2/references/config.schema.json",
   "productName": "SquadPad",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "identifier": "org.squadpad.app",
   "build": {
     "frontendDist": "../src",
