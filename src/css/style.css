@@ -41,16 +41,19 @@
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 html, body {
   height: 100%;
-  overflow: hidden;
-  touch-action: none;            /* prevent browser gestures */
   -webkit-touch-callout: none;   /* no iOS callout */
   -webkit-user-select: none;     /* no text selection */
   user-select: none;
 }
+html {
+  overflow: hidden;
+  background: url('../bg-squadpad.png') center center / cover no-repeat var(--bg-deep);
+}
 body {
   font-family: 'Outfit', system-ui, sans-serif;
-  background: var(--bg-deep);
+  background: transparent;
   color: var(--text);
+  overflow: hidden;
 }
 
 @keyframes bg-drift {
@@ -74,14 +77,15 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  height: 100%;
+  min-height: 100%;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-y;
+  padding: 20px 0;
   background:
     radial-gradient(ellipse at 50% 20%, rgba(155,107,190,0.12) 0%, transparent 50%),
     radial-gradient(ellipse at 30% 70%, rgba(92,196,176,0.06) 0%, transparent 50%),
-    radial-gradient(ellipse at 70% 60%, rgba(232,200,64,0.05) 0%, transparent 50%),
-    url('../bg-squadpad.png') center/120% no-repeat,
-    var(--bg-deep);
-  animation: bg-drift 40s ease-in-out infinite alternate;
+    radial-gradient(ellipse at 70% 60%, rgba(232,200,64,0.05) 0%, transparent 50%);
 }
 
 .connect-card {
@@ -108,24 +112,27 @@ body {
   height: 180px;
   margin-top: -130px;
   margin-bottom: -20px;
-  filter: drop-shadow(0 8px 30px rgba(155,107,190,0.4));
-  transition: transform 0.3s ease, filter 0.3s ease;
+  filter: drop-shadow(0 6px 20px rgba(155,107,190,0.35));
+  transition: transform 0.5s cubic-bezier(0.34, 1.56, 0.64, 1), filter 0.5s ease;
   cursor: pointer;
+  will-change: transform, filter;
 }
 .brand-icon:hover {
-  transform: scale(1.12) rotate(-8deg);
-  filter: drop-shadow(0 12px 40px rgba(155,107,190,0.6));
+  transform: scale(1.08) translateY(-4px);
+  filter: drop-shadow(0 14px 35px rgba(155,107,190,0.5));
 }
 .brand-icon:active {
-  transform: scale(0.95) rotate(4deg);
+  transform: scale(0.96);
+  filter: drop-shadow(0 4px 12px rgba(155,107,190,0.4));
+  transition-duration: 0.15s;
 }
 @media (prefers-reduced-motion: no-preference) {
-  .brand-icon { animation: floatBomb 4s ease-in-out infinite; }
+  .brand-icon { animation: floatBomb 5s ease-in-out infinite; }
   .brand-icon:hover { animation: none; }
 }
 @keyframes floatBomb {
   0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-8px); }
+  50% { transform: translateY(-6px); }
 }
 
 .brand-title {
@@ -237,8 +244,9 @@ body {
 
 .join-row .btn-primary {
   width: auto;
-  padding: 14px 28px;
+  padding: 14px 24px;
   white-space: nowrap;
+  flex-shrink: 0;
 }
 
 /* --- Credits Footer --- */
@@ -301,10 +309,11 @@ body {
 }
 
 .flow-desc {
-  font-size: 1rem;
-  color: #ccc;
+  font-size: 0.9rem;
+  color: var(--text-dim);
   margin-bottom: 14px;
   text-align: center;
+  letter-spacing: 0.02em;
 }
 
 #player-flow, #host-flow {
@@ -318,37 +327,54 @@ body {
 }
 
 .flow-heading {
-  font-size: 1.1rem;
-  font-weight: 600;
-  margin-bottom: 6px;
+  font-size: 1.15rem;
+  font-weight: 800;
+  margin-bottom: 8px;
+  letter-spacing: -0.02em;
+  background: linear-gradient(135deg, var(--text) 0%, var(--purple) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
 }
 .flow-explainer {
   font-size: 0.85rem;
   color: var(--text-dim);
-  line-height: 1.5;
-  margin-bottom: 16px;
+  line-height: 1.6;
+  margin-bottom: 20px;
 }
 
-/* --- Host Steps --- */
+/* --- Host Steps (timeline) --- */
 .host-steps {
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 0;
   width: 100%;
+  padding-left: 4px;
 }
 
 .host-step {
   display: flex;
   flex-direction: row;
   align-items: flex-start;
-  gap: 14px;
+  gap: 16px;
   width: 100%;
-  padding: 10px 12px;
-  border-radius: 10px;
+  padding: 14px 14px 14px 0;
+  position: relative;
   transition: background 0.2s;
 }
-.host-step:hover {
-  background: rgba(255,255,255,0.03);
+
+/* Timeline connector line between steps */
+.host-step::before {
+  content: '';
+  position: absolute;
+  left: 15px;
+  top: 46px;
+  bottom: -2px;
+  width: 2px;
+  background: linear-gradient(to bottom, rgba(155,107,190,0.25), rgba(155,107,190,0.06));
+}
+.host-step:last-child::before {
+  display: none;
 }
 
 .host-step-num {
@@ -356,30 +382,34 @@ body {
   min-width: 32px;
   height: 32px;
   border-radius: 50%;
-  background: rgba(155,107,190,0.15);
+  background: rgba(155,107,190,0.12);
   color: var(--purple);
-  font-size: 0.9rem;
+  font-size: 0.85rem;
   font-weight: 800;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  border: 1px solid rgba(155,107,190,0.25);
-  transition: background 0.2s, transform 0.2s;
+  border: 1.5px solid rgba(155,107,190,0.3);
+  position: relative;
+  z-index: 1;
+  transition: background 0.25s, border-color 0.25s, transform 0.25s, box-shadow 0.25s;
 }
 
 .host-step:hover .host-step-num {
-  background: rgba(155,107,190,0.25);
-  transform: scale(1.1);
+  background: rgba(155,107,190,0.22);
+  border-color: rgba(155,107,190,0.5);
+  transform: scale(1.08);
+  box-shadow: 0 0 12px rgba(155,107,190,0.2);
 }
 
 .host-step p {
   flex: 1;
   min-width: 0;
-  font-size: 0.95rem;
-  color: #ccc;
-  line-height: 1.5;
-  padding-top: 4px;
+  font-size: 0.9rem;
+  color: rgba(255,255,255,0.72);
+  line-height: 1.55;
+  padding-top: 5px;
   margin: 0;
 }
 
@@ -399,50 +429,69 @@ body {
   animation: slideIn 0.3s ease-out both;
 }
 .host-step:nth-child(1) { animation-delay: 0s; }
-.host-step:nth-child(2) { animation-delay: 0.08s; }
-.host-step:nth-child(3) { animation-delay: 0.16s; }
+.host-step:nth-child(2) { animation-delay: 0.06s; }
+.host-step:nth-child(3) { animation-delay: 0.12s; }
+.host-step:nth-child(4) { animation-delay: 0.18s; }
 
 .room-word {
   flex: 1;
   min-width: 0;
   padding: 14px 12px;
-  font-size: 1.1rem;
-  font-family: 'Outfit', sans-serif;
+  font-size: 1.05rem;
+  font-family: 'JetBrains Mono', 'SF Mono', monospace;
+  font-weight: 400;
   text-align: center;
   text-transform: lowercase;
   background: rgba(255,255,255,0.05);
-  border: 2px solid rgba(255,255,255,0.1);
+  border: 1.5px solid rgba(255,255,255,0.1);
   border-radius: 10px;
   color: #fff;
   outline: none;
-  transition: border-color 0.2s;
+  transition: border-color 0.25s, box-shadow 0.25s, background 0.25s;
 }
 .room-word::placeholder {
-  font-size: 0.8rem;
+  font-size: 0.75rem;
+  font-family: 'Outfit', sans-serif;
   text-transform: none;
-  color: #555;
+  color: rgba(255,255,255,0.22);
+  letter-spacing: 0.02em;
 }
 .room-word:focus {
   border-color: var(--purple);
-  box-shadow: 0 0 0 3px rgba(155,107,190,0.2);
+  background: rgba(155,107,190,0.06);
+  box-shadow: 0 0 0 3px rgba(155,107,190,0.15), 0 2px 8px rgba(155,107,190,0.1);
 }
 
 .btn-primary {
   width: 100%;
   padding: 14px;
-  font-size: 1.1rem;
+  font-size: 1.05rem;
   font-weight: 700;
+  font-family: inherit;
   border: none;
   border-radius: 10px;
   background: linear-gradient(135deg, var(--purple), var(--purple-deep));
   color: #fff;
   cursor: pointer;
-  transition: transform 0.15s, box-shadow 0.2s, background 0.2s;
+  position: relative;
+  overflow: hidden;
+  transition: transform 0.15s, box-shadow 0.25s, background 0.25s;
+}
+.btn-primary::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, rgba(255,255,255,0.12) 0%, transparent 50%);
+  opacity: 0;
+  transition: opacity 0.25s;
 }
 .btn-primary:hover {
   background: linear-gradient(135deg, #B080D0, var(--purple));
-  box-shadow: 0 4px 20px rgba(155,107,190,0.4);
+  box-shadow: 0 4px 24px rgba(155,107,190,0.35), 0 0 0 1px rgba(155,107,190,0.2);
   transform: translateY(-1px);
+}
+.btn-primary:hover::before {
+  opacity: 1;
 }
 .btn-primary:active {
   transform: scale(0.97) translateY(0);
@@ -502,6 +551,7 @@ body {
   height: 100%;
   display: flex;
   flex-direction: column;
+  touch-action: none;            /* prevent browser gestures on controller */
   background:
     radial-gradient(ellipse at 20% 80%, rgba(92,196,176,0.05) 0%, transparent 50%),
     radial-gradient(ellipse at 80% 80%, rgba(155,107,190,0.05) 0%, transparent 50%),
@@ -1682,19 +1732,24 @@ body {
    ============================================================ */
 .name-input {
   width: 100%;
-  padding: 10px 14px;
-  border-radius: 8px;
-  border: 1px solid rgba(255,255,255,0.1);
-  background: rgba(255,255,255,0.06);
+  padding: 12px 16px;
+  border-radius: 10px;
+  border: 1.5px solid rgba(255,255,255,0.08);
+  background: rgba(255,255,255,0.04);
   color: var(--text);
   font-family: 'Outfit', sans-serif;
   font-size: 0.95rem;
   outline: none;
-  margin-bottom: 8px;
-  transition: border-color 0.2s;
+  margin-bottom: 12px;
+  transition: border-color 0.25s, box-shadow 0.25s, background 0.25s;
+}
+.name-input::placeholder {
+  color: rgba(255,255,255,0.22);
 }
 .name-input:focus {
   border-color: rgba(92,196,176,0.4);
+  background: rgba(92,196,176,0.04);
+  box-shadow: 0 0 0 3px rgba(92,196,176,0.1);
 }
 
 /* ============================================================
@@ -1704,26 +1759,30 @@ body {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
-  margin-top: 8px;
+  margin-top: 10px;
 }
 .history-chip {
-  padding: 4px 10px;
-  border-radius: 6px;
+  padding: 5px 12px;
+  border-radius: 20px;
   border: 1px solid rgba(255,255,255,0.08);
   background: rgba(255,255,255,0.04);
   color: var(--text-dim);
   font-family: 'JetBrains Mono', monospace;
-  font-size: 0.75rem;
+  font-size: 0.72rem;
   cursor: pointer;
-  transition: border-color 0.2s, background 0.2s;
+  transition: border-color 0.25s, background 0.25s, color 0.25s, transform 0.2s;
 }
 .history-chip:hover {
-  border-color: rgba(92,196,176,0.3);
-  background: rgba(92,196,176,0.08);
+  border-color: rgba(92,196,176,0.35);
+  background: rgba(92,196,176,0.1);
   color: var(--text);
+  transform: translateY(-1px);
+}
+.history-chip:active {
+  transform: translateY(0) scale(0.97);
 }
 .chip-time {
-  color: #666;
+  color: rgba(255,255,255,0.25);
   margin-left: 4px;
 }
 
@@ -1797,20 +1856,29 @@ body {
    Advanced Section (collapsible LAN connect)
    ============================================================ */
 .advanced-section {
-  margin-top: 16px;
+  margin-top: 18px;
   border: 1px solid rgba(255,255,255,0.06);
   border-radius: 10px;
   overflow: hidden;
+  background: rgba(255,255,255,0.015);
+  transition: border-color 0.2s;
+}
+.advanced-section:hover {
+  border-color: rgba(255,255,255,0.1);
 }
 .advanced-toggle {
   display: flex;
   align-items: center;
   gap: 8px;
   padding: 12px 16px;
-  font-size: 0.85rem;
+  font-size: 0.8rem;
   color: var(--text-dim);
   cursor: pointer;
   list-style: none;
+  transition: color 0.2s;
+}
+.advanced-toggle:hover {
+  color: var(--text);
 }
 .advanced-toggle::-webkit-details-marker { display: none; }
 .advanced-toggle::after {
@@ -1818,45 +1886,86 @@ body {
   margin-left: auto;
   border: 4px solid transparent;
   border-top-color: var(--text-dim);
-  transition: transform 0.2s;
+  transition: transform 0.25s;
 }
 details[open] .advanced-toggle::after {
   transform: rotate(180deg);
 }
 .advanced-content {
-  padding: 0 16px 16px;
+  padding: 0 14px 14px;
+}
+.advanced-desc {
+  font-size: 0.8rem;
+  color: rgba(255,255,255,0.45);
+  margin-bottom: 10px;
+  text-align: left;
+}
+.advanced-content .join-row {
+  gap: 6px;
+}
+.advanced-content .join-row .btn-primary {
+  padding: 10px 18px;
+  font-size: 0.9rem;
+}
+.advanced-hint {
+  font-size: 0.72rem;
+  color: rgba(255,255,255,0.32);
+  line-height: 1.5;
+  margin-top: 10px;
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+}
+.advanced-hint i {
+  color: rgba(255,255,255,0.25);
+  font-size: 0.85rem;
+  flex-shrink: 0;
+  margin-top: 1px;
 }
 .connect-help {
-  font-size: 0.8rem;
-  color: var(--text-dim);
-  margin-top: 12px;
-  padding: 10px 14px;
-  background: rgba(255,255,255,0.03);
-  border-radius: 8px;
-  line-height: 1.5;
+  font-size: 0.78rem;
+  color: rgba(255,255,255,0.4);
+  margin-top: 14px;
+  padding: 12px 14px;
+  background: rgba(255,255,255,0.02);
+  border: 1px solid rgba(255,255,255,0.04);
+  border-radius: 10px;
+  line-height: 1.6;
 }
-.connect-help a { color: var(--teal); }
+.connect-help i {
+  color: rgba(255,255,255,0.3);
+  margin-right: 2px;
+}
+.connect-help a {
+  color: var(--teal);
+  text-decoration: none;
+  transition: color 0.2s;
+}
+.connect-help a:hover {
+  color: #7DDCC8;
+  text-decoration: underline;
+}
 
 #lan-address {
   width: 100%;
-  padding: 14px 16px;
-  font-size: 1.1rem;
+  padding: 10px 12px;
+  font-size: 0.9rem;
   font-family: 'JetBrains Mono', 'SF Mono', 'Consolas', monospace;
   text-align: center;
   background: rgba(255,255,255,0.05);
-  border: 2px solid rgba(255,255,255,0.1);
-  border-radius: 10px;
+  border: 1.5px solid rgba(255,255,255,0.1);
+  border-radius: 8px;
   color: #fff;
   outline: none;
-  transition: border-color 0.2s;
+  transition: border-color 0.25s, box-shadow 0.25s;
 }
 #lan-address::placeholder {
-  font-size: 0.85rem;
-  color: #555;
+  font-size: 0.78rem;
+  color: rgba(255,255,255,0.22);
 }
 #lan-address:focus {
   border-color: var(--teal);
-  box-shadow: 0 0 0 3px rgba(92,196,176,0.2);
+  box-shadow: 0 0 0 3px rgba(92,196,176,0.15);
 }
 
 /* LAN hint tooltip in connect card */
@@ -2070,4 +2179,70 @@ details[open] .advanced-toggle::after {
    ============================================================ */
 [hidden] {
   display: none !important;
+}
+
+/* ============================================================
+   Tablet: connect screen refinements
+   ============================================================ */
+@media (max-width: 768px) {
+  #connect-screen {
+    background:
+      radial-gradient(ellipse at 50% 15%, rgba(155,107,190,0.14) 0%, transparent 60%),
+      radial-gradient(ellipse at 20% 75%, rgba(92,196,176,0.08) 0%, transparent 55%),
+      radial-gradient(ellipse at 80% 55%, rgba(232,200,64,0.06) 0%, transparent 50%);
+  }
+}
+
+/* ============================================================
+   Mobile: connect screen refinements
+   ============================================================ */
+@media (max-width: 480px) {
+  #connect-screen {
+    background:
+      radial-gradient(circle at 50% 10%, rgba(155,107,190,0.16) 0%, transparent 65%),
+      radial-gradient(circle at 30% 80%, rgba(92,196,176,0.08) 0%, transparent 55%);
+  }
+  .connect-card {
+    padding: 32px 20px 28px;
+    gap: 14px;
+    margin-top: 70px;
+  }
+  .brand-icon {
+    width: 140px;
+    height: 140px;
+    margin-top: -100px;
+    margin-bottom: -14px;
+  }
+  .brand-title {
+    font-size: 2.4rem;
+  }
+  .brand-subtitle {
+    font-size: 0.88rem;
+  }
+  .bento-card {
+    padding: 20px 14px;
+  }
+  .bento-card h3 {
+    font-size: 1rem;
+  }
+  .join-row {
+    gap: 6px;
+  }
+  .room-word {
+    padding: 12px 8px;
+    font-size: 0.95rem;
+  }
+  .join-row .btn-primary {
+    padding: 12px 18px;
+    font-size: 0.95rem;
+  }
+  .host-step p {
+    font-size: 0.85rem;
+  }
+  .flow-explainer {
+    font-size: 0.82rem;
+  }
+  .connect-help {
+    font-size: 0.75rem;
+  }
 }
