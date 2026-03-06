@@ -1,0 +1,546 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SquadPad Architecture — Connection Modes</title>
+  <style>
+    :root {
+      --bg: #1a1b26;
+      --surface: #24283b;
+      --border: #3b4261;
+      --text: #c0caf5;
+      --text-dim: #565f89;
+      --accent: #7aa2f7;
+      --accent2: #9ece6a;
+      --accent3: #bb9af7;
+      --accent4: #f7768e;
+      --accent5: #e0af68;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      line-height: 1.6;
+      padding: 40px 20px;
+    }
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+    h1 {
+      text-align: center;
+      font-size: 2.2rem;
+      margin-bottom: 8px;
+      background: linear-gradient(135deg, var(--accent3), var(--accent));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .subtitle {
+      text-align: center;
+      color: var(--text-dim);
+      font-size: 1rem;
+      margin-bottom: 48px;
+    }
+    .section {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 32px;
+      margin-bottom: 32px;
+    }
+    .section h2 {
+      font-size: 1.4rem;
+      margin-bottom: 4px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .section h2 .badge {
+      font-size: 0.7rem;
+      padding: 3px 10px;
+      border-radius: 20px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .badge-original { background: var(--accent4); color: #1a1b26; }
+    .badge-relay { background: var(--accent3); color: #1a1b26; }
+    .badge-lan { background: var(--accent2); color: #1a1b26; }
+    .section .desc {
+      color: var(--text-dim);
+      font-size: 0.9rem;
+      margin-bottom: 24px;
+    }
+    .diagram-container {
+      display: flex;
+      justify-content: center;
+      overflow-x: auto;
+      padding: 16px 0;
+    }
+    .diagram-container svg {
+      max-width: 100%;
+      height: auto;
+    }
+    .comparison-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 20px;
+      margin-top: 20px;
+    }
+    .compare-card {
+      background: rgba(0,0,0,0.3);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 20px;
+    }
+    .compare-card h3 {
+      font-size: 1rem;
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .compare-card ul {
+      list-style: none;
+      font-size: 0.85rem;
+    }
+    .compare-card ul li {
+      padding: 4px 0;
+      color: var(--text-dim);
+      border-bottom: 1px solid rgba(59,66,97,0.4);
+    }
+    .compare-card ul li:last-child { border-bottom: none; }
+    .compare-card ul li strong {
+      color: var(--text);
+    }
+    .key-insight {
+      background: rgba(122,162,247,0.08);
+      border-left: 3px solid var(--accent);
+      border-radius: 0 8px 8px 0;
+      padding: 16px 20px;
+      margin-top: 24px;
+      font-size: 0.9rem;
+    }
+    .key-insight strong { color: var(--accent); }
+    .protocol-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 16px;
+      font-size: 0.85rem;
+    }
+    .protocol-table th, .protocol-table td {
+      padding: 10px 14px;
+      text-align: left;
+      border-bottom: 1px solid var(--border);
+    }
+    .protocol-table th {
+      color: var(--accent);
+      font-weight: 600;
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .protocol-table td { color: var(--text-dim); }
+    .protocol-table td:first-child { color: var(--text); font-weight: 500; }
+    @media (max-width: 800px) {
+      .comparison-grid { grid-template-columns: 1fr; }
+      body { padding: 20px 10px; }
+      .section { padding: 20px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>SquadPad Architecture</h1>
+    <p class="subtitle">Understanding connection modes — Original BombSquad Remote vs SquadPad</p>
+
+    <!-- DIAGRAM 1: Original BombSquad Remote iOS -->
+    <div class="section">
+      <h2>
+        <span class="badge badge-original">Original</span>
+        BombSquad Remote (iOS App)
+      </h2>
+      <p class="desc">
+        The official iOS remote connects <strong>directly</strong> to BombSquad over UDP.
+        No middleman — the phone talks to the game natively.
+      </p>
+      <div class="diagram-container">
+        <pre class="mermaid">
+graph LR
+  subgraph phone["📱 iOS Device"]
+    APP["BombSquad Remote<br/>(Native iOS App)"]
+  end
+
+  subgraph lan["🏠 Local Network"]
+    DISCOVER["UDP Broadcast<br/>255.255.255.255:43210<br/><i>GAME_QUERY</i>"]
+    RESPONSE["UDP Response<br/><i>GAME_RESPONSE</i><br/>+ game name"]
+  end
+
+  subgraph pc["🖥️ Game Machine"]
+    BS["BombSquad<br/>UDP :43210"]
+  end
+
+  APP -- "1. Broadcast discovery" --> DISCOVER
+  DISCOVER -- "to all LAN devices" --> BS
+  BS -- "2. Responds with name" --> RESPONSE
+  RESPONSE -- "back to app" --> APP
+  APP -- "3. Direct UDP connection<br/>ID_REQUEST → ID_RESPONSE<br/>STATE2 packets (3 bytes)" --> BS
+
+  style phone fill:#2d1f3d,stroke:#bb9af7,color:#c0caf5
+  style lan fill:#1f2d2a,stroke:#9ece6a,color:#c0caf5
+  style pc fill:#1f2636,stroke:#7aa2f7,color:#c0caf5
+  style APP fill:#3b2d5a,stroke:#bb9af7,color:#c0caf5
+  style DISCOVER fill:#2a3d2f,stroke:#9ece6a,color:#c0caf5
+  style RESPONSE fill:#2a3d2f,stroke:#9ece6a,color:#c0caf5
+  style BS fill:#2a3050,stroke:#7aa2f7,color:#c0caf5
+        </pre>
+      </div>
+      <div class="key-insight">
+        <strong>Key:</strong> Zero setup. Phone discovers BombSquad automatically via UDP broadcast,
+        connects directly. No host app, no relay, no port forwarding. Works only on the same LAN.
+      </div>
+    </div>
+
+    <!-- DIAGRAM 2: SquadPad Relay Mode -->
+    <div class="section">
+      <h2>
+        <span class="badge badge-relay">Relay</span>
+        SquadPad — Online Mode (Cloud Relay)
+      </h2>
+      <p class="desc">
+        Players connect from anywhere via a cloud relay. The host runs the SquadPad desktop app
+        which bridges WebSocket messages to BombSquad's UDP protocol.
+      </p>
+      <div class="diagram-container">
+        <pre class="mermaid">
+graph LR
+  subgraph browser["🌐 Player's Browser"]
+    WEB["squadpad.org<br/>(HTML/JS Controller)"]
+  end
+
+  subgraph cloud["☁️ Internet"]
+    RELAY["Cloud Relay<br/>Fly.io<br/>wss://squadpad-relay.fly.dev"]
+  end
+
+  subgraph host["🖥️ Host Machine"]
+    TAURI["SquadPad Desktop App<br/>(Tauri + Rust)"]
+    BS["BombSquad<br/>UDP :43210"]
+  end
+
+  WEB -- "1. WebSocket<br/>join room code<br/>(2-word code)" --> RELAY
+  RELAY -- "2. WebSocket<br/>forward binary states<br/>[playerIdx, btn, h, v]" --> TAURI
+  TAURI -- "3. UDP<br/>STATE2 packets<br/>per player" --> BS
+  BS -- "STATE_ACK" --> TAURI
+  TAURI -- "pong + lag" --> RELAY
+  RELAY -- "pong" --> WEB
+
+  style browser fill:#2d1f3d,stroke:#bb9af7,color:#c0caf5
+  style cloud fill:#2d2636,stroke:#f7768e,color:#c0caf5
+  style host fill:#1f2636,stroke:#7aa2f7,color:#c0caf5
+  style WEB fill:#3b2d5a,stroke:#bb9af7,color:#c0caf5
+  style RELAY fill:#3d2636,stroke:#f7768e,color:#c0caf5
+  style TAURI fill:#2a3050,stroke:#7aa2f7,color:#c0caf5
+  style BS fill:#2a3050,stroke:#7aa2f7,color:#c0caf5
+        </pre>
+      </div>
+      <div class="key-insight">
+        <strong>Key:</strong> Works over the internet — no LAN required. But needs a host running
+        the SquadPad desktop app + BombSquad on the same machine. The relay just pairs players
+        with hosts via room codes and forwards binary data.
+      </div>
+    </div>
+
+    <!-- DIAGRAM 3: SquadPad LAN Mode -->
+    <div class="section">
+      <h2>
+        <span class="badge badge-lan">LAN</span>
+        SquadPad — Local Mode (Direct WebSocket)
+      </h2>
+      <p class="desc">
+        Players connect directly to the host's WebSocket server on the same LAN.
+        No cloud relay needed, but the host app is still required to bridge WebSocket→UDP.
+      </p>
+      <div class="diagram-container">
+        <pre class="mermaid">
+graph LR
+  subgraph browser["🌐 Player's Browser"]
+    WEB["squadpad.org<br/>(HTML/JS Controller)"]
+  end
+
+  subgraph host["🖥️ Host Machine (same LAN)"]
+    WS["WebSocket Server<br/>:43211"]
+    TAURI["SquadPad Desktop App<br/>(Tauri + Rust)"]
+    BS["BombSquad<br/>UDP :43210"]
+  end
+
+  WEB -- "1. WebSocket<br/>ws://HOST_IP:43211<br/>JSON hello + binary states" --> WS
+  WS -- "2. Route to<br/>UdpClient" --> TAURI
+  TAURI -- "3. UDP<br/>STATE2 packets" --> BS
+  BS -- "STATE_ACK" --> TAURI
+  TAURI -- "pong" --> WS
+  WS -- "pong" --> WEB
+
+  style browser fill:#2d1f3d,stroke:#bb9af7,color:#c0caf5
+  style host fill:#1f2d2a,stroke:#9ece6a,color:#c0caf5
+  style WEB fill:#3b2d5a,stroke:#bb9af7,color:#c0caf5
+  style WS fill:#2a3d2f,stroke:#9ece6a,color:#c0caf5
+  style TAURI fill:#2a3d2f,stroke:#9ece6a,color:#c0caf5
+  style BS fill:#2a3d2f,stroke:#9ece6a,color:#c0caf5
+        </pre>
+      </div>
+      <div class="key-insight">
+        <strong>Key:</strong> Lower latency than relay (one fewer hop), but players must know the host's
+        IP address and be on the same network. The host app is still required because
+        <strong>browsers cannot send UDP</strong> — WebSocket→UDP bridge is mandatory.
+      </div>
+    </div>
+
+    <!-- DIAGRAM 4: Side-by-side lifecycle -->
+    <div class="section">
+      <h2>Connection Lifecycle Comparison</h2>
+      <p class="desc">Step-by-step flow of what happens from the player's perspective in each mode.</p>
+      <div class="diagram-container">
+        <pre class="mermaid">
+sequenceDiagram
+  participant P as 📱 Player
+  participant R as ☁️ Relay
+  participant H as 🖥️ Host App
+  participant B as 🎮 BombSquad
+
+  rect rgba(187, 154, 247, 0.08)
+    Note over P,B: Original BombSquad Remote (iOS) — Direct UDP
+    P->>B: UDP Broadcast GAME_QUERY (:43210)
+    B-->>P: GAME_RESPONSE (game name)
+    P->>B: ID_REQUEST (name, protocol v121)
+    B-->>P: ID_RESPONSE (player ID)
+    loop Every input change
+      P->>B: STATE2 (3 bytes: buttons, h, v)
+      B-->>P: STATE_ACK
+    end
+  end
+
+  rect rgba(122, 162, 247, 0.08)
+    Note over P,B: SquadPad Relay Mode — WebSocket → Relay → Host → UDP
+    H->>R: WS: {type: "host"}
+    R-->>H: {type: "room", code: "swift cobra"}
+    P->>R: WS: {type: "join", room: "swift cobra", name: "Alex"}
+    R-->>P: {type: "joined", playerId: 0}
+    R->>H: {type: "player_joined", playerId: 0, name: "Alex"}
+    H->>B: ID_REQUEST ("Alex#sp0")
+    B-->>H: ID_RESPONSE
+    loop Every input change
+      P->>R: Binary [buttons, h, v]
+      R->>H: Binary [playerIdx, buttons, h, v]
+      H->>B: STATE2 packet
+      B-->>H: STATE_ACK
+    end
+  end
+
+  rect rgba(158, 206, 106, 0.08)
+    Note over P,B: SquadPad LAN Mode — WebSocket → Host → UDP
+    P->>H: WS: {name: "Alex"} (ws://HOST:43211)
+    H-->>P: {type: "connected", playerId: 0}
+    H->>B: ID_REQUEST ("Alex#sp0")
+    B-->>H: ID_RESPONSE
+    loop Every input change
+      P->>H: Binary [buttons, h, v]
+      H->>B: STATE2 packet
+      B-->>H: STATE_ACK
+    end
+  end
+        </pre>
+      </div>
+    </div>
+
+    <!-- Comparison table -->
+    <div class="section">
+      <h2>Feature Comparison</h2>
+      <table class="protocol-table">
+        <thead>
+          <tr>
+            <th>Aspect</th>
+            <th><span class="badge badge-original">Original iOS</span></th>
+            <th><span class="badge badge-relay">SquadPad Relay</span></th>
+            <th><span class="badge badge-lan">SquadPad LAN</span></th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Platform</td>
+            <td>iOS only (native app)</td>
+            <td>Any browser</td>
+            <td>Any browser</td>
+          </tr>
+          <tr>
+            <td>Network</td>
+            <td>Same LAN only</td>
+            <td>Internet (anywhere)</td>
+            <td>Same LAN only</td>
+          </tr>
+          <tr>
+            <td>Discovery</td>
+            <td>Auto (UDP broadcast)</td>
+            <td>Room code (2 words)</td>
+            <td>Manual IP entry</td>
+          </tr>
+          <tr>
+            <td>Host app needed?</td>
+            <td>No — direct to BombSquad</td>
+            <td>Yes (Tauri desktop app)</td>
+            <td>Yes (Tauri desktop app)</td>
+          </tr>
+          <tr>
+            <td>Protocol to game</td>
+            <td>UDP direct</td>
+            <td>WS → WS → UDP</td>
+            <td>WS → UDP</td>
+          </tr>
+          <tr>
+            <td>Hops to BombSquad</td>
+            <td>1 (phone → game)</td>
+            <td>3 (browser → relay → host → game)</td>
+            <td>2 (browser → host → game)</td>
+          </tr>
+          <tr>
+            <td>Latency</td>
+            <td>Lowest (~1-5ms)</td>
+            <td>Highest (~50-200ms)</td>
+            <td>Low (~5-20ms)</td>
+          </tr>
+          <tr>
+            <td>State encoding</td>
+            <td>3 bytes (V2) or 2 bytes (V1)</td>
+            <td>3 bytes (V2 only)</td>
+            <td>3 bytes (V2 only)</td>
+          </tr>
+          <tr>
+            <td>Port forwarding</td>
+            <td>Not needed</td>
+            <td>Not needed (relay handles NAT)</td>
+            <td>Not needed (same LAN)</td>
+          </tr>
+          <tr>
+            <td>Install required?</td>
+            <td>iOS app install</td>
+            <td>Host: desktop app. Player: none</td>
+            <td>Host: desktop app. Player: none</td>
+          </tr>
+          <tr>
+            <td>Why bridge needed?</td>
+            <td>N/A — native UDP</td>
+            <td colspan="2" style="text-align:center">Browsers cannot send UDP — WebSocket→UDP bridge is mandatory</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- The fundamental constraint -->
+    <div class="section">
+      <h2>The Core Constraint</h2>
+      <div class="comparison-grid">
+        <div class="compare-card">
+          <h3><span class="badge badge-original">Original</span> Native App</h3>
+          <ul>
+            <li><strong>Direct UDP</strong> to BombSquad</li>
+            <li>Auto-discovers games on LAN</li>
+            <li>No middleman needed</li>
+            <li>iOS only, requires app install</li>
+            <li>LAN only — no internet play</li>
+          </ul>
+        </div>
+        <div class="compare-card">
+          <h3><span class="badge badge-relay">SquadPad</span> Browser</h3>
+          <ul>
+            <li><strong>Cannot use UDP</strong> (browser limitation)</li>
+            <li>Must use WebSocket as transport</li>
+            <li>Needs a bridge app (Tauri) to convert WS→UDP</li>
+            <li>Works on any device with a browser</li>
+            <li>Relay enables internet play</li>
+          </ul>
+        </div>
+        <div class="compare-card">
+          <h3>🤔 The Gap</h3>
+          <ul>
+            <li><strong>LAN discovery</strong> doesn't work from browser</li>
+            <li>Player must know host IP or room code</li>
+            <li>Original app: zero-config on LAN</li>
+            <li>SquadPad LAN: requires manual IP</li>
+            <li>Could the host broadcast a join URL?</li>
+          </ul>
+        </div>
+      </div>
+      <div class="key-insight" style="margin-top: 24px;">
+        <strong>The fundamental question:</strong> The original app connects directly to BombSquad
+        because it speaks native UDP. A browser can't do that. So SquadPad always needs a host app
+        as a bridge. The question is: how do we make the LAN experience as seamless as the original?
+        Auto-discovery? QR codes? mDNS? Or is the relay-first approach (room codes) good enough
+        for all scenarios?
+      </div>
+    </div>
+
+  </div>
+
+  <script type="module">
+    import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs';
+    mermaid.initialize({
+      startOnLoad: true,
+      theme: 'dark',
+      themeVariables: {
+        primaryColor: '#3b2d5a',
+        primaryTextColor: '#c0caf5',
+        primaryBorderColor: '#bb9af7',
+        secondaryColor: '#2a3050',
+        secondaryTextColor: '#c0caf5',
+        secondaryBorderColor: '#7aa2f7',
+        tertiaryColor: '#2a3d2f',
+        tertiaryTextColor: '#c0caf5',
+        tertiaryBorderColor: '#9ece6a',
+        lineColor: '#565f89',
+        textColor: '#c0caf5',
+        mainBkg: '#24283b',
+        nodeBorder: '#7aa2f7',
+        clusterBkg: '#1a1b26',
+        clusterBorder: '#3b4261',
+        titleColor: '#c0caf5',
+        actorBkg: '#24283b',
+        actorBorder: '#7aa2f7',
+        actorTextColor: '#c0caf5',
+        actorLineColor: '#565f89',
+        signalColor: '#c0caf5',
+        signalTextColor: '#c0caf5',
+        labelBoxBkgColor: '#24283b',
+        labelBoxBorderColor: '#3b4261',
+        labelTextColor: '#c0caf5',
+        loopTextColor: '#bb9af7',
+        noteBkgColor: '#2d2636',
+        noteTextColor: '#c0caf5',
+        noteBorderColor: '#bb9af7',
+        activationBkgColor: '#3b2d5a',
+        activationBorderColor: '#bb9af7',
+        sequenceNumberColor: '#1a1b26',
+        sectionBkgColor: '#24283b',
+        altSectionBkgColor: '#1a1b26',
+        gridColor: '#3b4261',
+        fontFamily: 'Inter, -apple-system, sans-serif',
+        fontSize: '14px'
+      },
+      sequence: {
+        actorMargin: 80,
+        messageMargin: 40,
+        boxMargin: 10,
+        noteMargin: 10,
+        mirrorActors: false,
+        useMaxWidth: false,
+        width: 200
+      },
+      flowchart: {
+        useMaxWidth: false,
+        htmlLabels: true,
+        curve: 'basis'
+      }
+    });
+  </script>
+</body>
+</html>
