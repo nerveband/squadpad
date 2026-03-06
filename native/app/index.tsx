@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, Pressable, Image } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Pressable, Image, Linking } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -266,9 +266,17 @@ export default function HomeScreen() {
             <Text style={styles.settingsLinkText}>Settings</Text>
           </Pressable>
 
-          <Text style={styles.credits}>
-            Made for BombSquad by Eric Froemling
-          </Text>
+          <View style={styles.footer}>
+            <Text style={styles.credits}>
+              Made for BombSquad by Eric Froemling
+            </Text>
+            <Pressable
+              onPress={() => Linking.openURL('https://github.com/nerveband/squadpad')}
+              hitSlop={8}
+            >
+              <Text style={styles.openSourceLink}>Open Source</Text>
+            </Pressable>
+          </View>
         </ScrollView>
       </SafeAreaView>
     </View>
@@ -443,10 +451,20 @@ const styles = StyleSheet.create({
     fontSize: FontSize.sm,
     fontWeight: FontWeight.semibold,
   },
+  footer: {
+    alignItems: 'center',
+    gap: Spacing.xs,
+  },
   credits: {
     color: Colors.textDim,
     fontSize: FontSize.xs,
     textAlign: 'center',
     opacity: 0.6,
+  },
+  openSourceLink: {
+    color: Colors.teal,
+    fontSize: FontSize.xs,
+    fontWeight: FontWeight.semibold,
+    opacity: 0.7,
   },
 });

@@ -1,5 +1,5 @@
 import { View, Text, StyleSheet, Pressable } from 'react-native';
-import { ArrowLeft, GearSix } from 'phosphor-react-native';
+import { ArrowLeft, GearSix, PencilSimple } from 'phosphor-react-native';
 import { LagIndicator } from './LagIndicator';
 import { Colors } from '../theme/colors';
 import { Fonts, FontSize, FontWeight } from '../theme/typography';
@@ -20,7 +20,10 @@ export function HudBar({ playerName, lagMs, connectTime, onBack, onSettings, onN
         <ArrowLeft size={22} color={Colors.text} weight="bold" />
       </Pressable>
 
-      <Text style={styles.name} numberOfLines={1}>{playerName || 'Player'}</Text>
+      <Pressable onPress={onNamePress} style={styles.nameBtn} hitSlop={8}>
+        <Text style={styles.name} numberOfLines={1}>{playerName || 'Player'}</Text>
+        <PencilSimple size={11} color={Colors.textDim} weight="bold" />
+      </Pressable>
 
       <Text style={styles.brand}>SquadPad</Text>
 
@@ -57,11 +60,16 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  nameBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+  },
   name: {
     color: Colors.text,
     fontSize: FontSize.sm,
     fontWeight: FontWeight.semibold,
-    maxWidth: 120,
+    maxWidth: 100,
   },
   brand: {
     flex: 1,

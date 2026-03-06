@@ -199,6 +199,12 @@ export default function SettingsScreen() {
               </Text>
             </Text>
             <Text style={styles.aboutDim}>squadpad.org</Text>
+            <Text
+              style={[styles.aboutLink, { marginTop: Spacing.sm }]}
+              onPress={() => Linking.openURL('https://github.com/nerveband/squadpad')}
+            >
+              Open Source on GitHub
+            </Text>
           </GlassCard>
         </ScrollView>
       </SafeAreaView>
@@ -220,6 +226,7 @@ const styles = StyleSheet.create({
     maxWidth: 500,
     alignSelf: 'center',
     width: '100%',
+    paddingBottom: Spacing.xxl,
   },
   header: {
     flexDirection: 'row',

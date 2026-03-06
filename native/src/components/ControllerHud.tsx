@@ -1,6 +1,7 @@
 import { View, Text, StyleSheet, Pressable, ScrollView } from 'react-native';
-import { X } from 'phosphor-react-native';
+import { X, GearSix } from 'phosphor-react-native';
 import Animated, { FadeIn, FadeOut, SlideInRight, SlideOutRight } from 'react-native-reanimated';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Colors } from '../theme/colors';
 import { FontSize, FontWeight, Fonts } from '../theme/typography';
 import { Spacing, Radius } from '../theme/spacing';
@@ -15,6 +16,7 @@ interface ControllerHudProps {
   connectTime: string;
   connectionMode: string;
   host: string;
+  onAllSettings?: () => void;
 }
 
 function HudToggle({ label, value, onToggle }: { label: string; value: boolean; onToggle: () => void }) {
@@ -64,7 +66,10 @@ export function ControllerHud({
   connectTime,
   connectionMode,
   host,
+  onAllSettings,
 }: ControllerHudProps) {
+  const insets = useSafeAreaInsets();
+
   if (!visible) return null;
 
   const lagColor = lagMs == null ? Colors.textDim
@@ -87,7 +92,7 @@ export function ControllerHud({
       <Animated.View
         entering={SlideInRight.duration(200)}
         exiting={SlideOutRight.duration(200)}
-        style={hudStyles.panel}
+        style={[hudStyles.panel, { paddingTop: Math.max(insets.top + 8, Spacing.xl) }]}
       >
         <View style={hudStyles.header}>
           <Text style={hudStyles.title}>Controller</Text>
@@ -96,7 +101,11 @@ export function ControllerHud({
           </Pressable>
         </View>
 
-        <ScrollView showsVerticalScrollIndicator={false} bounces={false}>
+        <ScrollView
+          showsVerticalScrollIndicator={false}
+          bounces={false}
+          contentContainerStyle={{ paddingBottom: Math.max(insets.bottom, 20) + 16 }}
+        >
           {/* Connection info */}
           <View style={hudStyles.section}>
             <Text style={hudStyles.sectionLabel}>Connection</Text>
@@ -141,6 +150,14 @@ export function ControllerHud({
               onToggle={() => onUpdate({ allowPortrait: !settings.allowPortrait })}
             />
           </View>
+
+          {/* All Settings link */}
+          {onAllSettings && (
+            <Pressable onPress={onAllSettings} style={hudStyles.allSettingsBtn}>
+              <GearSix size={16} color={Colors.purple} weight="bold" />
+              <Text style={hudStyles.allSettingsText}>All Settings</Text>
+            </Pressable>
+          )}
         </ScrollView>
       </Animated.View>
     </>
@@ -163,7 +180,6 @@ const hudStyles = StyleSheet.create({
     borderLeftWidth: 1,
     borderLeftColor: 'rgba(255,255,255,0.08)',
     paddingHorizontal: Spacing.md,
-    paddingTop: Spacing.xl,
     zIndex: 51,
   },
   header: {
@@ -267,5 +283,21 @@ const hudStyles = StyleSheet.create({
   },
   segTextActive: {
     color: Colors.text,
+  },
+  allSettingsBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 12,
+    borderRadius: Radius.sm,
+    borderWidth: 1,
+    borderColor: 'rgba(155,107,190,0.25)',
+    backgroundColor: 'rgba(155,107,190,0.08)',
+  },
+  allSettingsText: {
+    color: Colors.purple,
+    fontSize: FontSize.sm,
+    fontWeight: FontWeight.semibold,
   },
 });

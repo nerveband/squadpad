@@ -1,5 +1,5 @@
-import { useEffect, useRef, useState } from 'react';
-import { View, StyleSheet, Text, useWindowDimensions } from 'react-native';
+import { useEffect, useRef, useState, useCallback } from 'react';
+import { View, StyleSheet, Text, TextInput, Pressable, KeyboardAvoidingView, Platform, useWindowDimensions, Modal } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -11,6 +11,8 @@ import { useController } from '../src/hooks/useController';
 import { useSettings } from '../src/hooks/useSettings';
 import { ConnectionManager } from '../src/connection/connection-manager';
 import { Colors } from '../src/theme/colors';
+import { FontSize, FontWeight } from '../src/theme/typography';
+import { Spacing, Radius } from '../src/theme/spacing';
 
 export default function ControllerScreen() {
   const router = useRouter();
@@ -19,6 +21,9 @@ export default function ControllerScreen() {
   const { settings, update } = useSettings();
   const isPortrait = height > width;
   const [hudVisible, setHudVisible] = useState(false);
+  const [editingName, setEditingName] = useState(false);
+  const [displayName, setDisplayName] = useState(params.name || settings.playerName || 'Player');
+  const [tempName, setTempName] = useState(displayName);
 
   const connectionManagerRef = useRef(
     new ConnectionManager({
@@ -54,6 +59,23 @@ export default function ControllerScreen() {
     };
   }, [params.host, params.room, params.name, params.mode]);
 
+  const handleNamePress = useCallback(() => {
+    setTempName(displayName);
+    setEditingName(true);
+  }, [displayName]);
+
+  const handleNameSave = useCallback(() => {
+    const trimmed = tempName.trim() || 'Player';
+    setDisplayName(trimmed);
+    update({ playerName: trimmed });
+    setEditingName(false);
+  }, [tempName, update]);
+
+  const handleAllSettings = useCallback(() => {
+    setHudVisible(false);
+    router.push('/settings');
+  }, [router]);
+
   return (
     <View style={styles.container}>
       {/* Background gradients */}
@@ -81,11 +103,12 @@ export default function ControllerScreen() {
 
       <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
         <HudBar
-          playerName={params.name || 'Player'}
+          playerName={displayName}
           lagMs={controller.lagMs}
           connectTime={controller.connectTime}
           onBack={() => router.back()}
           onSettings={() => setHudVisible(true)}
+          onNamePress={handleNamePress}
         />
 
         {isPortrait ? (
@@ -118,7 +141,7 @@ export default function ControllerScreen() {
         )}
       </SafeAreaView>
 
-      {/* Live HUD overlay — replaces navigating to /settings */}
+      {/* Live HUD overlay */}
       <ControllerHud
         visible={hudVisible}
         onClose={() => setHudVisible(false)}
@@ -128,7 +151,38 @@ export default function ControllerScreen() {
         connectTime={controller.connectTime}
         connectionMode={params.mode || 'unknown'}
         host={params.host || params.room || ''}
+        onAllSettings={handleAllSettings}
       />
+
+      {/* Name editing modal */}
+      <Modal visible={editingName} transparent animationType="fade">
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          style={styles.nameModalWrap}
+        >
+          <Pressable style={styles.nameModalBackdrop} onPress={() => setEditingName(false)} />
+          <View style={styles.nameModalCard}>
+            <Text style={styles.nameModalTitle}>Player Name</Text>
+            <TextInput
+              value={tempName}
+              onChangeText={setTempName}
+              style={styles.nameModalInput}
+              placeholder="Player"
+              placeholderTextColor={Colors.textDim}
+              autoFocus
+              maxLength={20}
+              autoCapitalize="words"
+              autoCorrect={false}
+              returnKeyType="done"
+              onSubmitEditing={handleNameSave}
+              selectTextOnFocus
+            />
+            <Pressable onPress={handleNameSave} style={styles.nameModalBtn}>
+              <Text style={styles.nameModalBtnText}>Done</Text>
+            </Pressable>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
 
       {error && (
         <View style={styles.errorBanner}>
@@ -175,6 +229,51 @@ const styles = StyleSheet.create({
   },
   portraitButtons: {
     flex: 1,
+  },
+  // Name editing modal
+  nameModalWrap: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  nameModalBackdrop: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+  },
+  nameModalCard: {
+    width: 280,
+    backgroundColor: 'rgba(20,16,36,0.98)',
+    borderRadius: Radius.lg,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.1)',
+    padding: Spacing.lg,
+    gap: Spacing.md,
+  },
+  nameModalTitle: {
+    color: Colors.text,
+    fontSize: FontSize.lg,
+    fontWeight: FontWeight.bold,
+  },
+  nameModalInput: {
+    backgroundColor: 'rgba(255,255,255,0.06)',
+    borderRadius: Radius.sm,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    color: Colors.text,
+    fontSize: FontSize.md,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+  },
+  nameModalBtn: {
+    backgroundColor: Colors.purple,
+    borderRadius: Radius.sm,
+    paddingVertical: 12,
+    alignItems: 'center',
+  },
+  nameModalBtnText: {
+    color: '#fff',
+    fontSize: FontSize.md,
+    fontWeight: FontWeight.bold,
   },
   errorBanner: {
     position: 'absolute',
