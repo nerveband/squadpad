@@ -7,7 +7,7 @@ import { ButtonVisual, ActionButtonConfig, BUTTON_SIZE } from './ActionButton';
 import { playHaptic } from '../controller/haptics';
 import { Colors } from '../theme/colors';
 
-const BUTTON_GAP = 8;
+const BUTTON_GAP = 6;
 
 const BUTTONS: ActionButtonConfig[] = [
   {
@@ -91,39 +91,53 @@ export function ActionButtons({ onPressIn, onPressOut, hapticsEnabled = true }: 
   const g2 = createGesture(b2.scale, b2.pressed, () => press('bomb'),   () => release('bomb'));
   const g3 = createGesture(b3.scale, b3.pressed, () => press('jump'),   () => release('jump'));
 
-  // Two layers:
-  //   1. Tap zones — invisible, fill all space (quadrants)
-  //   2. Visual diamond — tight cluster centered, passes touches through
+  //
+  // Two-layer architecture:
+  //
+  //   Layer 1 (bottom): Tap zones — invisible View quadrants that fill
+  //   the entire container. Each quadrant has a GestureDetector so you
+  //   can slap anywhere in the zone to hit the button.
+  //
+  //   Layer 2 (top): Visual diamond — a tight cluster of 82px circles
+  //   with 6px gaps, centered. pointerEvents="none" so touches fall
+  //   through to the tap zones beneath.
+  //
   return (
     <View style={styles.container}>
-      {/* Layer 1: Tap zones (quadrants of the full area) */}
-      <View style={styles.tapLayer}>
-        <GestureDetector gesture={g0}>
-          <Animated.View style={styles.topZone} />
-        </GestureDetector>
-        <View style={styles.midZones}>
-          <GestureDetector gesture={g1}>
-            <Animated.View style={styles.leftZone} />
-          </GestureDetector>
-          <GestureDetector gesture={g2}>
-            <Animated.View style={styles.rightZone} />
+      {/* Layer 1: Tap zones */}
+      <View style={StyleSheet.absoluteFill}>
+        <View style={styles.topZone}>
+          <GestureDetector gesture={g0}>
+            <Animated.View style={StyleSheet.absoluteFill} />
           </GestureDetector>
         </View>
-        <GestureDetector gesture={g3}>
-          <Animated.View style={styles.bottomZone} />
-        </GestureDetector>
+        <View style={styles.midZones}>
+          <View style={styles.halfZone}>
+            <GestureDetector gesture={g1}>
+              <Animated.View style={StyleSheet.absoluteFill} />
+            </GestureDetector>
+          </View>
+          <View style={styles.halfZone}>
+            <GestureDetector gesture={g2}>
+              <Animated.View style={StyleSheet.absoluteFill} />
+            </GestureDetector>
+          </View>
+        </View>
+        <View style={styles.bottomZone}>
+          <GestureDetector gesture={g3}>
+            <Animated.View style={StyleSheet.absoluteFill} />
+          </GestureDetector>
+        </View>
       </View>
 
-      {/* Layer 2: Visual buttons — tight diamond, no touch handling */}
+      {/* Layer 2: Visual diamond (tight, centered, touch-transparent) */}
       <View style={styles.visualLayer} pointerEvents="none">
-        <View style={styles.diamondTop}>
+        <View style={styles.diamondCluster}>
           <ButtonVisual config={BUTTONS[0]} scale={b0.scale} pressed={b0.pressed} />
-        </View>
-        <View style={styles.diamondMid}>
-          <ButtonVisual config={BUTTONS[1]} scale={b1.scale} pressed={b1.pressed} />
-          <ButtonVisual config={BUTTONS[2]} scale={b2.scale} pressed={b2.pressed} />
-        </View>
-        <View style={styles.diamondBottom}>
+          <View style={styles.diamondMidRow}>
+            <ButtonVisual config={BUTTONS[1]} scale={b1.scale} pressed={b1.pressed} />
+            <ButtonVisual config={BUTTONS[2]} scale={b2.scale} pressed={b2.pressed} />
+          </View>
           <ButtonVisual config={BUTTONS[3]} scale={b3.scale} pressed={b3.pressed} />
         </View>
       </View>
@@ -135,10 +149,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  // --- Tap zones: fill all available space ---
-  tapLayer: {
-    ...StyleSheet.absoluteFillObject,
-  },
+  // --- Tap zone quadrants ---
   topZone: {
     flex: 1,
   },
@@ -146,30 +157,28 @@ const styles = StyleSheet.create({
     flex: 1,
     flexDirection: 'row',
   },
-  leftZone: {
-    flex: 1,
-  },
-  rightZone: {
+  halfZone: {
     flex: 1,
   },
   bottomZone: {
     flex: 1,
   },
-  // --- Visual diamond: centered, compact ---
+  // --- Visual diamond (centered cluster) ---
   visualLayer: {
-    ...StyleSheet.absoluteFillObject,
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  diamondCluster: {
+    alignItems: 'center',
     gap: BUTTON_GAP,
   },
-  diamondTop: {
-    alignItems: 'center',
-  },
-  diamondMid: {
+  diamondMidRow: {
     flexDirection: 'row',
     gap: BUTTON_GAP,
-  },
-  diamondBottom: {
-    alignItems: 'center',
   },
 });

@@ -1,11 +1,14 @@
-import { View, Text, StyleSheet, Pressable, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, Pressable, ScrollView, Platform } from 'react-native';
 import { X, GearSix } from 'phosphor-react-native';
 import Animated, { FadeIn, FadeOut, SlideInRight, SlideOutRight } from 'react-native-reanimated';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { Colors } from '../theme/colors';
 import { FontSize, FontWeight, Fonts } from '../theme/typography';
 import { Spacing, Radius } from '../theme/spacing';
 import type { Settings } from '../hooks/useSettings';
+
+// Hardcoded safe top for Dynamic Island / status bar.
+// SafeAreaView doesn't work inside absolute-positioned panels.
+const SAFE_TOP = Platform.OS === 'ios' ? 62 : 38;
 
 interface ControllerHudProps {
   visible: boolean;
@@ -29,6 +32,37 @@ function HudToggle({ label, value, onToggle }: { label: string; value: boolean; 
         </Text>
       </View>
     </Pressable>
+  );
+}
+
+function HudSegments<T extends string>({
+  label,
+  options,
+  value,
+  onChange,
+}: {
+  label: string;
+  options: { key: T; label: string }[];
+  value: T;
+  onChange: (v: T) => void;
+}) {
+  return (
+    <View style={hudStyles.settingBlock}>
+      <Text style={hudStyles.label}>{label}</Text>
+      <View style={hudStyles.segments}>
+        {options.map((opt) => (
+          <Pressable
+            key={opt.key}
+            onPress={() => onChange(opt.key)}
+            style={[hudStyles.seg, value === opt.key && hudStyles.segActive]}
+          >
+            <Text style={[hudStyles.segText, value === opt.key && hudStyles.segTextActive]}>
+              {opt.label}
+            </Text>
+          </Pressable>
+        ))}
+      </View>
+    </View>
   );
 }
 
@@ -92,19 +126,18 @@ export function ControllerHud({
         exiting={SlideOutRight.duration(200)}
         style={hudStyles.panel}
       >
-        <SafeAreaView style={{ flex: 1 }} edges={['top', 'bottom']}>
-          <View style={hudStyles.header}>
-            <Text style={hudStyles.title}>Controller</Text>
-            <Pressable onPress={onClose} hitSlop={20} style={hudStyles.closeBtn}>
-              <X size={22} color={Colors.text} weight="bold" />
-            </Pressable>
-          </View>
+        <View style={hudStyles.header}>
+          <Text style={hudStyles.title}>Controller</Text>
+          <Pressable onPress={onClose} hitSlop={20} style={hudStyles.closeBtn}>
+            <X size={22} color={Colors.text} weight="bold" />
+          </Pressable>
+        </View>
 
-          <ScrollView
-            showsVerticalScrollIndicator={false}
-            bounces={false}
-            contentContainerStyle={{ paddingBottom: 16 }}
-          >
+        <ScrollView
+          showsVerticalScrollIndicator={false}
+          bounces={false}
+          contentContainerStyle={{ paddingBottom: 40 }}
+        >
           {/* Connection info */}
           <View style={hudStyles.section}>
             <Text style={hudStyles.sectionLabel}>Connection</Text>
@@ -143,6 +176,29 @@ export function ControllerHud({
               onToggle={() => onUpdate({ hapticsEnabled: !settings.hapticsEnabled })}
             />
 
+            {settings.hapticsEnabled && (
+              <HudSegments
+                label="Haptic Intensity"
+                options={[
+                  { key: 'low' as const, label: 'Low' },
+                  { key: 'medium' as const, label: 'Med' },
+                  { key: 'high' as const, label: 'High' },
+                ]}
+                value={settings.hapticIntensity}
+                onChange={(v) => onUpdate({ hapticIntensity: v })}
+              />
+            )}
+
+            <HudSegments
+              label="Joystick"
+              options={[
+                { key: 'floating' as const, label: 'Float' },
+                { key: 'fixed' as const, label: 'Fixed' },
+              ]}
+              value={settings.joystickStyle}
+              onChange={(v) => onUpdate({ joystickStyle: v })}
+            />
+
             <HudToggle
               label="Portrait"
               value={settings.allowPortrait}
@@ -158,7 +214,6 @@ export function ControllerHud({
             </Pressable>
           )}
         </ScrollView>
-        </SafeAreaView>
       </Animated.View>
     </>
   );
@@ -180,6 +235,7 @@ const hudStyles = StyleSheet.create({
     borderLeftWidth: 1,
     borderLeftColor: 'rgba(255,255,255,0.08)',
     paddingHorizontal: Spacing.md,
+    paddingTop: SAFE_TOP,
     zIndex: 51,
   },
   header: {
@@ -265,7 +321,7 @@ const hudStyles = StyleSheet.create({
     fontFamily: Fonts.mono,
   },
   settingBlock: {
-    marginBottom: 4,
+    marginBottom: 8,
   },
   segments: {
     flexDirection: 'row',
