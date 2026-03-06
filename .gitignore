@@ -1,9 +1,42 @@
+# Dependencies
 node_modules/
+
+# Build artifacts
 dist/
 target/
+web-build/
+
+# Expo
+native/.expo/
+native/expo-env.d.ts
+
+# Native builds (regenerated)
+native/ios/
+native/android/
+native/.kotlin/
+
+# Metro
+.metro-health-check*
+
+# Environment
+.env
+.env*.local
+
+# OS
 .DS_Store
 *.log
-.env
 
-# Local Netlify folder
+# IDE
+*.tsbuildinfo
+
+# Netlify
 .netlify
+
+# Keys/certs
+*.orig.*
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+*.pem

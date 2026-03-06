@@ -1,14 +1,17 @@
 {
   "name": "squadpad",
-  "version": "0.3.1",
+  "version": "0.4.0",
   "private": true,
+  "workspaces": [
+    "web",
+    "relay",
+    "native"
+  ],
   "scripts": {
-    "dev": "npx serve src --listen 3000",
-    "test": "npx vitest run",
-    "test:watch": "npx vitest"
-  },
-  "devDependencies": {
-    "vitest": "^3.0.0",
-    "ws": "^8.0.0"
+    "dev:web": "cd web && npx serve src --listen 3000",
+    "dev:relay": "cd relay && node server.js",
+    "dev:native": "cd native && npx expo start",
+    "test:web": "cd web && npx vitest run",
+    "test:native": "cd native && npx jest"
   }
 }

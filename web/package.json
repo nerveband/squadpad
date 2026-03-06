@@ -1,0 +1,14 @@
+{
+  "name": "squadpad",
+  "version": "0.3.1",
+  "private": true,
+  "scripts": {
+    "dev": "npx serve src --listen 3000",
+    "test": "npx vitest run",
+    "test:watch": "npx vitest"
+  },
+  "devDependencies": {
+    "vitest": "^3.0.0",
+    "ws": "^8.0.0"
+  }
+}

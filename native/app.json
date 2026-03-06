@@ -1,0 +1,45 @@
+{
+  "expo": {
+    "name": "SquadPad",
+    "slug": "squadpad",
+    "version": "1.0.0",
+    "scheme": "squadpad",
+    "orientation": "default",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "dark",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#0d0b1a"
+    },
+    "ios": {
+      "bundleIdentifier": "org.squadpad.app",
+      "supportsTablet": true,
+      "infoPlist": {
+        "NSLocalNetworkUsageDescription": "SquadPad uses the local network to find BombSquad games nearby.",
+        "NSBonjourServices": ["_bombsquad._udp"]
+      }
+    },
+    "android": {
+      "package": "org.squadpad.app",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#0d0b1a"
+      },
+      "permissions": [
+        "android.permission.INTERNET",
+        "android.permission.ACCESS_WIFI_STATE",
+        "android.permission.CHANGE_WIFI_MULTICAST_STATE",
+        "android.permission.VIBRATE"
+      ]
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-screen-orientation"
+    ],
+    "newArchEnabled": true
+  }
+}

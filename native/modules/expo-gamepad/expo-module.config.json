@@ -1,0 +1,9 @@
+{
+  "platforms": ["ios", "android"],
+  "ios": {
+    "modules": ["ExpoGamepadModule"]
+  },
+  "android": {
+    "modules": ["expo.modules.gamepad.ExpoGamepadModule"]
+  }
+}

@@ -7,18 +7,18 @@ on:
     branches: [master, main]
 
 jobs:
-  test:
+  test-web:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: 20
-      - run: npm install
-      - run: npm test
+      - run: cd web && npm install
+      - run: cd web && npm test
 
-  build:
-    needs: test
+  build-desktop:
+    needs: test-web
     strategy:
       fail-fast: false
       matrix:
@@ -38,9 +38,10 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
         with:
           targets: ${{ matrix.target }}
-      - run: npm install
+      - run: cd web && npm install
       - uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
+          projectPath: web
           args: --target ${{ matrix.target }}

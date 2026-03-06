@@ -27,7 +27,7 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
         with:
           targets: ${{ matrix.target }}
-      - run: npm install
+      - run: cd web && npm install
       - uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -38,6 +38,7 @@ jobs:
           APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
         with:
+          projectPath: web
           args: --target ${{ matrix.target }}
           tagName: ${{ github.ref_name }}
           releaseName: 'SquadPad ${{ github.ref_name }}'
