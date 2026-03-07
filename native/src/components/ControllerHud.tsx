@@ -1,14 +1,11 @@
-import { View, Text, StyleSheet, Pressable, ScrollView, Platform } from 'react-native';
+import { View, Text, StyleSheet, Pressable, ScrollView } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { X, GearSix } from 'phosphor-react-native';
 import Animated, { FadeIn, FadeOut, SlideInRight, SlideOutRight } from 'react-native-reanimated';
 import { Colors } from '../theme/colors';
 import { FontSize, FontWeight, Fonts } from '../theme/typography';
 import { Spacing, Radius } from '../theme/spacing';
 import type { Settings } from '../hooks/useSettings';
-
-// Hardcoded safe top for Dynamic Island / status bar.
-// SafeAreaView doesn't work inside absolute-positioned panels.
-const SAFE_TOP = Platform.OS === 'ios' ? 62 : 38;
 
 interface ControllerHudProps {
   visible: boolean;
@@ -102,7 +99,11 @@ export function ControllerHud({
   host,
   onAllSettings,
 }: ControllerHudProps) {
+  const insets = useSafeAreaInsets();
+
   if (!visible) return null;
+
+  const safeTop = Math.max(insets.top + 12, 20);
 
   const lagColor = lagMs == null ? Colors.textDim
     : lagMs < 80 ? Colors.teal
@@ -124,7 +125,7 @@ export function ControllerHud({
       <Animated.View
         entering={SlideInRight.duration(200)}
         exiting={SlideOutRight.duration(200)}
-        style={hudStyles.panel}
+        style={[hudStyles.panel, { paddingTop: safeTop }]}
       >
         <View style={hudStyles.header}>
           <Text style={hudStyles.title}>Controller</Text>
@@ -235,7 +236,6 @@ const hudStyles = StyleSheet.create({
     borderLeftWidth: 1,
     borderLeftColor: 'rgba(255,255,255,0.08)',
     paddingHorizontal: Spacing.md,
-    paddingTop: SAFE_TOP,
     zIndex: 51,
   },
   header: {

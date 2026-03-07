@@ -1,13 +1,18 @@
-import { useCallback } from 'react';
+import { useCallback, useRef } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
-import Animated, { useSharedValue, withSpring, withTiming, runOnJS, SharedValue } from 'react-native-reanimated';
+import Animated, { useSharedValue, withSpring, withTiming, runOnJS } from 'react-native-reanimated';
 import { ArrowUp, HandFist, FireSimple, ArrowsOutSimple } from 'phosphor-react-native';
 import { ButtonVisual, ActionButtonConfig, BUTTON_SIZE } from './ActionButton';
 import { playHaptic } from '../controller/haptics';
 import { Colors } from '../theme/colors';
 
-const BUTTON_GAP = 6;
+const BUTTON_GAP = 14;
+// Horizontal gap between punch & bomb — wider than vertical gap
+// so the diamond looks balanced rather than squished.
+const MID_GAP = BUTTON_SIZE * 0.55;
+
+const BUTTON_NAMES = ['throw', 'punch', 'bomb', 'jump'] as const;
 
 const BUTTONS: ActionButtonConfig[] = [
   {
@@ -36,33 +41,31 @@ const BUTTONS: ActionButtonConfig[] = [
   },
 ];
 
-function useButtonAnim() {
-  return { scale: useSharedValue(1), pressed: useSharedValue(0) };
+/**
+ * Determine which diamond quadrant a touch falls in by drawing
+ * an X through the center of the container.
+ *
+ *         0 (throw)
+ *       /   \
+ *   1 (punch) 2 (bomb)
+ *       \   /
+ *         3 (jump)
+ *
+ * Returns 0-3 or -1 if container has no size.
+ */
+function getZone(x: number, y: number, w: number, h: number): number {
+  if (w === 0 || h === 0) return -1;
+  // Normalize to [-0.5, 0.5] so aspect ratio is accounted for
+  const dx = (x - w / 2) / w;
+  const dy = (y - h / 2) / h;
+  if (Math.abs(dy) >= Math.abs(dx)) {
+    return dy < 0 ? 0 : 3; // top → throw, bottom → jump
+  }
+  return dx < 0 ? 1 : 2; // left → punch, right → bomb
 }
 
-function createGesture(
-  scale: SharedValue<number>,
-  pressed: SharedValue<number>,
-  onPress: () => void,
-  onRelease: () => void,
-) {
-  return Gesture.Manual()
-    .onTouchesDown(() => {
-      scale.value = withSpring(0.85, { damping: 15, stiffness: 400 });
-      pressed.value = withTiming(1, { duration: 50 });
-      runOnJS(onPress)();
-    })
-    .onTouchesUp(() => {
-      scale.value = withSpring(1, { damping: 12, stiffness: 280 });
-      pressed.value = withTiming(0, { duration: 180 });
-      runOnJS(onRelease)();
-    })
-    .onTouchesCancelled(() => {
-      scale.value = withSpring(1, { damping: 12, stiffness: 280 });
-      pressed.value = withTiming(0, { duration: 180 });
-      runOnJS(onRelease)();
-    })
-    .shouldCancelWhenOutside(false);
+function useButtonAnim() {
+  return { scale: useSharedValue(1), pressed: useSharedValue(0) };
 }
 
 interface ActionButtonsProps {
@@ -77,60 +80,77 @@ export function ActionButtons({ onPressIn, onPressOut, hapticsEnabled = true }: 
   const b2 = useButtonAnim(); // bomb  (right)
   const b3 = useButtonAnim(); // jump  (bottom)
 
-  const press = useCallback((name: string) => {
-    playHaptic(name, hapticsEnabled, 'medium');
-    onPressIn(name);
+  const layoutW = useSharedValue(1);
+  const layoutH = useSharedValue(1);
+
+  // Map of touchId → zone index for multi-touch tracking
+  const activeTouches = useRef(new Map<number, number>());
+
+  const pressZone = useCallback((zone: number) => {
+    const scales = [b0.scale, b1.scale, b2.scale, b3.scale];
+    const presseds = [b0.pressed, b1.pressed, b2.pressed, b3.pressed];
+    scales[zone].value = withSpring(0.85, { damping: 15, stiffness: 400 });
+    presseds[zone].value = withTiming(1, { duration: 50 });
+    playHaptic(BUTTON_NAMES[zone], hapticsEnabled, 'medium');
+    onPressIn(BUTTON_NAMES[zone]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hapticsEnabled, onPressIn]);
 
-  const release = useCallback((name: string) => {
-    onPressOut(name);
+  const releaseZone = useCallback((zone: number) => {
+    const scales = [b0.scale, b1.scale, b2.scale, b3.scale];
+    const presseds = [b0.pressed, b1.pressed, b2.pressed, b3.pressed];
+    scales[zone].value = withSpring(1, { damping: 12, stiffness: 280 });
+    presseds[zone].value = withTiming(0, { duration: 180 });
+    onPressOut(BUTTON_NAMES[zone]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [onPressOut]);
 
-  const g0 = createGesture(b0.scale, b0.pressed, () => press('throw'),  () => release('throw'));
-  const g1 = createGesture(b1.scale, b1.pressed, () => press('punch'),  () => release('punch'));
-  const g2 = createGesture(b2.scale, b2.pressed, () => press('bomb'),   () => release('bomb'));
-  const g3 = createGesture(b3.scale, b3.pressed, () => press('jump'),   () => release('jump'));
+  const handleDown = useCallback((id: number, x: number, y: number) => {
+    const zone = getZone(x, y, layoutW.value, layoutH.value);
+    if (zone < 0) return;
+    activeTouches.current.set(id, zone);
+    pressZone(zone);
+  }, [pressZone, layoutW, layoutH]);
 
-  //
-  // Two-layer architecture:
-  //
-  //   Layer 1 (bottom): Tap zones — invisible View quadrants that fill
-  //   the entire container. Each quadrant has a GestureDetector so you
-  //   can slap anywhere in the zone to hit the button.
-  //
-  //   Layer 2 (top): Visual diamond — a tight cluster of 82px circles
-  //   with 6px gaps, centered. pointerEvents="none" so touches fall
-  //   through to the tap zones beneath.
-  //
+  const handleUp = useCallback((id: number) => {
+    const zone = activeTouches.current.get(id);
+    if (zone == null) return;
+    activeTouches.current.delete(id);
+    releaseZone(zone);
+  }, [releaseZone]);
+
+  const gesture = Gesture.Manual()
+    .onTouchesDown((e) => {
+      for (const t of e.changedTouches) {
+        runOnJS(handleDown)(t.id, t.x, t.y);
+      }
+    })
+    .onTouchesUp((e) => {
+      for (const t of e.changedTouches) {
+        runOnJS(handleUp)(t.id);
+      }
+    })
+    .onTouchesCancelled((e) => {
+      for (const t of e.changedTouches) {
+        runOnJS(handleUp)(t.id);
+      }
+    })
+    .shouldCancelWhenOutside(false);
+
   return (
-    <View style={styles.container}>
-      {/* Layer 1: Tap zones */}
-      <View style={StyleSheet.absoluteFill}>
-        <View style={styles.topZone}>
-          <GestureDetector gesture={g0}>
-            <Animated.View style={StyleSheet.absoluteFill} />
-          </GestureDetector>
-        </View>
-        <View style={styles.midZones}>
-          <View style={styles.halfZone}>
-            <GestureDetector gesture={g1}>
-              <Animated.View style={StyleSheet.absoluteFill} />
-            </GestureDetector>
-          </View>
-          <View style={styles.halfZone}>
-            <GestureDetector gesture={g2}>
-              <Animated.View style={StyleSheet.absoluteFill} />
-            </GestureDetector>
-          </View>
-        </View>
-        <View style={styles.bottomZone}>
-          <GestureDetector gesture={g3}>
-            <Animated.View style={StyleSheet.absoluteFill} />
-          </GestureDetector>
-        </View>
-      </View>
+    <View
+      style={styles.container}
+      onLayout={(e) => {
+        layoutW.value = e.nativeEvent.layout.width;
+        layoutH.value = e.nativeEvent.layout.height;
+      }}
+    >
+      {/* Single gesture zone — diagonal quadrants via getZone() */}
+      <GestureDetector gesture={gesture}>
+        <Animated.View style={StyleSheet.absoluteFill} />
+      </GestureDetector>
 
-      {/* Layer 2: Visual diamond (tight, centered, touch-transparent) */}
+      {/* Visual diamond (touch-transparent) */}
       <View style={styles.visualLayer} pointerEvents="none">
         <View style={styles.diamondCluster}>
           <ButtonVisual config={BUTTONS[0]} scale={b0.scale} pressed={b0.pressed} />
@@ -149,21 +169,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  // --- Tap zone quadrants ---
-  topZone: {
-    flex: 1,
-  },
-  midZones: {
-    flex: 1,
-    flexDirection: 'row',
-  },
-  halfZone: {
-    flex: 1,
-  },
-  bottomZone: {
-    flex: 1,
-  },
-  // --- Visual diamond (centered cluster) ---
   visualLayer: {
     position: 'absolute',
     top: 0,
@@ -179,6 +184,6 @@ const styles = StyleSheet.create({
   },
   diamondMidRow: {
     flexDirection: 'row',
-    gap: BUTTON_GAP,
+    gap: MID_GAP,
   },
 });
