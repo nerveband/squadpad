@@ -2,7 +2,7 @@
 // Wires DOM events (touch, keyboard, fullscreen) to the Controller,
 // manages screen transitions, and sends state via WebSocket connection.
 
-import { initControllerUI } from './controller-ui.js';
+import { initControllerUI } from './controller-ui.js?v=0.4.0';
 
 // ============================================================
 // DOM References

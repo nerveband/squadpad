@@ -6,9 +6,10 @@
 //   const { controller, connection, destroy, setHaptics } =
 //     initControllerUI({ joystickZone, joystickBase, ... });
 
-import { Controller } from './controller.js';
-import { Connection } from './connection.js';
-import { encodeStateV2 } from './protocol.js';
+// ?v= busts CDN/browser copies of older modules; bump with the release version
+import { Controller } from './controller.js?v=0.4.0';
+import { Connection } from './connection.js?v=0.4.0';
+import { encodeStateV2 } from './protocol.js?v=0.4.0';
 
 /**
  * Wire up joystick touch, button touch, keyboard input, visual feedback,
