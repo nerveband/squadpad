@@ -25,8 +25,10 @@ import { encodeStateV2 } from './protocol.js';
  * @param {HTMLElement|null} opts.connectTimer
  * @param {HTMLElement|null} opts.playerNameDisplay - not wired here, passed through
  * @param {Function} opts.onDisconnect - called when the connection drops
- * @param {Function} [opts.onConnect] - called when the connection opens
- * @param {Function} [opts.onReconnecting] - called with attempt number
+ * @param {Function} [opts.onConnect] - called once the host has added the player to BombSquad
+ * @param {Function} [opts.onStatus] - called with the join stage while connecting
+ * @param {Function} [opts.onError] - called with { reason, detail, playerCount } on fatal errors
+ * @param {Function} [opts.onReconnecting] - called with (attempt, maxAttempts)
  * @param {Function} [opts.onReconnectFailed] - called when reconnection gives up
  * @param {Function} [opts.onMessage] - called with raw message data
  * @param {boolean}  opts.hapticsEnabled - initial haptics state
@@ -44,6 +46,8 @@ export function initControllerUI(opts) {
     connectTimer,
     onDisconnect,
     onConnect,
+    onStatus,
+    onError,
     onReconnecting,
     onReconnectFailed,
     onMessage,
@@ -289,6 +293,7 @@ export function initControllerUI(opts) {
 
   function startConnectTimer() {
     if (!connectTimer) return;
+    clearInterval(timerInterval);
     connectStartTime = Date.now();
     connectTimer.hidden = false;
     timerInterval = setInterval(updateConnectTimer, 1000);
@@ -361,13 +366,26 @@ export function initControllerUI(opts) {
     if (onDisconnect) onDisconnect();
   };
 
-  connection.onReconnecting = (attempt) => {
-    if (onReconnecting) onReconnecting(attempt);
+  connection.onError = (info) => {
+    stopConnectTimer();
+    stopPingLoop();
+    if (onError) onError(info);
+    else if (onDisconnect) onDisconnect();
+  };
+
+  connection.onStatus = (stage) => {
+    if (onStatus) onStatus(stage);
+  };
+
+  connection.onReconnecting = (attempt, maxAttempts) => {
+    if (onReconnecting) onReconnecting(attempt, maxAttempts);
   };
 
   connection.onReconnectFailed = () => {
     stopConnectTimer();
+    stopPingLoop();
     if (onReconnectFailed) onReconnectFailed();
+    else if (onDisconnect) onDisconnect();
   };
 
   connection.onMessage = (data) => {

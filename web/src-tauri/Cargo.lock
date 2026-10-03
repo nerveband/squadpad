@@ -3321,7 +3321,7 @@ dependencies = [
 
 [[package]]
 name = "squadpad"
-version = "0.2.1"
+version = "0.4.0"
 dependencies = [
  "futures-util",
  "local-ip-address",

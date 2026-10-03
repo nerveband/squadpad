@@ -33,7 +33,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/style.css?v=0.3.1">
+  <link rel="stylesheet" href="css/style.css?v=0.4.0">
   <link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/bold/style.css">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="mobile-web-app-capable" content="yes">
@@ -95,20 +95,22 @@
           <label for="player-name" class="visually-hidden">Player name</label>
           <input type="text" id="player-name" placeholder="Your name (optional)" maxlength="10" autocomplete="off" spellcheck="false" class="name-input">
 
-          <p class="flow-desc">Enter the room code from your host:</p>
-          <div class="join-row">
-            <label for="room-word1" class="visually-hidden">Room code first word</label>
-            <input type="text" id="room-word1" placeholder="first word" maxlength="12" autocomplete="off" spellcheck="false" class="room-word">
-            <label for="room-word2" class="visually-hidden">Room code second word</label>
-            <input type="text" id="room-word2" placeholder="second word" maxlength="12" autocomplete="off" spellcheck="false" class="room-word">
-            <button id="join-btn" class="btn-primary"><i class="ph-bold ph-play"></i> Join</button>
-          </div>
-          <div id="history-chips" class="history-chips"></div>
+          <div id="room-code-section">
+            <p class="flow-desc">Enter the room code from your host:</p>
+            <div class="join-row">
+              <label for="room-word1" class="visually-hidden">Room code first word</label>
+              <input type="text" id="room-word1" placeholder="first word" maxlength="12" autocomplete="off" spellcheck="false" class="room-word">
+              <label for="room-word2" class="visually-hidden">Room code second word</label>
+              <input type="text" id="room-word2" placeholder="second word" maxlength="12" autocomplete="off" spellcheck="false" class="room-word">
+              <button id="join-btn" class="btn-primary"><i class="ph-bold ph-play"></i> Join</button>
+            </div>
+            <div id="history-chips" class="history-chips"></div>
 
-          <p class="connect-help"><i class="ph-bold ph-info"></i> No code? A host runs the <a href="https://github.com/nerveband/squadpad/releases" target="_blank" rel="noopener">SquadPad desktop app</a> alongside BombSquad to generate one.</p>
+            <p class="connect-help"><i class="ph-bold ph-info"></i> No code? A host runs the <a href="https://github.com/nerveband/squadpad/releases" target="_blank" rel="noopener">SquadPad desktop app</a> alongside BombSquad to generate one.</p>
+          </div>
 
           <!-- Advanced: Direct LAN Connect -->
-          <details class="advanced-section">
+          <details class="advanced-section" id="lan-section">
             <summary class="advanced-toggle"><i class="ph-bold ph-gear"></i> Advanced: Direct Connect</summary>
             <div class="advanced-content">
               <p class="advanced-desc">Connect directly to a host on your local network:</p>
@@ -117,7 +119,7 @@
                 <input type="text" id="lan-address" placeholder="192.168.1.x:43211" autocomplete="off" spellcheck="false">
                 <button id="join-lan-btn" class="btn-primary"><i class="ph-bold ph-play"></i> Join</button>
               </div>
-              <p class="advanced-hint"><i class="ph-bold ph-info"></i> Both devices must be on the same Wi-Fi. The host's IP is shown in the SquadPad desktop app.</p>
+              <p class="advanced-hint"><i class="ph-bold ph-info"></i> Both devices must be on the same Wi-Fi. Enter the LAN address shown in the SquadPad desktop app.</p>
             </div>
           </details>
 
@@ -224,6 +226,15 @@
       window.location.replace('host.html');
     }
     if ('serviceWorker' in navigator && !window.__TAURI__) {
+      // An older service worker may have served stale scripts for this load;
+      // reload once when the updated worker takes over.
+      const hadController = !!navigator.serviceWorker.controller;
+      let reloaded = false;
+      navigator.serviceWorker.addEventListener('controllerchange', () => {
+        if (!hadController || reloaded) return;
+        reloaded = true;
+        window.location.reload();
+      });
       navigator.serviceWorker.register('/sw.js').catch(() => {});
     }
   </script>

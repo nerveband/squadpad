@@ -27,21 +27,39 @@ WebSocket connection to `wss://squadpad-relay.fly.dev` (or custom relay).
 Browser sends after WebSocket opens:
 
 ```json
-{ "type": "join", "room": "XXXX-XXXX", "name": "PlayerName" }
+{ "type": "join", "room": "delta gem", "name": "PlayerName" }
 ```
 
-- `room` — 8-character room code (format: `XXXX-XXXX`, chars: `A-Z` excluding `O/I`, `2-9` excluding `0/1`)
-- `name` — Display name, max 10 characters. Shows in-game in BombSquad.
+- `room`: two-word room code (adjective + noun, lowercase, space-separated)
+- `name`: display name, max 10 characters. Shows in-game in BombSquad.
 
 #### Join Success
 
 Relay responds:
 
 ```json
-{ "type": "joined", "playerId": 0 }
+{ "type": "joined", "playerId": 0, "hostConfirms": true }
 ```
 
-- `playerId` — Player index (0-7). Used for binary frame routing.
+- `playerId`: player ID within the room. Used for binary frame routing.
+- `hostConfirms`: `true` when the host (v0.4.0+) will confirm whether BombSquad accepted the player. Joining the room alone does not put the player in the game.
+
+#### Host Confirmation
+
+When `hostConfirms` is `true`, the browser stays on the connect screen ("Waiting for the host to add you to BombSquad...") until one of:
+
+```json
+{ "type": "ready" }
+{ "type": "rejected", "reason": "bombsquad_unreachable", "detail": "localhost:43210" }
+```
+
+| `reason` | Meaning |
+|----------|---------|
+| `bombsquad_unreachable` | Nothing answered on the BombSquad port at `detail` (BombSquad not running, wrong address, or BombSquad running in Google Play Games / an Android emulator) |
+| `bombsquad_refused` | BombSquad refused the controller (Remote App disabled, or no free slots) |
+| `bombsquad_version` | BombSquad speaks a different remote protocol version |
+
+The browser gives up with `host_timeout` if neither arrives within 15 seconds. When `hostConfirms` is `false` (older hosts), the browser treats `joined` as ready.
 
 #### Join Errors
 
@@ -60,6 +78,10 @@ Relay notifies all players when the host disconnects:
 ```
 
 The relay then closes the player's WebSocket connection.
+
+#### Reconnects
+
+If the connection drops after the player was in the game, the browser retries for about 30 seconds and rejoins the same room code. `not_found` during that window is retried, because a reconnecting host reclaims its previous code.
 
 ### Controller State (binary frames)
 
@@ -105,13 +127,16 @@ The host (Tauri desktop app) connects to the relay as a host.
 Host sends after WebSocket opens:
 
 ```json
-{ "type": "host" }
+{ "type": "host", "v": 2, "code": "delta gem" }
 ```
+
+- `v`: host protocol version. `2` means the host sends `player_ready` / `player_rejected`.
+- `code`: optional. A reconnecting host asks for its previous room code; the relay reuses it only if no other room has it.
 
 Relay responds with the room code:
 
 ```json
-{ "type": "room", "code": "XXXX-XXXX" }
+{ "type": "room", "code": "delta gem" }
 ```
 
 ### Player Events
@@ -122,27 +147,38 @@ When a player joins:
 { "type": "player_joined", "playerId": 0, "name": "PlayerName" }
 ```
 
+The host then tries to add the player to BombSquad (ID request over UDP, up to 3 attempts in about 3 seconds) and reports the result. The relay forwards it to that player as `ready` / `rejected`:
+
+```json
+{ "type": "player_ready", "playerId": 0 }
+{ "type": "player_rejected", "playerId": 0, "reason": "bombsquad_unreachable", "detail": "localhost:43210" }
+```
+
 When a player leaves:
 
 ```json
 { "type": "player_left", "playerId": 0 }
 ```
 
+### Liveness
+
+The relay pings every socket every 30 seconds and terminates sockets that did not answer the previous ping. A dead host therefore closes its room instead of leaving players in a room nobody is listening to. The host pings the relay every 20 seconds and reconnects (1, 2, 4, 8, 15, then every 30 seconds) if it hears nothing for 60 seconds.
+
 ### Binary Frame Forwarding
 
-**Player → Host:** The relay prepends the player index byte:
+**Player → Host:** The relay prepends the player ID byte:
 
 ```
-Byte 0: playerIndex (added by relay)
+Byte 0: playerId (added by relay)
 Byte 1: buttons
 Byte 2: horizontal axis
 Byte 3: vertical axis
 ```
 
-**Host → Player:** The host prepends the target player index:
+**Host → Player:** The host prepends the target player ID:
 
 ```
-Byte 0: targetPlayerIndex (consumed by relay, not forwarded)
+Byte 0: targetPlayerId (consumed by relay, not forwarded)
 Byte 1+: data forwarded to player
 ```
 
@@ -266,31 +302,25 @@ The cloud relay (`relay/server.js`) is a stateless WebSocket forwarder. It holds
 
 ### Room Lifecycle
 
-1. Host connects, sends `{"type": "host"}`
-2. Relay creates room, returns `{"type": "room", "code": "XXXX-XXXX"}`
-3. Players join with room code
+1. Host connects, sends `{"type": "host", "v": 2}`
+2. Relay creates room, returns `{"type": "room", "code": "delta gem"}`
+3. Players join with room code; the host confirms each one with `player_ready` / `player_rejected`
 4. Binary frames are forwarded between host and players
-5. Room is destroyed when host disconnects
+5. Room is destroyed when the host disconnects or misses a heartbeat ping. A host waiting for players keeps its room for as long as it stays connected.
 
 ### Limits
 
 | Limit | Value | Description |
 |-------|-------|-------------|
 | Max players per room | 8 | Matches BombSquad's player limit |
-| Room idle timeout | 5 min | Room destroyed if no activity |
+| Heartbeat | 30 s | Sockets that miss a ping round are terminated |
 | Max rooms per IP | 5/min | Rate limit on room creation |
 | Max connections per IP | 20 | Simultaneous WebSocket connections |
 | Max message size | 256 bytes | Controller states are 3 bytes |
 
 ### Room Code Format
 
-8 characters in `XXXX-XXXX` format. Uses an unambiguous character set (no `0/O`, `1/I`):
-
-```
-ABCDEFGHJKLMNPQRSTUVWXYZ23456789
-```
-
-This gives ~68 billion possible codes (`30^8`), virtually eliminating collisions.
+An adjective and a noun from built-in word lists, for example `delta gem`. Easy to read aloud; a reconnecting host can reclaim its code while it is free.
 
 ### Health Check
 
@@ -300,9 +330,13 @@ GET /health
 ```
 
 
-## 5. Local WebSocket Server
+## 5. Local LAN Server
 
-For LAN play, the host runs a WebSocket server on port `43211`. Browsers connect directly (no relay needed).
+For LAN play, the host listens on port `43211`. Browsers connect directly (no relay or internet needed).
+
+### Controller Page (HTTP)
+
+Browsers block `ws://` connections from an `https://` page such as squadpad.org, so the host also serves the web controller over plain HTTP on the same port. Players on the same Wi-Fi open `http://<host-ip>:43211/?lan=1`, which shows Direct Connect pre-filled with the host's address. Typing a LAN address into Direct Connect on squadpad.org redirects there.
 
 ### Handshake
 
@@ -326,8 +360,8 @@ On successful connection to BombSquad:
 { "type": "connected", "playerId": 0 }
 ```
 
-On failure:
+On failure (same reasons as relay `rejected`; `message` is the BombSquad address tried):
 
 ```json
-{ "type": "error", "message": "Timeout waiting for response" }
+{ "type": "error", "reason": "bombsquad_unreachable", "message": "localhost:43210" }
 ```

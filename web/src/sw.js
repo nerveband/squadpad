@@ -1,10 +1,13 @@
-// SquadPad Service Worker - caches app shell for offline/PWA support
-const CACHE_NAME = 'squadpad-v1';
+// SquadPad Service Worker - caches the app shell for offline/PWA support.
+// Network-first for everything on this origin so fixes reach returning players
+// immediately; the cache is only a fallback when offline.
+const CACHE_NAME = 'squadpad-v2';
 const SHELL_ASSETS = [
   '/',
   '/index.html',
   '/css/style.css',
   '/js/ui.js',
+  '/js/controller-ui.js',
   '/js/controller.js',
   '/js/connection.js',
   '/js/protocol.js',
@@ -28,14 +31,20 @@ self.addEventListener('activate', (event) => {
 });
 
 self.addEventListener('fetch', (event) => {
-  // Network-first for HTML (always get latest), cache-first for assets
-  if (event.request.mode === 'navigate') {
-    event.respondWith(
-      fetch(event.request).catch(() => caches.match('/index.html'))
-    );
-  } else {
-    event.respondWith(
-      caches.match(event.request).then(cached => cached || fetch(event.request))
-    );
-  }
+  const { request } = event;
+  if (request.method !== 'GET' || new URL(request.url).origin !== self.location.origin) return;
+
+  event.respondWith(
+    fetch(request)
+      .then((response) => {
+        if (response.ok) {
+          const copy = response.clone();
+          event.waitUntil(caches.open(CACHE_NAME).then(cache => cache.put(request, copy)));
+        }
+        return response;
+      })
+      .catch(() => caches.match(request).then(cached =>
+        cached || (request.mode === 'navigate' ? caches.match('/index.html') : Response.error())
+      ))
+  );
 });

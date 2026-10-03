@@ -2,11 +2,12 @@
 // players and the SquadPad host app. Holds zero game logic.
 //
 // Room lifecycle:
-//   1. Host connects, sends { type: "host" }
-//   2. Relay creates room, returns { type: "room", code: "XXXX-XXXX" }
-//   3. Players join with the room code
+//   1. Host connects, sends { type: "host", v: 2, code?: "word word" }
+//   2. Relay creates room (reusing `code` when it is free), returns { type: "room", code }
+//   3. Players join with the room code; v2 hosts confirm each player with
+//      player_ready / player_rejected once BombSquad has accepted them
 //   4. Binary frames are forwarded between host and players
-//   5. Room is cleaned up when host disconnects
+//   5. Room is cleaned up when the host disconnects or stops answering pings
 
 import { WebSocketServer } from 'ws';
 
@@ -40,8 +41,10 @@ const NOUNS = [
   'shard','theta','umbra','vigor','wrath','xenon','yacht','zebra','acorn','basil',
 ];
 const MAX_PLAYERS_PER_ROOM = 8;
-const ROOM_IDLE_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes
 const MAX_MESSAGE_BYTES = 256;               // controller states are 3 bytes
+const HEARTBEAT_INTERVAL_MS = 30 * 1000;     // ping every socket; drop ones that miss a pong
+const ROOM_CODE_RE = /^[a-z]+ [a-z]+$/;
+const MAX_DETAIL_CHARS = 120;
 
 // Rate limiting defaults
 const RATE_LIMIT_WINDOW_MS = 60 * 1000;     // 1 minute window
@@ -102,11 +105,14 @@ export function createRelay(options = {}) {
     return `${adj} ${noun}`;
   }
 
-  // Create a room and return its code (for testing without WebSocket)
-  function createRoom(hostWs) {
-    let code;
-    do { code = generateCode(); } while (rooms.has(code));
-    rooms.set(code, { host: hostWs, players: [], nextPlayerId: 0, lastActivity: Date.now() });
+  // Create a room and return its code. A reconnecting host may ask for its
+  // previous code so players can rejoin; it is honored only when free.
+  function createRoom(hostWs, { requestedCode = null, confirmsPlayers = false } = {}) {
+    let code = typeof requestedCode === 'string'
+      && ROOM_CODE_RE.test(requestedCode)
+      && !rooms.has(requestedCode) ? requestedCode : null;
+    while (!code || rooms.has(code)) code = generateCode();
+    rooms.set(code, { host: hostWs, players: [], nextPlayerId: 0, confirmsPlayers });
     return code;
   }
 
@@ -117,8 +123,7 @@ export function createRelay(options = {}) {
     if (room.players.length >= MAX_PLAYERS_PER_ROOM) return { success: false, reason: 'room_full', playerCount: room.players.length };
     const playerId = room.nextPlayerId++;
     room.players.push({ id: playerId, ws: playerWs, name: name || 'Player' });
-    room.lastActivity = Date.now();
-    return { success: true, playerId };
+    return { success: true, playerId, hostConfirms: room.confirmsPlayers };
   }
 
   // Handle new WebSocket connections
@@ -141,6 +146,9 @@ export function createRelay(options = {}) {
     let roomCode = null;
     let playerId = null;
 
+    ws.isAlive = true;
+    ws.on('pong', () => { ws.isAlive = true; });
+
     ws.on('message', (data, isBinary) => {
       // Enforce message size limit
       const size = isBinary ? data.byteLength || data.length : data.length;
@@ -150,19 +158,17 @@ export function createRelay(options = {}) {
       if (isBinary) {
         const room = rooms.get(roomCode);
         if (!room) return;
-        room.lastActivity = Date.now();
 
         if (role === 'host') {
-          // Host sends: [targetPlayerIndex, ...data]
+          // Host sends: [targetPlayerId, ...data]
           const buf = Buffer.from(data);
           if (buf.length < 2) return;
-          const targetIdx = buf[0];
-          const player = room.players[targetIdx];
+          const player = room.players.find(p => p.id === buf[0]);
           if (player?.ws?.readyState === 1) {
-            player.ws.send(buf.slice(1));
+            player.ws.send(buf.subarray(1));
           }
         } else if (role === 'player') {
-          // Player sends: [...data] -> relay prepends player index -> host
+          // Player sends: [...data] -> relay prepends player id -> host
           const buf = Buffer.from(data);
           const tagged = Buffer.concat([Buffer.from([playerId]), buf]);
           if (room.host?.readyState === 1) {
@@ -182,20 +188,24 @@ export function createRelay(options = {}) {
         return;
       }
 
-      if (msg.type === 'host') {
+      if (msg.type === 'host' && !role) {
         // Rate limit room creation per IP
         if (!roomRateLimiter.allow(ip)) {
           log(`RATE_LIMIT ip=${ip} action=create_room`);
           ws.send(JSON.stringify({ type: 'error', reason: 'rate_limited' }));
           return;
         }
-        roomCode = createRoom(ws);
+        roomCode = createRoom(ws, {
+          requestedCode: msg.code,
+          confirmsPlayers: Number(msg.v) >= 2,
+        });
         role = 'host';
-        log(`ROOM_CREATED code=${roomCode} ip=${ip} total_rooms=${rooms.size}`);
+        log(`ROOM_CREATED code=${roomCode} v=${Number(msg.v) || 1} reclaimed=${roomCode === msg.code} ip=${ip} total_rooms=${rooms.size}`);
         ws.send(JSON.stringify({ type: 'room', code: roomCode }));
+        return;
       }
 
-      if (msg.type === 'join') {
+      if (msg.type === 'join' && !role) {
         roomCode = msg.room;
         const result = joinRoom(roomCode, ws, msg.name);
         if (!result.success) {
@@ -208,7 +218,9 @@ export function createRelay(options = {}) {
         playerId = result.playerId;
         role = 'player';
         log(`JOIN room=${roomCode} player=${playerId} name=${msg.name || 'Player'} ip=${ip}`);
-        ws.send(JSON.stringify({ type: 'joined', playerId }));
+        // hostConfirms: the host will send player_ready/player_rejected once it
+        // has (or has failed to) add this player to BombSquad. Older hosts never do.
+        ws.send(JSON.stringify({ type: 'joined', playerId, hostConfirms: result.hostConfirms }));
 
         // Notify host
         const room = rooms.get(roomCode);
@@ -216,6 +228,22 @@ export function createRelay(options = {}) {
           room.host.send(JSON.stringify({
             type: 'player_joined', playerId, name: msg.name || 'Player'
           }));
+        }
+        return;
+      }
+
+      // Host reports whether a player made it into BombSquad
+      if (role === 'host' && (msg.type === 'player_ready' || msg.type === 'player_rejected')) {
+        const room = rooms.get(roomCode);
+        const player = room?.players.find(p => p.id === msg.playerId);
+        if (player?.ws?.readyState !== 1) return;
+        if (msg.type === 'player_ready') {
+          player.ws.send(JSON.stringify({ type: 'ready' }));
+        } else {
+          const reason = typeof msg.reason === 'string' ? msg.reason : 'host_error';
+          const detail = typeof msg.detail === 'string' ? msg.detail.slice(0, MAX_DETAIL_CHARS) : undefined;
+          log(`PLAYER_REJECTED room=${roomCode} player=${player.id} reason=${reason}`);
+          player.ws.send(JSON.stringify({ type: 'rejected', reason, detail }));
         }
       }
     });
@@ -250,23 +278,26 @@ export function createRelay(options = {}) {
     });
   });
 
-  // Clean up idle rooms and stale rate limit entries every 60 seconds
-  const cleanupTimer = setInterval(() => {
-    roomRateLimiter.cleanup();
-    const now = Date.now();
-    for (const [code, room] of rooms) {
-      if (now - room.lastActivity > ROOM_IDLE_TIMEOUT_MS) {
-        log(`IDLE_CLEANUP room=${code} players=${room.players.length}`);
-        if (room.host?.readyState === 1) room.host.close();
-        for (const p of room.players) {
-          if (p.ws?.readyState === 1) p.ws.close();
-        }
-        rooms.delete(code);
+  // Heartbeat: a socket that misses a pong is dead (sleeping laptop, dropped
+  // Wi-Fi). Terminating it fires 'close', which tears down the host's room or
+  // frees the player's slot instead of leaving a zombie room behind.
+  const heartbeatTimer = setInterval(() => {
+    for (const client of wss.clients) {
+      if (!client.isAlive) {
+        log('HEARTBEAT_TIMEOUT terminating socket');
+        client.terminate();
+        continue;
       }
+      client.isAlive = false;
+      client.ping();
     }
-  }, 60000);
+  }, options.heartbeatIntervalMs || HEARTBEAT_INTERVAL_MS);
+
+  // Clean up stale rate limit entries every 60 seconds
+  const cleanupTimer = setInterval(() => roomRateLimiter.cleanup(), 60000);
 
   function close() {
+    clearInterval(heartbeatTimer);
     clearInterval(cleanupTimer);
     wss.close();
     rooms.clear();

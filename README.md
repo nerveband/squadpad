@@ -39,7 +39,15 @@ The host runs a small desktop app alongside BombSquad on the same machine. It br
 5. Click **Go Online** to get a room code.
 6. Share the code with friends. They go to [squadpad.org](https://squadpad.org), enter it, and play.
 
-The "Scan Network" button auto-discovers BombSquad on your LAN. If BombSquad is on the same machine, the default "localhost" works.
+The "Scan Network" button auto-discovers BombSquad on your LAN. If BombSquad is on the same machine, the default "localhost" works. When you start the server, SquadPad checks that BombSquad answers and warns you in the Activity Log if it doesn't.
+
+Players on the same Wi-Fi can also skip the room code: they open the `http://<your-ip>:43211` address shown in step 2, which works without internet.
+
+### Troubleshooting
+
+- **A player's phone says "can't reach BombSquad".** The player reached your SquadPad app, but SquadPad couldn't hand them to BombSquad. Run the desktop version of BombSquad (Windows, Mac, or Linux) on the same computer as SquadPad. BombSquad running inside Google Play Games or an Android emulator lives in its own virtual network and can't accept controllers.
+- **"BombSquad turned the controller away".** Make sure the Remote App setting isn't disabled in BombSquad's controller settings.
+- **Phones can't open the LAN address.** Allow SquadPad through your firewall. On Windows, allow it for both Private and Public networks.
 
 
 ## Native app (Beta)
@@ -211,6 +219,8 @@ Players can point to a custom relay by appending `?relay=wss://your-relay.exampl
 ```js
 localStorage.setItem('squadpad_relay_url', 'wss://your-relay.example.com');
 ```
+
+The host app uses the relay in the `SQUADPAD_RELAY_URL` environment variable when it is set, for example `SQUADPAD_RELAY_URL=wss://your-relay.example.com`.
 
 ### CI/CD
 

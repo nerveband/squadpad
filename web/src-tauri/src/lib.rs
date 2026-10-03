@@ -4,40 +4,66 @@ mod udp_client;
 mod websocket_server;
 mod state;
 
-use state::{new_shared_state, SharedState};
+use std::sync::Arc;
+use state::{new_shared_state, HostEvent, PlayerInfo, RelayStatus, SharedState};
 use relay_client::SharedRelayHandle;
-use tauri::State;
+use serde::Serialize;
+use tauri::{AppHandle, State};
+
+/// Self-hosters (and tests) can point the host at another relay.
+const RELAY_URL_ENV: &str = "SQUADPAD_RELAY_URL";
 
 // Tauri commands exposed to the frontend
 
 #[tauri::command]
 async fn discover_games() -> Vec<(String, String)> {
-    let client = match udp_client::UdpClient::new() {
-        Ok(c) => c,
-        Err(_) => return Vec::new(),
-    };
-    client.discover()
+    tokio::task::spawn_blocking(|| match udp_client::UdpClient::new() {
+        Ok(client) => client.discover(),
+        Err(_) => Vec::new(),
+    })
+    .await
+    .unwrap_or_default()
+}
+
+/// Check that BombSquad answers at `addr`. Returns its device name.
+#[tauri::command]
+async fn probe_bombsquad(addr: String) -> Result<String, String> {
+    let target = addr.clone();
+    tokio::task::spawn_blocking(move || udp_client::probe_game(&target))
+        .await
+        .unwrap_or(Err(udp_client::AttachError::Unreachable))
+        .map_err(|e| e.describe(&addr))
 }
 
 #[tauri::command]
 async fn start_server(
+    app: AppHandle,
     state: State<'_, SharedState>,
     bombsquad_addr: String,
 ) -> Result<String, String> {
-    let mut s = state.lock().await;
-    if s.server_running {
+    if state.lock().await.server_running {
         return Err("Server already running".into());
     }
-    s.server_running = true;
-    s.bombsquad_addr = Some(bombsquad_addr.clone());
-    drop(s);
+    let listener = websocket_server::bind().await.map_err(|e| {
+        format!("Couldn't open port {} for LAN players ({}). Is another SquadPad already running?", websocket_server::WS_PORT, e)
+    })?;
 
-    let shared = state.inner().clone();
-    tokio::spawn(async move {
-        if let Err(e) = websocket_server::start_server(shared, bombsquad_addr).await {
-            eprintln!("WebSocket server error: {}", e);
-        }
+    let (shutdown_tx, shutdown_rx) = tokio::sync::watch::channel(false);
+    {
+        let mut s = state.lock().await;
+        s.server_running = true;
+        s.server_shutdown = Some(shutdown_tx);
+        s.bombsquad_addr = Some(bombsquad_addr.clone());
+    }
+
+    // Serve the bundled web controller to LAN phones
+    let assets: websocket_server::AssetLookup = Arc::new(move |path: &str| {
+        app.asset_resolver()
+            .get(path.to_string())
+            .map(|asset| (asset.bytes().to_vec(), asset.mime_type().to_string()))
     });
+    let shared = state.inner().clone();
+    tokio::spawn(websocket_server::serve(listener, shared, bombsquad_addr, assets, shutdown_rx));
 
     // Get local IP for display
     let local_ip = local_ip_address::local_ip()
@@ -51,13 +77,30 @@ async fn start_server(
 async fn stop_server(state: State<'_, SharedState>) -> Result<(), String> {
     let mut s = state.lock().await;
     s.server_running = false;
+    if let Some(shutdown) = s.server_shutdown.take() {
+        let _ = shutdown.send(true);
+    }
     Ok(())
 }
 
+#[derive(Serialize)]
+struct HostSnapshot {
+    players: Vec<PlayerInfo>,
+    relay_status: RelayStatus,
+    room_code: Option<String>,
+    /// Activity Log entries since the previous poll
+    events: Vec<HostEvent>,
+}
+
 #[tauri::command]
-async fn get_players(state: State<'_, SharedState>) -> Result<Vec<state::PlayerInfo>, String> {
-    let s = state.lock().await;
-    Ok(s.players.clone())
+async fn get_host_state(state: State<'_, SharedState>) -> Result<HostSnapshot, String> {
+    let mut s = state.lock().await;
+    Ok(HostSnapshot {
+        players: s.players.clone(),
+        relay_status: s.relay_status,
+        room_code: s.online_room_code.clone(),
+        events: std::mem::take(&mut s.events),
+    })
 }
 
 #[tauri::command]
@@ -73,28 +116,13 @@ async fn share_online(
     app_state: State<'_, SharedState>,
     relay_url: String,
 ) -> Result<String, String> {
-    let relay = relay_state.inner().clone();
-    let state = app_state.inner().clone();
-    let room_code = relay_client::connect(relay_url, relay, state).await?;
-    // Store room code in app state
-    {
-        let mut s = app_state.lock().await;
-        s.online_room_code = Some(room_code.clone());
-    }
-    Ok(room_code)
+    let relay_url = std::env::var(RELAY_URL_ENV).unwrap_or(relay_url);
+    relay_client::connect(relay_url, relay_state.inner().clone(), app_state.inner().clone()).await
 }
 
 #[tauri::command]
-async fn stop_sharing(
-    relay_state: State<'_, SharedRelayHandle>,
-    app_state: State<'_, SharedState>,
-) -> Result<(), String> {
-    let relay = relay_state.inner().clone();
-    relay_client::disconnect(relay).await?;
-    {
-        let mut s = app_state.lock().await;
-        s.online_room_code = None;
-    }
+async fn stop_sharing(relay_state: State<'_, SharedRelayHandle>) -> Result<(), String> {
+    relay_client::disconnect(relay_state.inner().clone()).await;
     Ok(())
 }
 
@@ -109,9 +137,10 @@ pub fn run() {
         .manage(relay_state)
         .invoke_handler(tauri::generate_handler![
             discover_games,
+            probe_bombsquad,
             start_server,
             stop_server,
-            get_players,
+            get_host_state,
             kick_player,
             share_online,
             stop_sharing,

@@ -20,14 +20,17 @@ const playerCount = document.getElementById('player-count');
 const playersStep = document.getElementById('step-players');
 const scanBtn = document.getElementById('scan-btn');
 const gamesList = document.getElementById('games-list');
+const bsCheck = document.getElementById('bs-check');
+const relayStatusBadge = document.getElementById('relay-status');
 
 const qrCanvas = document.getElementById('qr-canvas');
 
 let serverRunning = false;
 let sharingOnline = false;
-let knownPlayerIds = new Set();
+let currentRoomCode = null;
 
 const RELAY_URL = 'wss://squadpad-relay.fly.dev';
+const LAN_PORT = 43211;
 
 // Start/stop the WebSocket server
 toggleServerBtn.addEventListener('click', async () => {
@@ -42,7 +45,7 @@ toggleServerBtn.addEventListener('click', async () => {
       toggleServerBtn.disabled = true;
       toggleServerBtn.innerHTML = '<i class="ph-bold ph-spinner"></i> Starting...';
       const url = await invoke('start_server', { bombsquadAddr: addr });
-      addLog(`Server started → ws://${url}`, 'join');
+      addLog(`Server started → http://${url}`, 'join');
       serverRunning = true;
       playLocallyBtn.disabled = false;
       serverStatus.textContent = 'Online';
@@ -51,11 +54,13 @@ toggleServerBtn.addEventListener('click', async () => {
       toggleServerBtn.classList.remove('primary');
       toggleServerBtn.classList.add('danger');
       toggleServerBtn.disabled = false;
-      localUrl.textContent = `ws://${url}`;
+      // Phones on the LAN load the controller from the host itself
+      localUrl.textContent = `http://${url}`;
       serverInfo.hidden = false;
       toggleSharingBtn.disabled = false;
       playersStep.hidden = false;
       startPlayerPolling();
+      checkBombSquad(addr);
     } catch (e) {
       toggleServerBtn.innerHTML = '<i class="ph-bold ph-play"></i> Start Server';
       toggleServerBtn.disabled = false;
@@ -65,14 +70,8 @@ toggleServerBtn.addEventListener('click', async () => {
     try {
       // Stop sharing first if active
       if (sharingOnline) {
-        try { await invoke('stop_sharing'); } catch (_) {}
-        sharingOnline = false;
-        roomInfo.hidden = true;
-        roomCodeValue.textContent = '';
-        toggleSharingBtn.innerHTML = '<i class="ph-bold ph-globe"></i> Go Online';
-        toggleSharingBtn.classList.remove('danger');
-        toggleSharingBtn.classList.add('primary');
-        clearQrCode();
+        await invoke('stop_sharing');
+        resetSharingUI();
       }
       await invoke('stop_server');
       addLog('Server stopped', 'leave');
@@ -85,6 +84,7 @@ toggleServerBtn.addEventListener('click', async () => {
       toggleServerBtn.classList.remove('danger');
       toggleServerBtn.classList.add('primary');
       serverInfo.hidden = true;
+      bsCheck.hidden = true;
       toggleSharingBtn.disabled = true;
       playersStep.hidden = true;
       stopPlayerPolling();
@@ -94,64 +94,100 @@ toggleServerBtn.addEventListener('click', async () => {
   }
 });
 
-// Poll connected players every 2s
+// Ask the backend whether BombSquad answers at the configured address, so a
+// wrong address (or an emulator-hosted BombSquad) shows up before anyone joins.
+async function checkBombSquad(addr) {
+  try {
+    const name = await invoke('probe_bombsquad', { addr });
+    bsCheck.hidden = true;
+    addLog(`Found BombSquad "${name}" at ${addr}`, 'join');
+  } catch (e) {
+    bsCheck.innerHTML = `<strong>BombSquad isn't answering.</strong> ${escapeHtml(String(e))}`;
+    bsCheck.hidden = false;
+    addLog(`BombSquad isn't answering at ${addr}. Players can't join until it does.`, 'error');
+  }
+}
+
+// Poll host state (players, relay status, activity events) every 2s
 let pollInterval = null;
 
 function startPlayerPolling() {
-  pollInterval = setInterval(updatePlayers, 2000);
-  updatePlayers();
+  pollInterval = setInterval(pollHost, 2000);
+  pollHost();
 }
 
 function stopPlayerPolling() {
-  if (pollInterval) clearInterval(pollInterval);
+  clearInterval(pollInterval);
   playersList.innerHTML = '<p class="empty-state">Waiting for players to join...</p>';
   playerCount.textContent = '0';
 }
 
-async function updatePlayers() {
+async function pollHost() {
   if (!invoke) return;
   try {
-    const players = await invoke('get_players');
-    playerCount.textContent = players.length;
-
-    // Detect joins and leaves
-    const currentIds = new Set(players.map(p => p.id));
-    for (const p of players) {
-      if (!knownPlayerIds.has(p.id)) {
-        addLog(`${p.name} joined (${players.length} players)`, 'join');
-      }
-    }
-    for (const id of knownPlayerIds) {
-      if (!currentIds.has(id)) {
-        addLog(`Player left (${players.length} players)`, 'leave');
-      }
-    }
-    knownPlayerIds = currentIds;
-
-    if (players.length === 0) {
-      playersList.innerHTML = '<p class="empty-state">Waiting for players to join...</p>';
-      return;
-    }
-
-    playersList.innerHTML = players.map(p => `
-      <div class="player-row">
-        <span class="player-name">${escapeHtml(p.name)}</span>
-        <span class="player-lag ${lagColor(p.lag_ms)}">${Math.round(p.lag_ms)}ms</span>
-        <button class="kick-btn" data-id="${p.id}" title="Remove player"><i class="ph-bold ph-x"></i></button>
-      </div>
-    `).join('');
-
-    // Attach kick handlers
-    playersList.querySelectorAll('.kick-btn').forEach(btn => {
-      btn.addEventListener('click', async () => {
-        const id = parseInt(btn.dataset.id);
-        await invoke('kick_player', { playerId: id });
-        updatePlayers();
-      });
-    });
+    const snapshot = await invoke('get_host_state');
+    for (const event of snapshot.events) addLog(event.message, event.kind);
+    renderPlayers(snapshot.players);
+    if (sharingOnline) renderRelay(snapshot.relay_status, snapshot.room_code);
   } catch (e) {
-    console.error('Failed to get players:', e);
+    console.error('Failed to poll host state:', e);
   }
+}
+
+function renderPlayers(players) {
+  playerCount.textContent = players.length;
+
+  if (players.length === 0) {
+    playersList.innerHTML = '<p class="empty-state">Waiting for players to join...</p>';
+    return;
+  }
+
+  playersList.innerHTML = players.map(p => `
+    <div class="player-row">
+      <span class="player-name">${escapeHtml(p.name)}</span>
+      <span class="player-lag ${lagColor(p.lag_ms)}">${Math.round(p.lag_ms)}ms</span>
+      <button class="kick-btn" data-id="${p.id}" title="Remove player"><i class="ph-bold ph-x"></i></button>
+    </div>
+  `).join('');
+
+  // Attach kick handlers
+  playersList.querySelectorAll('.kick-btn').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const id = parseInt(btn.dataset.id);
+      await invoke('kick_player', { playerId: id });
+      pollHost();
+    });
+  });
+}
+
+function renderRelay(status, code) {
+  const reconnecting = status === 'reconnecting';
+  relayStatusBadge.textContent = reconnecting ? 'Reconnecting' : 'Online';
+  relayStatusBadge.className = `status-badge ${reconnecting ? 'offline' : 'online'}`;
+  if (code && code !== currentRoomCode) showRoomCode(code);
+}
+
+function showRoomCode(code) {
+  currentRoomCode = code;
+  roomCodeValue.textContent = code;
+  renderQrCode(`https://squadpad.org?room=${code}`, qrCanvas, 160);
+  if (!zoomOverlay.hidden) {
+    zoomCode.textContent = code;
+    renderQrCode(`https://squadpad.org?room=${code}`, zoomQrCanvas, 320);
+  }
+}
+
+function resetSharingUI() {
+  sharingOnline = false;
+  currentRoomCode = null;
+  roomInfo.hidden = true;
+  roomCodeValue.textContent = '';
+  relayStatusBadge.hidden = true;
+  toggleSharingBtn.innerHTML = '<i class="ph-bold ph-globe"></i> Go Online';
+  toggleSharingBtn.classList.remove('danger');
+  toggleSharingBtn.classList.add('primary');
+  toggleSharingBtn.disabled = false;
+  clearQrCode();
 }
 
 // Scan for BombSquad games on LAN
@@ -167,6 +203,10 @@ scanBtn.addEventListener('click', async () => {
     if (games.length === 0) {
       gamesList.innerHTML = `
         <p class="empty-state">No games found on the network.</p>
+        <p class="permission-hint">
+          Start the <strong>desktop version</strong> of BombSquad (Windows, Mac, or Linux) on this computer.
+          BombSquad running in Google Play Games or an Android emulator can't be reached.
+        </p>
         <p class="permission-hint">
           <strong>macOS users:</strong> If you clicked "Don't Allow" on the network permission prompt,
           go to <em>System Settings &gt; Privacy &amp; Security &gt; Local Network</em> and
@@ -214,33 +254,24 @@ toggleSharingBtn.addEventListener('click', async () => {
       toggleSharingBtn.innerHTML = '<i class="ph-bold ph-spinner"></i> Connecting...';
       const roomCode = await invoke('share_online', { relayUrl: RELAY_URL });
       sharingOnline = true;
-      roomCodeValue.textContent = roomCode;
+      showRoomCode(roomCode);
       addLog(`Online: room code "${roomCode}"`, 'relay');
       roomInfo.hidden = false;
+      renderRelay('online', roomCode);
+      relayStatusBadge.hidden = false;
       toggleSharingBtn.innerHTML = '<i class="ph-bold ph-stop"></i> Stop Sharing';
       toggleSharingBtn.classList.remove('primary');
       toggleSharingBtn.classList.add('danger');
       toggleSharingBtn.disabled = false;
-      renderQrCode(`https://squadpad.org?room=${roomCode}`, qrCanvas, 160);
     } catch (e) {
       toggleSharingBtn.innerHTML = '<i class="ph-bold ph-globe"></i> Go Online';
       toggleSharingBtn.disabled = false;
       showError(e);
     }
   } else {
-    try {
-      await invoke('stop_sharing');
-      addLog('Stopped online sharing', 'leave');
-      sharingOnline = false;
-      roomInfo.hidden = true;
-      roomCodeValue.textContent = '';
-      toggleSharingBtn.innerHTML = '<i class="ph-bold ph-globe"></i> Go Online';
-      toggleSharingBtn.classList.remove('danger');
-      toggleSharingBtn.classList.add('primary');
-      clearQrCode();
-    } catch (e) {
-      showError(e);
-    }
+    await invoke('stop_sharing');
+    addLog('Stopped online sharing', 'leave');
+    resetSharingUI();
   }
 });
 
@@ -354,6 +385,7 @@ function escapeHtml(str) {
 
 function showError(msg) {
   console.error(msg);
+  addLog(String(msg), 'error');
 }
 
 function showFallback() {
@@ -401,9 +433,8 @@ playLocallyBtn.addEventListener('click', () => {
     hapticsEnabled: true,
   });
 
-  // Auto-connect to local WebSocket server
-  const wsUrl = localUrl.textContent || 'ws://localhost:43211';
-  controllerInstance.connection.connect(wsUrl, 'Host');
+  // Auto-connect to the local server over loopback
+  controllerInstance.connection.connect(`ws://127.0.0.1:${LAN_PORT}`, 'Host');
 });
 
 function backToDashboard() {

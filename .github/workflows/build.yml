@@ -39,6 +39,10 @@ jobs:
         with:
           targets: ${{ matrix.target }}
       - run: cd web && npm install
+      - name: Rust unit tests
+        # The x86_64 macOS job cross-compiles on an ARM runner, so tests can't run there
+        if: matrix.target != 'x86_64-apple-darwin'
+        run: cargo test --lib --manifest-path web/src-tauri/Cargo.toml
       - uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

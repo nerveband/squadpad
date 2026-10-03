@@ -19,6 +19,9 @@ pub const MSG_GAME_QUERY: u8 = 8;
 pub const MSG_GAME_RESPONSE: u8 = 9;
 pub const MSG_STATE2: u8 = 10;
 
+// RemoteError codes BombSquad sends in a MSG_DISCONNECT reply to an ID request
+pub const REMOTE_ERROR_VERSION_MISMATCH: u8 = 0;
+
 /// Build a 1-byte game discovery query packet.
 pub fn build_game_query() -> Vec<u8> {
     vec![MSG_GAME_QUERY]
@@ -60,6 +63,16 @@ pub fn build_disconnect(player_id: u8) -> Vec<u8> {
 pub fn decode_id_response(data: &[u8]) -> Option<(u8, bool)> {
     if data.len() >= 3 && data[0] == MSG_ID_RESPONSE {
         Some((data[1], data[2] == V2_RESPONSE_FLAG))
+    } else {
+        None
+    }
+}
+
+/// Decode a disconnect packet (BombSquad's way of refusing a controller).
+/// Returns the RemoteError code.
+pub fn decode_disconnect(data: &[u8]) -> Option<u8> {
+    if data.len() >= 2 && data[0] == MSG_DISCONNECT {
+        Some(data[1])
     } else {
         None
     }

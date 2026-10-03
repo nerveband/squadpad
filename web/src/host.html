@@ -12,7 +12,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/style.css?v=0.3.1">
+  <link rel="stylesheet" href="css/style.css?v=0.4.0">
   <link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/bold/style.css">
   <script defer src="https://stats.wavedepth.com/script.js" data-website-id="72386a8a-fd30-462b-9a93-1070410b3abc"></script>
 </head>
@@ -45,7 +45,8 @@
           </div>
 
           <div id="games-list" class="games-list"></div>
-          <p class="step-hint"><i class="ph-bold ph-info"></i> Usually just leave it as "localhost" if BombSquad is on this computer.</p>
+          <p class="step-hint"><i class="ph-bold ph-info"></i> Usually just leave it as "localhost" if BombSquad is on this computer. Use the desktop version of BombSquad: the Google Play Games / Android emulator version can't accept controllers.</p>
+          <p id="bs-check" class="permission-hint" role="status" hidden></p>
         </div>
       </section>
 
@@ -62,8 +63,9 @@
           </div>
 
           <div id="server-info" class="step-result" hidden>
-            <p><i class="ph-bold ph-check-circle"></i> Server running! LAN players can connect at:</p>
+            <p><i class="ph-bold ph-check-circle"></i> Server running! Players on the same Wi-Fi can open:</p>
             <code id="local-url" class="url-display"></code>
+            <p class="step-hint"><i class="ph-bold ph-info"></i> If phones can't open it, allow SquadPad through your firewall (on Windows, for Private and Public networks).</p>
           </div>
         </div>
       </section>
@@ -77,6 +79,7 @@
 
           <div class="step-actions">
             <button id="toggle-sharing" class="dash-btn primary" disabled><i class="ph-bold ph-globe"></i> Go Online</button>
+            <span id="relay-status" class="status-badge online" hidden>Online</span>
           </div>
 
           <div id="room-info" class="step-result" hidden>

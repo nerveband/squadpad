@@ -59,18 +59,43 @@ updateHapticsUI();
 // ============================================================
 // Initialize shared controller UI module
 // ============================================================
-// Map relay error reasons to user-friendly messages
-function getErrorMessage(msg) {
-  switch (msg.reason) {
+// Map connection error reasons to user-friendly messages
+function getErrorMessage(info) {
+  switch (info.reason) {
     case 'not_found':
-      return 'Room not found. Check the code and try again.';
+      return 'Room not found. Check the code, or ask the host to click Go Online again.';
     case 'room_full':
-      return `Room is full (${msg.playerCount || 7}/${msg.playerCount || 7} players). Ask someone to leave and try again.`;
+      return `Room is full (${info.playerCount || 8}/${info.playerCount || 8} players). Ask someone to leave and try again.`;
     case 'rate_limited':
       return 'Too many attempts. Wait a minute and try again.';
+    case 'bombsquad_unreachable':
+      return `You reached the host, but their SquadPad app can't reach BombSquad${info.detail ? ` at ${info.detail}` : ''}. `
+        + 'The host needs the desktop version of BombSquad (Windows, Mac, or Linux) running on the same computer. '
+        + 'BombSquad running in Google Play Games or an Android emulator can\'t accept controllers.';
+    case 'bombsquad_refused':
+      return 'BombSquad turned the controller away. On the host, make sure the Remote App setting isn\'t disabled in BombSquad\'s controller settings.';
+    case 'bombsquad_version':
+      return 'The host\'s BombSquad version doesn\'t accept SquadPad controllers.';
+    case 'host_timeout':
+      return 'The host didn\'t respond. Ask them to restart sharing in the SquadPad app, or update it to the latest version.';
+    case 'host_left':
+      return 'The host has left the game.';
+    case 'blocked':
+      return 'Your browser blocked this connection.';
     default:
-      return msg.message || 'Connection error.';
+      return info.detail || 'Connection error.';
   }
+}
+
+const STATUS_TEXT = {
+  connecting: 'Connecting...',
+  joining: 'Joining room...',
+  waiting_for_host: 'Waiting for the host to add you to BombSquad...',
+};
+
+function resetJoinButtons() {
+  joinBtn.disabled = false;
+  joinLanBtn.disabled = false;
 }
 
 const { controller, connection, setHaptics } = initControllerUI({
@@ -87,44 +112,34 @@ const { controller, connection, setHaptics } = initControllerUI({
 
   onConnect: () => {
     setStatus('');
-    joinBtn.disabled = false;
+    resetJoinButtons();
     showController();
   },
 
+  onStatus: (stage) => {
+    if (STATUS_TEXT[stage]) setStatus(STATUS_TEXT[stage]);
+  },
+
+  onError: (info) => {
+    resetJoinButtons();
+    showConnect();
+    setStatus(getErrorMessage(info), true);
+  },
+
   onDisconnect: () => {
-    joinBtn.disabled = false;
-    if (document.getElementById('join-lan-btn')) document.getElementById('join-lan-btn').disabled = false;
+    resetJoinButtons();
     showConnect();
     setStatus('Disconnected. Try again.', true);
   },
 
-  onReconnecting: (attempt) => {
-    setStatus(`Reconnecting (${attempt}/5)...`);
+  onReconnecting: (attempt, maxAttempts) => {
+    setStatus(`Reconnecting (${attempt}/${maxAttempts})...`);
   },
 
   onReconnectFailed: () => {
     showConnect();
     setStatus('Connection lost. Tap Join to try again.', true);
-    joinBtn.disabled = false;
-  },
-
-  onMessage: (data) => {
-    if (typeof data === 'string') {
-      try {
-        const msg = JSON.parse(data);
-        if (msg.type === 'error') {
-          setStatus(getErrorMessage(msg), true);
-          joinBtn.disabled = false;
-          connection.disconnect();
-          showConnect();
-        }
-        if (msg.type === 'host_left') {
-          setStatus('The host has left the game.', true);
-          joinBtn.disabled = false;
-          showConnect();
-        }
-      } catch { /* ignore non-JSON */ }
-    }
+    resetJoinButtons();
   },
 });
 
@@ -231,19 +246,35 @@ document.getElementById('hud').addEventListener('touchend', (e) => {
 });
 
 // LAN Join button
+const LAN_PORT = 43211;
 const joinLanBtn = document.getElementById('join-lan-btn');
 const lanAddressInput = document.getElementById('lan-address');
 
 joinLanBtn.addEventListener('click', () => {
-  const addr = lanAddressInput.value.trim();
+  // Accept "192.168.1.20", "192.168.1.20:43211", or a pasted ws:// / http:// URL
+  const addr = lanAddressInput.value.trim().replace(/^[a-z]+:\/\//i, '').replace(/\/.*$/, '');
   if (!addr) {
     setStatus('Please enter the host IP address.', true);
     return;
   }
+  const hostPort = addr.includes(':') ? addr : `${addr}:${LAN_PORT}`;
+  const name = playerNameInput.value.trim();
+
+  // Browsers block insecure ws:// connections from an https page like
+  // squadpad.org. The host app serves this controller over plain http on the
+  // LAN, so continue from there.
+  if (window.location.protocol === 'https:') {
+    const lanUrl = new URL(`http://${hostPort}/`);
+    lanUrl.searchParams.set('lan', '1');
+    if (name) lanUrl.searchParams.set('name', name);
+    setStatus(`Opening the controller from your host at ${hostPort}...`);
+    window.location.href = lanUrl.toString();
+    return;
+  }
+
   setStatus('Connecting...');
   joinLanBtn.disabled = true;
-  const wsUrl = addr.startsWith('ws') ? addr : `ws://${addr}`;
-  connection.connect(wsUrl, playerNameInput.value.trim());
+  connection.connect(`ws://${hostPort}`, name);
 });
 
 // ============================================================
@@ -510,21 +541,30 @@ function formatTimeAgo(ts) {
 renderHistory();
 
 // ============================================================
-// Deep Link: ?room=XXXX-XXXX skips role picker
+// Deep Links: ?room=word+word skips role picker,
+// ?lan=1 means this page is served by a SquadPad host on the LAN
 // ============================================================
 const params = new URLSearchParams(window.location.search);
 const deepRoom = params.get('room');
 const deepName = params.get('name');
-if (deepRoom) {
+if (deepName) {
+  playerNameInput.value = deepName;
+  localStorage.setItem('squadpad_player_name', deepName);
+  updatePlayerNameDisplay();
+}
+if (params.has('lan')) {
+  rolePicker.hidden = true;
+  playerFlow.hidden = false;
+  document.getElementById('room-code-section').hidden = true;
+  document.getElementById('lan-section').open = true;
+  lanAddressInput.value = window.location.host;
+  joinLanBtn.focus();
+} else if (deepRoom) {
   rolePicker.hidden = true;
   playerFlow.hidden = false;
   const parts = deepRoom.toLowerCase().split(/[\s+\-]/);
   roomWord1.value = parts[0] || '';
   roomWord2.value = parts[1] || '';
-  if (deepName) {
-    playerNameInput.value = deepName;
-    localStorage.setItem('squadpad_player_name', deepName);
-  }
   roomWord2.focus();
 }
 
