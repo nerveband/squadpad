@@ -33,7 +33,7 @@ You can remap keys in Settings (gear icon).
 The host runs a small desktop app alongside BombSquad on the same machine. It bridges browser controllers to the game over UDP.
 
 1. Download SquadPad from the [Releases](https://github.com/nerveband/squadpad/releases) page (macOS or Windows).
-2. Start BombSquad on your computer.
+2. Start BombSquad on your computer. For Windows, get the native game from the official [Ballistica downloads page](https://www.ballistica.net/downloads): under **Test Builds**, choose `BombSquad_Windows_<version>.zip` (not `BombSquad_Server_Windows_<version>.zip`). Extract the entire ZIP and run `BombSquad.exe` inside the extracted folder. These are development/test builds, not stable releases. Keep the game open alongside SquadPad; Google Play Games runs the Android version in a separate virtual network.
 3. Open SquadPad. It goes straight to the Host Dashboard.
 4. Click **Start Server** to accept player connections.
 5. Click **Go Online** to get a room code.
@@ -45,6 +45,7 @@ Players on the same Wi-Fi can also skip the room code: they open the `http://<yo
 
 ### Troubleshooting
 
+- **Can't find the Windows game.** Use the official [Ballistica downloads page](https://www.ballistica.net/downloads), not Steam or the older froemling.net page. Choose the Windows ZIP under **Test Builds**, extract all files, and run `BombSquad.exe`. The **Server Builds** section is for headless servers, not the playable game.
 - **A player's phone says "can't reach BombSquad".** The player reached your SquadPad app, but SquadPad couldn't hand them to BombSquad. Run the desktop version of BombSquad (Windows, Mac, or Linux) on the same computer as SquadPad. BombSquad running inside Google Play Games or an Android emulator lives in its own virtual network and can't accept controllers.
 - **"BombSquad turned the controller away".** Make sure the Remote App setting isn't disabled in BombSquad's controller settings.
 - **Phones can't open the LAN address.** Allow SquadPad through your firewall. On Windows, allow it for both Private and Public networks.
