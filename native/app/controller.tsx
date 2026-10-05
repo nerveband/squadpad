@@ -237,7 +237,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   nameModalBackdrop: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     backgroundColor: 'rgba(0,0,0,0.6)',
   },
   nameModalCard: {

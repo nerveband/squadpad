@@ -149,7 +149,7 @@ export class WsConnection {
     if (pending.length === 0) return;
 
     const packet = buildStatePacket(this.playerId, pending, this.ackIndex);
-    this.ws.send(packet.buffer);
+    this.ws.send(packet);
     this.lastSendTime = Date.now();
   }
 

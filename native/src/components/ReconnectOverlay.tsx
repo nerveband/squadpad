@@ -28,7 +28,7 @@ export function ReconnectOverlay({ visible, attempt, maxAttempts }: ReconnectOve
 
 const styles = StyleSheet.create({
   overlay: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     backgroundColor: 'rgba(13,11,26,0.85)',
     alignItems: 'center',
     justifyContent: 'center',

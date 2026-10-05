@@ -289,7 +289,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.bgDeep,
   },
   bgGradient: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
   },
   safe: {
     flex: 1,

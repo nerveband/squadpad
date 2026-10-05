@@ -1,4 +1,4 @@
-import { requireNativeModule, EventEmitter } from 'expo-modules-core';
+import { NativeModule, requireNativeModule } from 'expo-modules-core';
 
 interface ControllerInfo {
   id: string;
@@ -17,12 +17,17 @@ interface GamepadInputEvent {
   rightTrigger: number;
 }
 
-const ExpoGamepadNative = requireNativeModule<{
-  getConnectedControllers(): ControllerInfo[];
-}>('ExpoGamepad');
+type ExpoGamepadEvents = {
+  onControllerConnected(controller: ControllerInfo): void;
+  onControllerDisconnected(event: { id: string }): void;
+  onGamepadInput(event: GamepadInputEvent): void;
+};
 
-// @ts-expect-error - EventEmitter typing
-const emitter = new EventEmitter(ExpoGamepadNative);
+declare class ExpoGamepadNativeModule extends NativeModule<ExpoGamepadEvents> {
+  getConnectedControllers(): ControllerInfo[];
+}
+
+const ExpoGamepadNative = requireNativeModule<ExpoGamepadNativeModule>('ExpoGamepad');
 
 export const GamepadManager = {
   getConnectedControllers(): ControllerInfo[] {
@@ -30,19 +35,14 @@ export const GamepadManager = {
   },
 
   onControllerConnected(callback: (controller: ControllerInfo) => void) {
-    // @ts-expect-error - event name typing
-    return emitter.addListener('onControllerConnected', callback);
+    return ExpoGamepadNative.addListener('onControllerConnected', callback);
   },
 
   onControllerDisconnected(callback: (controllerId: string) => void) {
-    // @ts-expect-error - event name typing
-    return emitter.addListener('onControllerDisconnected', (event: { id: string }) => {
-      callback(event.id);
-    });
+    return ExpoGamepadNative.addListener('onControllerDisconnected', (event) => callback(event.id));
   },
 
   onInput(callback: (event: GamepadInputEvent) => void) {
-    // @ts-expect-error - event name typing
-    return emitter.addListener('onGamepadInput', callback);
+    return ExpoGamepadNative.addListener('onGamepadInput', callback);
   },
 };

@@ -171,7 +171,7 @@ const styles = StyleSheet.create({
     elevation: 8,
   },
   thumbGradient: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     borderRadius: THUMB_SIZE / 2,
   },
 });

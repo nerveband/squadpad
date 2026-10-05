@@ -4,8 +4,7 @@
   "private": true,
   "workspaces": [
     "web",
-    "relay",
-    "native"
+    "relay"
   ],
   "scripts": {
     "dev:web": "cd web && npx serve src --listen 3000",

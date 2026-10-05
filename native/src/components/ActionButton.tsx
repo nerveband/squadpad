@@ -78,7 +78,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   glow: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     borderRadius: BUTTON_SIZE / 2,
     shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 0.45,
@@ -99,7 +99,7 @@ const styles = StyleSheet.create({
     elevation: 8,
   },
   gradient: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     borderRadius: BUTTON_SIZE / 2,
   },
   shine: {
@@ -112,18 +112,18 @@ const styles = StyleSheet.create({
     borderTopRightRadius: BUTTON_SIZE / 2,
   },
   brightnessOverlay: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     backgroundColor: 'rgba(255,255,255,0.4)',
     borderRadius: BUTTON_SIZE / 2,
   },
   insetGlow: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     borderRadius: BUTTON_SIZE / 2,
     borderWidth: 3,
     borderColor: 'rgba(255,255,255,0.22)',
   },
   iconContainer: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     alignItems: 'center',
     justifyContent: 'center',
   },

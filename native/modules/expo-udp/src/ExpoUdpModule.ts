@@ -1,26 +1,31 @@
-import { requireNativeModule, EventEmitter } from 'expo-modules-core';
+import { NativeModule, requireNativeModule, type EventSubscription } from 'expo-modules-core';
 
 interface UdpMessageEvent {
+  socketId: number;
   data: number[];
   address: string;
   port: number;
 }
 
-const ExpoUdpNative = requireNativeModule<{
+type ExpoUdpEvents = {
+  onUdpMessage(event: UdpMessageEvent): void;
+};
+
+declare class ExpoUdpNativeModule extends NativeModule<ExpoUdpEvents> {
   createSocket(port: number): Promise<number>;
   setBroadcast(socketId: number, enabled: boolean): void;
+  /** Bytes sent, or a negative value on failure. */
   send(socketId: number, data: number[], address: string, port: number): number;
   closeSocket(socketId: number): void;
   diagnostics(socketId: number): Record<string, unknown>;
   getBroadcastAddress(): string | null;
-}>('ExpoUdp');
+}
 
-// @ts-expect-error - EventEmitter typing is overly strict for native modules
-const emitter = new EventEmitter(ExpoUdpNative);
+const ExpoUdpNative = requireNativeModule<ExpoUdpNativeModule>('ExpoUdp');
 
 export class UdpSocket {
   private socketId: number = -1;
-  private listener: { remove: () => void } | null = null;
+  private listener: EventSubscription | null = null;
 
   async bind(port: number = 0): Promise<number> {
     this.socketId = await ExpoUdpNative.createSocket(port);
@@ -38,9 +43,9 @@ export class UdpSocket {
   }
 
   onMessage(callback: (data: Uint8Array, address: string, port: number) => void): void {
-    // @ts-expect-error - event name typing
-    this.listener = emitter.addListener('onUdpMessage', (event: UdpMessageEvent) => {
-      if (event.data) {
+    this.listener?.remove();
+    this.listener = ExpoUdpNative.addListener('onUdpMessage', (event) => {
+      if (event.socketId === this.socketId && event.data) {
         callback(new Uint8Array(event.data), event.address, event.port);
       }
     });
