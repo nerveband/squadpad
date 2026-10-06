@@ -1,22 +1,20 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { Discovery, DiscoveredGame } from '../connection/discovery';
 
-export function useDiscovery() {
+/** Scans the LAN for BombSquad hosts while `enabled` (the home screen is focused). */
+export function useDiscovery(enabled: boolean) {
   const [games, setGames] = useState<DiscoveredGame[]>([]);
   const [scanning, setScanning] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const discoveryRef = useRef<Discovery | null>(null);
 
   useEffect(() => {
-    const discovery = new Discovery((found) => {
-      setGames([...found]);
-    });
-    discoveryRef.current = discovery;
+    if (!enabled) return;
+
+    const discovery = new Discovery((found) => setGames([...found]));
+    setError(null);
     setScanning(true);
 
-    discovery.start().then(() => {
-      console.log('[Discovery] Started scanning on port', 43210);
-    }).catch((err) => {
+    discovery.start().catch((err) => {
       console.error('[Discovery] Failed to start:', err);
       setError(`Discovery failed: ${err?.message || String(err)}`);
       setScanning(false);
@@ -25,8 +23,9 @@ export function useDiscovery() {
     return () => {
       discovery.stop();
       setScanning(false);
+      setGames([]);
     };
-  }, []);
+  }, [enabled]);
 
   return { games, scanning, error };
 }

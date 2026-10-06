@@ -6,7 +6,7 @@ export interface InputState {
   v: number;
 }
 
-type ButtonName = 'menu' | 'jump' | 'punch' | 'throw' | 'bomb' | 'run';
+export type ButtonName = 'menu' | 'jump' | 'punch' | 'throw' | 'bomb' | 'run';
 
 const BUTTON_MAP: Record<ButtonName, number> = {
   menu:  BTN.MENU,

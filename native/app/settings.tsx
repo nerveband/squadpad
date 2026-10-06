@@ -198,7 +198,15 @@ export default function SettingsScreen() {
                 Ashraf
               </Text>
             </Text>
-            <Text style={styles.aboutDim}>squadpad.org</Text>
+            <Text style={styles.aboutLink} onPress={() => Linking.openURL('https://squadpad.org')}>
+              squadpad.org
+            </Text>
+            <Text
+              style={[styles.aboutLink, { marginTop: Spacing.sm }]}
+              onPress={() => Linking.openURL('https://squadpad.org/privacy.html')}
+            >
+              Privacy Policy
+            </Text>
             <Text
               style={[styles.aboutLink, { marginTop: Spacing.sm }]}
               onPress={() => Linking.openURL('https://github.com/nerveband/squadpad')}

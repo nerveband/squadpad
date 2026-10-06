@@ -3,23 +3,34 @@ import { WsConnection } from './ws-connection';
 import type { ControllerInput } from '../protocol/encoder';
 import { PORT } from '../protocol/constants';
 
-export type ConnectionStatus = 'disconnected' | 'connecting' | 'connected' | 'reconnecting';
+/** Progress before the player is in the game. */
+export type ConnectionStage = 'connecting' | 'joining' | 'waiting_for_host';
+
+/** Why a connection ended for good. Reasons match web/src/js/ui.js where they overlap. */
+export interface ConnectionFailure {
+  reason: string;
+  detail?: string;
+  playerCount?: number;
+}
+
+export type ConnectionStatus =
+  | { kind: 'idle' }
+  | { kind: 'connecting'; stage: ConnectionStage }
+  | { kind: 'connected' }
+  | { kind: 'reconnecting'; attempt: number; maxAttempts: number }
+  | { kind: 'failed'; failure: ConnectionFailure };
 
 export interface ConnectionEvents {
   onStatusChange: (status: ConnectionStatus) => void;
   onLagUpdate: (ms: number) => void;
-  onError: (message: string) => void;
 }
 
 export class ConnectionManager {
   private udpConnection: UdpConnection | null = null;
   private wsConnection: WsConnection | null = null;
-  private events: ConnectionEvents;
-  private _status: ConnectionStatus = 'disconnected';
+  private _status: ConnectionStatus = { kind: 'idle' };
 
-  constructor(events: ConnectionEvents) {
-    this.events = events;
-  }
+  constructor(private events: ConnectionEvents) {}
 
   get status(): ConnectionStatus {
     return this._status;
@@ -27,34 +38,37 @@ export class ConnectionManager {
 
   async connectLan(host: string, playerName: string, port: number = PORT): Promise<void> {
     this.disconnect();
-    this.setStatus('connecting');
+    this.setStatus({ kind: 'connecting', stage: 'connecting' });
 
-    this.udpConnection = new UdpConnection(host, port, {
-      onConnect: () => this.setStatus('connected'),
-      onDisconnect: () => this.setStatus('disconnected'),
+    const udp = new UdpConnection(host, port, {
+      onConnect: () => this.setStatus({ kind: 'connected' }),
+      onFailure: (failure) => this.setStatus({ kind: 'failed', failure }),
       onLagUpdate: (ms) => this.events.onLagUpdate(ms),
     });
+    this.udpConnection = udp;
 
-    await this.udpConnection.connect(playerName);
+    try {
+      await udp.connect(playerName);
+    } catch (err) {
+      if (this.udpConnection === udp) {
+        this.setStatus({ kind: 'failed', failure: { reason: 'socket_error', detail: String(err) } });
+      }
+    }
   }
 
   connectRelay(relayUrl: string, roomCode: string, playerName: string): void {
     this.disconnect();
-    this.setStatus('connecting');
 
-    this.wsConnection = new WsConnection(relayUrl, roomCode, playerName, {
-      onConnect: () => this.setStatus('connected'),
-      onDisconnect: () => this.setStatus('disconnected'),
-      onReconnecting: () => this.setStatus('reconnecting'),
+    const ws = new WsConnection(relayUrl, roomCode, playerName, {
+      onStage: (stage) => this.setStatus({ kind: 'connecting', stage }),
+      onConnect: () => this.setStatus({ kind: 'connected' }),
+      onReconnecting: (attempt, maxAttempts) => this.setStatus({ kind: 'reconnecting', attempt, maxAttempts }),
+      onFailure: (failure) => this.setStatus({ kind: 'failed', failure }),
+      onDisconnect: () => this.setStatus({ kind: 'idle' }),
       onLagUpdate: (ms) => this.events.onLagUpdate(ms),
-      onError: (msg) => this.events.onError(msg),
     });
-
-    this.wsConnection.connect();
-  }
-
-  connectDirect(wsUrl: string, playerName: string): void {
-    this.connectRelay(wsUrl, '', playerName);
+    this.wsConnection = ws;
+    ws.connect();
   }
 
   sendState(input: ControllerInput): void {
@@ -66,15 +80,11 @@ export class ConnectionManager {
   }
 
   disconnect(): void {
-    if (this.udpConnection) {
-      this.udpConnection.disconnect();
-      this.udpConnection = null;
-    }
-    if (this.wsConnection) {
-      this.wsConnection.disconnect();
-      this.wsConnection = null;
-    }
-    this.setStatus('disconnected');
+    this.udpConnection?.disconnect();
+    this.udpConnection = null;
+    this.wsConnection?.disconnect();
+    this.wsConnection = null;
+    this.setStatus({ kind: 'idle' });
   }
 
   private setStatus(status: ConnectionStatus): void {

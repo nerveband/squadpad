@@ -40,13 +40,19 @@ export class Discovery {
       console.warn('[Discovery] Could not detect broadcast address, falling back to 255.255.255.255');
     }
 
-    this.socket = new UdpSocket();
-    const socketId = await this.socket.bind(0);
+    const socket = new UdpSocket();
+    this.socket = socket;
+    const socketId = await socket.bind(0);
+    if (!this.running || this.socket !== socket) {
+      // stop() ran while bind was in flight
+      socket.close();
+      return;
+    }
     console.log('[Discovery] Socket bound, id:', socketId);
 
-    this.socket.setBroadcast(true);
+    socket.setBroadcast(true);
 
-    this.socket.onMessage((data, address, port) => {
+    socket.onMessage((data, address, port) => {
       if (data.length > 0 && data[0] === MSG.GAME_RESPONSE) {
         const gameName = decodeGameResponse(data);
         const key = `${address}:${port}`;
@@ -73,9 +79,8 @@ export class Discovery {
 
     // Log diagnostics after 5 seconds
     setTimeout(() => {
-      if (this.socket) {
-        const diag = this.socket.diagnostics();
-        console.log('[Discovery] Diagnostics:', JSON.stringify(diag));
+      if (this.socket === socket) {
+        console.log('[Discovery] Diagnostics:', JSON.stringify(socket.diagnostics()));
       }
     }, 5000);
   }

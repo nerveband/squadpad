@@ -80,7 +80,7 @@
   <main class="container">
     <a href="index.html" class="back-link">&larr; Back to SquadPad</a>
     <h1>Privacy Policy</h1>
-    <p class="subtitle">Last updated: March 5, 2026</p>
+    <p class="subtitle">Last updated: October 5, 2026</p>
 
     <h2>What SquadPad collects</h2>
     <p>SquadPad is designed to be privacy-friendly. We collect minimal data to understand how the site is used and to keep things running smoothly.</p>
@@ -96,16 +96,23 @@
     <p>Analytics data is hosted on our own server at stats.wavedepth.com. No data is shared with third parties.</p>
 
     <h2>Cloud Relay</h2>
-    <p>When you play online, your browser connects to our cloud relay server to exchange controller inputs with the game host. The relay:</p>
+    <p>When you play online, the SquadPad website or app connects to our cloud relay server to exchange controller inputs with the game host. The relay:</p>
     <ul>
-      <li>Temporarily holds your connection while you play (room code, player name, IP address for rate limiting)</li>
-      <li>Forwards only binary controller data (joystick position, button presses) between you and the host</li>
-      <li>Deletes all data when you disconnect or the room closes</li>
-      <li>Does not log or store gameplay data</li>
+      <li>Holds your connection while you play (room code, player name, and IP address, which is used for rate limiting)</li>
+      <li>Forwards only controller data (joystick position, button presses) between you and the host</li>
+      <li>Keeps nothing about a room once it closes</li>
+      <li>Writes connection events (room code, player name, IP address, time) to server logs, which we use to troubleshoot and prevent abuse. It does not log gameplay data.</li>
+    </ul>
+
+    <h2>Mobile app</h2>
+    <p>The SquadPad app for iPhone and Android collects no analytics and has no ads or tracking.</p>
+    <ul>
+      <li><strong>Local network:</strong> the app uses your Wi-Fi network to find BombSquad games and to send your controller input directly to them. In this mode nothing leaves your local network.</li>
+      <li><strong>Online play:</strong> joining with a room code uses the cloud relay described above.</li>
     </ul>
 
     <h2>Local storage</h2>
-    <p>SquadPad saves your preferences (player name, key bindings, haptics setting, recent room codes) in your browser's localStorage. This data never leaves your device.</p>
+    <p>SquadPad saves your preferences (player name, controller and haptics settings, recent room codes) on your device: in your browser's localStorage on the web, and in app storage in the mobile app. This data never leaves your device.</p>
 
     <h2>No accounts, no cookies</h2>
     <p>SquadPad does not require sign-up, does not set cookies, and does not use any third-party tracking or advertising.</p>

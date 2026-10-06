@@ -1,6 +1,8 @@
 import { useRef, useState, useEffect, useCallback } from 'react';
-import { ControllerState } from '../controller/controller-state';
+import { ControllerState, type ButtonName } from '../controller/controller-state';
 import { ConnectionManager } from '../connection/connection-manager';
+
+const KEEPALIVE_INTERVAL = 1000;
 
 interface UseControllerOptions {
   connectionManager: ConnectionManager;
@@ -10,36 +12,29 @@ export function useController({ connectionManager }: UseControllerOptions) {
   const controllerRef = useRef(new ControllerState());
   const [lagMs, setLagMs] = useState<number | null>(null);
   const lagBufferRef = useRef<number[]>([]);
-  const lagTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const lagTimerRef = useRef<number | null>(null);
   const [connected, setConnected] = useState(false);
   const [connectTime, setConnectTime] = useState('0:00');
   const connectStartRef = useRef<number | null>(null);
-  const debugCountRef = useRef(0);
 
   // Send state on change
   useEffect(() => {
     const controller = controllerRef.current;
-    controller.onChange = (state) => {
-      connectionManager.sendState(state);
-      // Log every 20th state change to avoid spam
-      debugCountRef.current++;
-      if (debugCountRef.current % 20 === 1) {
-        console.log(`[Controller] state: btns=0x${state.buttons.toString(16)} h=${state.h} v=${state.v}`);
-      }
-    };
+    controller.onChange = (state) => connectionManager.sendState(state);
     return () => {
       controller.onChange = null;
     };
   }, [connectionManager]);
 
-  // Keepalive: resend current state every 100ms
+  // Keepalive: input changes are sent immediately; while idle, repeat the
+  // current state once a second so the host keeps the player and acks keep
+  // flowing (the LAN watchdog treats 6 s of silence as a lost connection).
   useEffect(() => {
     const interval = setInterval(() => {
-      if (connectionManager.status === 'connected') {
-        const state = controllerRef.current.getState();
-        connectionManager.sendState(state);
+      if (connectionManager.status.kind === 'connected') {
+        connectionManager.sendState(controllerRef.current.getState());
       }
-    }, 100);
+    }, KEEPALIVE_INTERVAL);
     return () => clearInterval(interval);
   }, [connectionManager]);
 
@@ -75,23 +70,20 @@ export function useController({ connectionManager }: UseControllerOptions) {
     controllerRef.current.setJoystick(x, y);
   }, []);
 
-  const pressButton = useCallback((name: string) => {
-    console.log(`[Controller] press: ${name}`);
-    controllerRef.current.pressButton(name as any);
+  const pressButton = useCallback((name: ButtonName) => {
+    controllerRef.current.pressButton(name);
   }, []);
 
-  const releaseButton = useCallback((name: string) => {
-    controllerRef.current.releaseButton(name as any);
+  const releaseButton = useCallback((name: ButtonName) => {
+    controllerRef.current.releaseButton(name);
   }, []);
 
   const markConnected = useCallback(() => {
-    console.log('[Controller] Connected');
     setConnected(true);
     connectStartRef.current = Date.now();
   }, []);
 
   const markDisconnected = useCallback(() => {
-    console.log('[Controller] Disconnected');
     setConnected(false);
     connectStartRef.current = null;
     setConnectTime('0:00');

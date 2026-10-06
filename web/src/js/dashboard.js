@@ -54,8 +54,9 @@ toggleServerBtn.addEventListener('click', async () => {
       toggleServerBtn.classList.remove('primary');
       toggleServerBtn.classList.add('danger');
       toggleServerBtn.disabled = false;
-      // Phones on the LAN load the controller from the host itself
-      localUrl.textContent = `http://${url}`;
+      // Phones on the LAN load the controller from the host itself; ?lan=1
+      // opens the page straight into LAN join mode (see ui.js deep links).
+      localUrl.textContent = `http://${url}/?lan=1`;
       serverInfo.hidden = false;
       toggleSharingBtn.disabled = false;
       playersStep.hidden = false;

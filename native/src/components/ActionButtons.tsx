@@ -4,7 +4,8 @@ import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, { useSharedValue, withSpring, withTiming, runOnJS } from 'react-native-reanimated';
 import { ArrowUp, HandFist, FireSimple, ArrowsOutSimple } from 'phosphor-react-native';
 import { ButtonVisual, ActionButtonConfig, BUTTON_SIZE } from './ActionButton';
-import { playHaptic } from '../controller/haptics';
+import { playHaptic, type HapticIntensity } from '../controller/haptics';
+import type { ButtonName } from '../controller/controller-state';
 import { Colors } from '../theme/colors';
 
 const BUTTON_GAP = 14;
@@ -69,12 +70,13 @@ function useButtonAnim() {
 }
 
 interface ActionButtonsProps {
-  onPressIn: (name: string) => void;
-  onPressOut: (name: string) => void;
-  hapticsEnabled?: boolean;
+  onPressIn: (name: ButtonName) => void;
+  onPressOut: (name: ButtonName) => void;
+  hapticsEnabled: boolean;
+  hapticIntensity: HapticIntensity;
 }
 
-export function ActionButtons({ onPressIn, onPressOut, hapticsEnabled = true }: ActionButtonsProps) {
+export function ActionButtons({ onPressIn, onPressOut, hapticsEnabled, hapticIntensity }: ActionButtonsProps) {
   const b0 = useButtonAnim(); // throw (top)
   const b1 = useButtonAnim(); // punch (left)
   const b2 = useButtonAnim(); // bomb  (right)
@@ -91,10 +93,10 @@ export function ActionButtons({ onPressIn, onPressOut, hapticsEnabled = true }: 
     const presseds = [b0.pressed, b1.pressed, b2.pressed, b3.pressed];
     scales[zone].value = withSpring(0.85, { damping: 15, stiffness: 400 });
     presseds[zone].value = withTiming(1, { duration: 50 });
-    playHaptic(BUTTON_NAMES[zone], hapticsEnabled, 'medium');
+    playHaptic(BUTTON_NAMES[zone], hapticsEnabled, hapticIntensity);
     onPressIn(BUTTON_NAMES[zone]);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [hapticsEnabled, onPressIn]);
+  }, [hapticsEnabled, hapticIntensity, onPressIn]);
 
   const releaseZone = useCallback((zone: number) => {
     const scales = [b0.scale, b1.scale, b2.scale, b3.scale];

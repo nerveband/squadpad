@@ -1,12 +1,11 @@
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { View, Text, StyleSheet, ScrollView, Pressable, Image, Linking } from 'react-native';
-import { useRouter, useLocalSearchParams } from 'expo-router';
+import { useRouter, useLocalSearchParams, useIsFocused, useFocusEffect } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import MaskedView from '@react-native-masked-view/masked-view';
 import { WifiHigh, Globe, CaretDown, CaretUp, Info } from 'phosphor-react-native';
 import Animated, { useSharedValue, useAnimatedStyle, withRepeat, withTiming, Easing, FadeIn } from 'react-native-reanimated';
-import { useEffect } from 'react';
 import { StyledTextInput } from '../src/components/StyledTextInput';
 import { GameList } from '../src/components/GameList';
 import { RoomCodeInput } from '../src/components/RoomCodeInput';
@@ -22,13 +21,15 @@ import type { DiscoveredGame } from '../src/connection/discovery';
 export default function HomeScreen() {
   const router = useRouter();
   const searchParams = useLocalSearchParams<{ room?: string; name?: string }>();
-  const { settings, update } = useSettings();
-  const [playerName, setPlayerName] = useState(settings.playerName || '');
+  const { settings, update, loaded } = useSettings();
+  const [playerName, setPlayerName] = useState(settings.playerName);
   const [connecting, setConnecting] = useState(false);
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [showHostInfo, setShowHostInfo] = useState(false);
   const [manualIp, setManualIp] = useState('');
-  const { games, scanning, error: discoveryError } = useDiscovery();
+  // Scan only while this screen is visible; the controller screen sits on top of it.
+  const isFocused = useIsFocused();
+  const { games, scanning, error: discoveryError } = useDiscovery(isFocused);
   const { history, addToHistory } = useConnectionHistory();
 
   // Floating animation for the brand icon
@@ -45,22 +46,36 @@ export default function HomeScreen() {
     transform: [{ translateY: translateY.value }],
   }));
 
-  // Handle deep link
+  // Coming back from the controller: buttons are usable again.
+  useFocusEffect(useCallback(() => setConnecting(false), []));
+
+  // Settings load asynchronously; fill in the saved name once they arrive.
+  useEffect(() => {
+    if (loaded && !playerName && settings.playerName) setPlayerName(settings.playerName);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loaded]);
+
+  // Handle deep link (squadpad://?room=word+word&name=...)
   useEffect(() => {
     if (searchParams.room) {
-      if (searchParams.name) setPlayerName(searchParams.name);
-      handleJoinRoom(searchParams.room);
+      const name = searchParams.name?.trim();
+      if (name) setPlayerName(name);
+      // Same normalisation as the web client: QR links use "+" or "-" between words.
+      const code = searchParams.room.toLowerCase().split(/[\s+\-]+/).filter(Boolean).join(' ');
+      handleJoinRoom(code, name || getName());
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams.room]);
 
   // Persist name changes
   useEffect(() => {
-    if (playerName && playerName !== settings.playerName) {
-      update({ playerName });
+    if (loaded && playerName !== settings.playerName) {
+      update({ playerName: playerName.trim() });
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [playerName]);
 
-  const getName = () => playerName || 'Player';
+  const getName = () => playerName.trim() || 'Player';
 
   const handleSelectGame = (game: DiscoveredGame) => {
     setConnecting(true);
@@ -70,12 +85,12 @@ export default function HomeScreen() {
     });
   };
 
-  const handleJoinRoom = (roomCode: string) => {
+  const handleJoinRoom = (roomCode: string, name: string = getName()) => {
     setConnecting(true);
     addToHistory(roomCode);
     router.push({
       pathname: '/controller',
-      params: { room: roomCode, name: getName(), mode: 'relay' },
+      params: { room: roomCode, name, mode: 'relay' },
     });
   };
 
@@ -159,6 +174,7 @@ export default function HomeScreen() {
               scanning={scanning}
               error={discoveryError}
               onSelect={handleSelectGame}
+              onManualEntry={() => setShowAdvanced(true)}
             />
           </GlassCard>
 
@@ -268,7 +284,7 @@ export default function HomeScreen() {
 
           <View style={styles.footer}>
             <Text style={styles.credits}>
-              Made for BombSquad by Eric Froemling
+              Unofficial companion app. BombSquad is made by Eric Froemling.
             </Text>
             <Pressable
               onPress={() => Linking.openURL('https://github.com/nerveband/squadpad')}

@@ -1,12 +1,6 @@
 import * as Haptics from 'expo-haptics';
 
-type HapticIntensity = 'low' | 'medium' | 'high';
-
-const INTENSITY_MAP: Record<HapticIntensity, Haptics.ImpactFeedbackStyle> = {
-  low: Haptics.ImpactFeedbackStyle.Light,
-  medium: Haptics.ImpactFeedbackStyle.Medium,
-  high: Haptics.ImpactFeedbackStyle.Heavy,
-};
+export type HapticIntensity = 'low' | 'medium' | 'high';
 
 interface ActionPattern {
   style: Haptics.ImpactFeedbackStyle;

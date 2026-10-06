@@ -11,10 +11,7 @@
       "bundleIdentifier": "org.squadpad.app",
       "supportsTablet": true,
       "infoPlist": {
-        "NSLocalNetworkUsageDescription": "SquadPad uses the local network to find BombSquad games nearby.",
-        "NSBonjourServices": [
-          "_bombsquad._udp"
-        ],
+        "NSLocalNetworkUsageDescription": "SquadPad finds BombSquad games on your Wi-Fi network and sends your controller input to them.",
         "ITSAppUsesNonExemptEncryption": false
       }
     },
@@ -22,7 +19,7 @@
       "package": "org.squadpad.app",
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#0d0b1a"
+        "backgroundColor": "#05050f"
       },
       "permissions": [
         "android.permission.INTERNET",
@@ -40,7 +37,7 @@
       [
         "expo-splash-screen",
         {
-          "image": "./assets/icon.png",
+          "image": "./assets/splash-icon.png",
           "imageWidth": 200,
           "resizeMode": "contain",
           "backgroundColor": "#0d0b1a"

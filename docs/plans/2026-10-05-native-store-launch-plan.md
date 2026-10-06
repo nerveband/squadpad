@@ -14,6 +14,8 @@ Branch: `feat/native-sdk57-store-prep`. Goal: ship the Expo app (`native/`) to t
 | Android build/run | Works on emulator (Android 36, arm64) | Built with JDK 17 + NDK 27.1; connected to BombSquad via `10.0.2.2` as "DroidTest"; Jump selected "Single Player / Co-op" |
 | Android UDP fixes found in testing | Fixed | (1) `apply { bind(InetSocketAddress(port)) }` bound to port -1 (Kotlin shadowing); (2) `setBroadcast` deadlocked the JS thread against the blocking `receive()` (both `synchronized` on the socket). The restored March code had the second bug, so Android discovery likely never worked |
 | Android gamepad | Wired (Window.Callback hook, autolinked `ExpoGamepadPackage`) but untested on hardware | Needs a phone + Bluetooth controller |
+| Native relay mode | Fixed and tested end to end | The old client used a protocol the relay no longer speaks (room in the URL, `player_id`, full STATE2 packets). Rewritten to match `web/src/js/connection.js`. Tested: desktop host 0.4.0 → production relay → iOS app, Android app and web controller in one room, plus a web LAN player (4 players at once); button presses changed BombSquad's menu |
+| Idle keepalive | 1 state/s (was 10/s) | Player stayed in BombSquad after 95 s idle and input still worked; LAN watchdog fails the session after 6 s without acks |
 | Old repo | `nerveband/squadpad-native` archived | |
 
 ## Phase 1: Android working locally (done)
@@ -62,16 +64,20 @@ Install paths: iOS dev build via `eas build --profile development` (internal dis
 ## Phase 4: Product polish
 
 - [ ] Remove the "Beta" label in the app and README once Phase 2 passes.
-- [ ] Splash: icon's own dark background (#0b0a14-ish) shows as a faint square against `#0d0b1a`. Export a transparent splash mark or match the colour.
-- [ ] Remove unused Expo template placeholders in `native/assets` (`splash-icon.png`, `android-icon-*.png`, `adaptive-icon.png` if unused) and add a proper Android adaptive icon foreground and monochrome layer.
-- [ ] Handle local-network permission denial on iOS (explain and offer relay/manual IP).
-- [ ] Privacy policy (`web/src/privacy.html`): add the native app, local network access, what the relay sees, no tracking. Required URL for both stores.
-- [ ] Hardcoded relay URL in `app/controller.tsx`; read it from settings (`useSettings().relayUrl`) instead.
-- [ ] Discovery keeps broadcasting while the controller screen is open (seen: query #900+ during a session). Stop it when leaving the home screen.
-- [ ] Idle traffic: the controller sends ~17 state packets/s with no input. Check whether BombSquad needs that keepalive rate; lower it to save battery.
-- [ ] Android: a warm deep link (`squadpad://controller?...` while the app is open) navigates only after a long delay in the dev client. Re-test in a release build before relying on room-code links.
-- [ ] Android launcher icon shows a ring: `adaptiveIcon.foregroundImage` is the full square icon. Provide a padded foreground layer and a monochrome icon.
-- [ ] LogBox warning on Android: "Can't perform a React state update on a component that hasn't mounted yet". Trace it before release.
+- [x] Splash: faded transparent mark (`assets/splash-icon.png`) so no square shows on `#0d0b1a`.
+- [x] Android adaptive icon: padded faded foreground on `#05050f` (the icon's edge colour); template placeholders removed. A monochrome (themed) layer is still optional.
+- [x] Local-network denial on iOS: after 6 s without results the home screen explains Local Network access, links to Settings, and offers manual IP.
+- [x] Privacy policy: mobile app section, accurate relay logging statement; linked from Settings > About.
+- [x] Relay URL read from settings.
+- [x] Discovery runs only while the home screen is focused.
+- [x] Idle traffic lowered to 1 state/s.
+- [x] Android warm deep link: the delay was the UDP deadlock; now navigates in under 10 s.
+- [x] React "state update before mount" warning: connection manager no longer built during render.
+- [x] Connection overlay: connecting stage, reconnect progress, plain-language failures with Try Again / Back (LAN unreachable, refused, version, room not found/full, host left, relay unreachable, lost connection).
+- [x] Settings that did nothing now work: haptics on/off and intensity, joystick Floating/Fixed. Dead `buttonSize` setting removed. Settings are one shared store, so changes apply to an open controller.
+- [x] Joystick is visible at rest (dim ghost in Floating mode), so players know where to put their thumb. Android elevation artifact on the thumb removed.
+- [x] Deep links: `?room=word+word` (QR format) normalised; `name` honoured.
+- [x] Web host: LAN address shown as `http://<ip>:43211/?lan=1` so phones open straight into LAN join (ships with the next desktop release).
 - [ ] Optional per the official `expo-upgrade` skill: React Compiler, `expo-sqlite/localStorage` instead of AsyncStorage. Not release blockers.
 
 ## Phase 5: Store listing

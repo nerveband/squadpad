@@ -7,9 +7,11 @@ import { Joystick } from '../src/components/Joystick';
 import { ActionButtons } from '../src/components/ActionButtons';
 import { HudBar } from '../src/components/HudBar';
 import { ControllerHud } from '../src/components/ControllerHud';
+import { ConnectionOverlay } from '../src/components/ConnectionOverlay';
 import { useController } from '../src/hooks/useController';
 import { useSettings } from '../src/hooks/useSettings';
-import { ConnectionManager } from '../src/connection/connection-manager';
+import { ConnectionManager, type ConnectionStatus } from '../src/connection/connection-manager';
+import type { ConnectionMode } from '../src/connection/failure-messages';
 import { Colors } from '../src/theme/colors';
 import { FontSize, FontWeight } from '../src/theme/typography';
 import { Spacing, Radius } from '../src/theme/spacing';
@@ -18,46 +20,56 @@ export default function ControllerScreen() {
   const router = useRouter();
   const params = useLocalSearchParams<{ host?: string; room?: string; name?: string; mode?: string }>();
   const { width, height } = useWindowDimensions();
-  const { settings, update } = useSettings();
+  const { settings, update, loaded } = useSettings();
   const isPortrait = height > width;
+  const mode: ConnectionMode = params.mode === 'relay' ? 'relay' : 'lan';
+  const target = (mode === 'relay' ? params.room : params.host) || '';
+
   const [hudVisible, setHudVisible] = useState(false);
   const [editingName, setEditingName] = useState(false);
   const [displayName, setDisplayName] = useState(params.name || settings.playerName || 'Player');
   const [tempName, setTempName] = useState(displayName);
+  const [status, setStatus] = useState<ConnectionStatus>({ kind: 'connecting', stage: 'connecting' });
+  const [attempt, setAttempt] = useState(0);
 
-  const connectionManagerRef = useRef(
-    new ConnectionManager({
-      onStatusChange: (status) => {
-        if (status === 'connected') controller.markConnected();
-        if (status === 'disconnected') controller.markDisconnected();
-      },
-      onLagUpdate: (ms) => controller.pushLag(ms),
-      onError: (msg) => setError(msg),
-    })
-  );
+  // Created once and never during render: its callbacks only touch this
+  // screen after it has mounted.
+  const managerRef = useRef<ConnectionManager | null>(null);
+  const eventsRef = useRef({
+    onStatusChange: (_status: ConnectionStatus) => {},
+    onLagUpdate: (_ms: number) => {},
+  });
+  if (!managerRef.current) {
+    managerRef.current = new ConnectionManager({
+      onStatusChange: (s) => eventsRef.current.onStatusChange(s),
+      onLagUpdate: (ms) => eventsRef.current.onLagUpdate(ms),
+    });
+  }
+  const manager = managerRef.current;
+  const controller = useController({ connectionManager: manager });
 
-  const controller = useController({ connectionManager: connectionManagerRef.current });
-  const [error, setError] = useState<string | null>(null);
+  eventsRef.current = {
+    onStatusChange: (s) => {
+      setStatus(s);
+      if (s.kind === 'connected') controller.markConnected();
+      else controller.markDisconnected();
+    },
+    onLagUpdate: controller.pushLag,
+  };
 
-  // Connect on mount
+  // Connect once settings are loaded (the relay URL lives there); reconnect on Retry.
   useEffect(() => {
-    const cm = connectionManagerRef.current;
+    if (!loaded || !target) return;
     const playerName = params.name || 'Player';
+    if (mode === 'lan') manager.connectLan(target, playerName);
+    else manager.connectRelay(settings.relayUrl, target, playerName);
+    return () => manager.disconnect();
+    // settings.relayUrl is read at connect time; changing it mid-session should not reconnect.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loaded, mode, target, params.name, attempt, manager]);
 
-    if (params.mode === 'lan' && params.host) {
-      cm.connectLan(params.host, playerName);
-    } else if (params.mode === 'relay' && params.room) {
-      cm.connectRelay(
-        'wss://squadpad-relay.fly.dev',
-        params.room,
-        playerName,
-      );
-    }
-
-    return () => {
-      cm.disconnect();
-    };
-  }, [params.host, params.room, params.name, params.mode]);
+  const handleRetry = useCallback(() => setAttempt((n) => n + 1), []);
+  const handleLeave = useCallback(() => router.back(), [router]);
 
   const handleNamePress = useCallback(() => {
     setTempName(displayName);
@@ -75,6 +87,22 @@ export default function ControllerScreen() {
     setHudVisible(false);
     router.push('/settings');
   }, [router]);
+
+  const joystick = (
+    <Joystick
+      onMove={controller.setJoystick}
+      sensitivity={settings.sensitivity}
+      mode={settings.joystickStyle}
+    />
+  );
+  const buttons = (
+    <ActionButtons
+      onPressIn={controller.pressButton}
+      onPressOut={controller.releaseButton}
+      hapticsEnabled={settings.hapticsEnabled}
+      hapticIntensity={settings.hapticIntensity}
+    />
+  );
 
   return (
     <View style={styles.container}>
@@ -106,7 +134,7 @@ export default function ControllerScreen() {
           playerName={displayName}
           lagMs={controller.lagMs}
           connectTime={controller.connectTime}
-          onBack={() => router.back()}
+          onBack={handleLeave}
           onSettings={() => setHudVisible(true)}
           onNamePress={handleNamePress}
         />
@@ -115,28 +143,14 @@ export default function ControllerScreen() {
           <View style={styles.portraitContainer}>
             <View style={styles.portraitSpacer} />
             <View style={styles.portraitControls}>
-              <View style={styles.portraitJoystick}>
-                <Joystick onMove={controller.setJoystick} sensitivity={settings.sensitivity} />
-              </View>
-              <View style={styles.portraitButtons}>
-                <ActionButtons
-                  onPressIn={controller.pressButton}
-                  onPressOut={controller.releaseButton}
-                />
-              </View>
+              <View style={styles.portraitJoystick}>{joystick}</View>
+              <View style={styles.portraitButtons}>{buttons}</View>
             </View>
           </View>
         ) : (
           <View style={styles.landscapeControls}>
-            <View style={styles.joystickZone}>
-              <Joystick onMove={controller.setJoystick} sensitivity={settings.sensitivity} />
-            </View>
-            <View style={styles.buttonsZone}>
-              <ActionButtons
-                onPressIn={controller.pressButton}
-                onPressOut={controller.releaseButton}
-              />
-            </View>
+            <View style={styles.joystickZone}>{joystick}</View>
+            <View style={styles.buttonsZone}>{buttons}</View>
           </View>
         )}
       </SafeAreaView>
@@ -149,13 +163,21 @@ export default function ControllerScreen() {
         onUpdate={update}
         lagMs={controller.lagMs}
         connectTime={controller.connectTime}
-        connectionMode={params.mode || 'unknown'}
-        host={params.host || params.room || ''}
+        connectionMode={mode}
+        host={target}
         onAllSettings={handleAllSettings}
       />
 
+      <ConnectionOverlay
+        status={status}
+        mode={mode}
+        target={target}
+        onRetry={handleRetry}
+        onLeave={handleLeave}
+      />
+
       {/* Name editing modal */}
-      <Modal visible={editingName} transparent animationType="fade">
+      <Modal visible={editingName} transparent animationType="fade" onRequestClose={() => setEditingName(false)}>
         <KeyboardAvoidingView
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
           style={styles.nameModalWrap}
@@ -177,18 +199,13 @@ export default function ControllerScreen() {
               onSubmitEditing={handleNameSave}
               selectTextOnFocus
             />
+            <Text style={styles.nameModalHint}>BombSquad shows the new name the next time you join.</Text>
             <Pressable onPress={handleNameSave} style={styles.nameModalBtn}>
               <Text style={styles.nameModalBtnText}>Done</Text>
             </Pressable>
           </View>
         </KeyboardAvoidingView>
       </Modal>
-
-      {error && (
-        <View style={styles.errorBanner}>
-          <Text style={styles.errorText}>{error}</Text>
-        </View>
-      )}
     </View>
   );
 }
@@ -264,6 +281,11 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     paddingHorizontal: 14,
   },
+  nameModalHint: {
+    color: Colors.textDim,
+    fontSize: FontSize.xs,
+    marginTop: -Spacing.xs,
+  },
   nameModalBtn: {
     backgroundColor: Colors.purple,
     borderRadius: Radius.sm,
@@ -274,21 +296,5 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: FontSize.md,
     fontWeight: FontWeight.bold,
-  },
-  errorBanner: {
-    position: 'absolute',
-    bottom: 40,
-    left: 20,
-    right: 20,
-    backgroundColor: 'rgba(232,84,72,0.2)',
-    borderRadius: 10,
-    padding: 12,
-    borderWidth: 1,
-    borderColor: Colors.danger,
-  },
-  errorText: {
-    color: Colors.danger,
-    textAlign: 'center',
-    fontSize: 14,
   },
 });
