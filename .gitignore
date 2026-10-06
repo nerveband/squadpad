@@ -13,6 +13,8 @@ native/expo-env.d.ts
 # Native builds (regenerated)
 native/ios/
 native/android/
+native/modules/*/android/build/
+native/modules/*/android/.cxx/
 native/.kotlin/
 
 # Metro

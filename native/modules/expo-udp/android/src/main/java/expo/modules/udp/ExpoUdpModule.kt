@@ -10,6 +10,7 @@ import java.net.Inet4Address
 import java.net.InetAddress
 import java.net.InetSocketAddress
 import java.net.NetworkInterface
+import java.net.SocketTimeoutException
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicInteger
 import kotlin.concurrent.thread
@@ -74,24 +75,33 @@ class ExpoUdpModule : Module() {
     private var socket: DatagramSocket? = null
     private var multicastLock: WifiManager.MulticastLock? = null
     @Volatile private var receiving = false
-    @Volatile private var broadcast = false
+    @Volatile private var broadcastRequested = false
     @Volatile private var lastError: String? = null
     private val packetsSent = AtomicInteger(0)
     private val bytesSent = AtomicInteger(0)
     private val packetsReceived = AtomicInteger(0)
 
+    // DatagramSocket.receive() holds the socket monitor while blocked, and option
+    // setters like setBroadcast() are synchronized on it too. Configure the socket
+    // before the receive thread starts and give receive() a timeout so the monitor
+    // is released regularly; otherwise a later setter deadlocks the JS thread.
     fun bind() {
+      // Build outside `apply`: inside it, `port` would resolve to DatagramSocket.port (-1).
+      val address = InetSocketAddress(port)
       socket = DatagramSocket(null).apply {
         reuseAddress = true
-        bind(InetSocketAddress(port))
+        this.broadcast = true
+        soTimeout = RECEIVE_TIMEOUT_MS
+        bind(address)
       }
       receiving = true
       startReceiving()
     }
 
+    // SO_BROADCAST is always on; this only controls the Wi-Fi multicast lock that
+    // lets broadcast replies through while discovery runs.
     fun setBroadcast(enabled: Boolean) {
-      socket?.broadcast = enabled
-      broadcast = enabled
+      broadcastRequested = enabled
       if (enabled) {
         if (multicastLock != null) return
         val context = appContext.reactContext ?: return
@@ -128,7 +138,7 @@ class ExpoUdpModule : Module() {
     fun diagnostics(): Map<String, Any?> = mapOf(
       "socketId" to id,
       "boundPort" to (socket?.localPort ?: -1),
-      "broadcast" to broadcast,
+      "broadcast" to broadcastRequested,
       "packetsSent" to packetsSent.get(),
       "bytesSent" to bytesSent.get(),
       "packetsReceived" to packetsReceived.get(),
@@ -150,6 +160,8 @@ class ExpoUdpModule : Module() {
             socket.receive(packet)
             packetsReceived.incrementAndGet()
             onMessage(buffer.copyOf(packet.length), packet.address.hostAddress ?: "", packet.port)
+          } catch (e: SocketTimeoutException) {
+            continue
           } catch (e: Exception) {
             if (receiving) lastError = "receive: ${e.message}"
             break
@@ -159,6 +171,8 @@ class ExpoUdpModule : Module() {
     }
   }
 }
+
+private const val RECEIVE_TIMEOUT_MS = 250
 
 /** Subnet broadcast address of the Wi-Fi interface, falling back to any active IPv4 interface. */
 private fun broadcastAddress(): String? {

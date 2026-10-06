@@ -25,6 +25,7 @@
     "expo-screen-orientation": "~57.0.2",
     "expo-splash-screen": "~57.0.9",
     "expo-status-bar": "~57.0.1",
+    "expo-system-ui": "~57.0.4",
     "phosphor-react-native": "^3.0.3",
     "react": "19.2.3",
     "react-dom": "19.2.3",

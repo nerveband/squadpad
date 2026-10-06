@@ -58,8 +58,8 @@ class ExpoGamepadModule : Module() {
       inputManager = null
     }
 
-    Function("getConnectedControllers") {
-      InputDevice.getDeviceIds().mapNotNull { describe(InputDevice.getDevice(it)) }
+    Function("getConnectedControllers") { ->
+      InputDevice.getDeviceIds().toList().mapNotNull { id -> describe(InputDevice.getDevice(id)) }
     }
   }
 
