@@ -49,6 +49,19 @@ describe('Controller', () => {
     expect(called).toBe(true);
   });
 
+  it('emits joystick moves within one wire step once, and real changes again', () => {
+    const c = new Controller();
+    const states = [];
+    c.onChange = (s) => states.push(s);
+    c.setJoystick(1, 0);
+    c.setJoystick(1.4, 0);   // pinned at the rim: clamps to the same value
+    c.setJoystick(0.999, 0); // rounds to the same h (255)
+    expect(states).toHaveLength(1);
+    c.setJoystick(0.5, 0);
+    expect(states).toHaveLength(2);
+    expect(states[1].h).toBe(191);
+  });
+
   it('maps keyboard keys to actions', () => {
     const c = new Controller();
     c.handleKeyDown('KeyW');

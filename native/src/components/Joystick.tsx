@@ -52,6 +52,8 @@ export function Joystick({ onMove, sensitivity = 1.0, mode = 'floating' }: Joyst
   const thumbGlowOpacity = useSharedValue(0.4);
   const restOpacity = REST_OPACITY[mode];
   const floating = mode === 'floating';
+  // Last position sent to JS, quantised to the wire format (h * 256 + v).
+  const lastStep = useSharedValue(-1);
 
   const emitMove = (x: number, y: number) => {
     onMove(x, y);
@@ -65,10 +67,14 @@ export function Joystick({ onMove, sensitivity = 1.0, mode = 'floating' }: Joyst
     const scale = dist > MAX_DISTANCE ? MAX_DISTANCE / dist : 1;
     thumbX.value = dx * scale;
     thumbY.value = dy * scale;
-    runOnJS(emitMove)(
-      applyDeadZone(thumbX.value / MAX_DISTANCE, sensitivity),
-      applyDeadZone(thumbY.value / MAX_DISTANCE, sensitivity),
-    );
+    const x = applyDeadZone(thumbX.value / MAX_DISTANCE, sensitivity);
+    const y = applyDeadZone(thumbY.value / MAX_DISTANCE, sensitivity);
+    // Touch moves arrive at 60-120 Hz; only cross to JS when the value the
+    // game receives (256 steps per axis) actually changes.
+    const step = Math.round((x + 1) * 127.5) * 256 + Math.round((y + 1) * 127.5);
+    if (step === lastStep.value) return;
+    lastStep.value = step;
+    runOnJS(emitMove)(x, y);
   };
 
   const restAt = () => {
@@ -101,6 +107,7 @@ export function Joystick({ onMove, sensitivity = 1.0, mode = 'floating' }: Joyst
       baseOpacity.value = withTiming(restOpacity, { duration: 300 });
       borderOpacity.value = withTiming(0.15, { duration: 300 });
       thumbGlowOpacity.value = withTiming(0.4, { duration: 300 });
+      lastStep.value = -1;
       runOnJS(emitMove)(0, 0);
     })
     .minDistance(0);

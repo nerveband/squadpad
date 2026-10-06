@@ -38,6 +38,7 @@ export class Controller {
     this.joyX = 0;
     this.joyY = 0;
     this.onChange = null;
+    this._lastEmitted = ''; // last state handed to onChange, as "buttons,h,v"
     this.keyBindings = { ...DEFAULT_KEYS };
     this._dirs = { up: false, down: false, left: false, right: false };
   }
@@ -103,7 +104,14 @@ export class Controller {
     this.setJoystick(x, y);
   }
 
+  // Touch and mouse moves arrive far faster than the 256-step axis changes, and
+  // a thumb pinned at the rim repeats the same value. Only emit real changes;
+  // the controller UI's keepalive re-sends the current state on its own timer.
   _notify() {
-    if (this.onChange) this.onChange(this.getState());
+    const state = this.getState();
+    const key = `${state.buttons},${state.h},${state.v}`;
+    if (key === this._lastEmitted) return;
+    this._lastEmitted = key;
+    if (this.onChange) this.onChange(state);
   }
 }

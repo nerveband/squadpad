@@ -193,12 +193,15 @@ impl UdpClient {
         Ok(player_id)
     }
 
-    /// Queue a new controller state for sending.
+    /// Queue a new controller state and send it right away. The periodic
+    /// `process()` tick only handles retransmits and acks; waiting for it
+    /// added up to 100 ms of input lag for every relay and LAN web player.
     pub fn push_state(&mut self, buttons: u8, h: u8, v: u8) {
         let idx = self.next_state as usize;
         self.states[idx] = [buttons, h, v];
         self.state_birth_times[idx] = Some(Instant::now());
         self.next_state = self.next_state.wrapping_add(1);
+        self.process();
     }
 
     /// Process: resend unacked states, handle incoming ACKs.
@@ -324,5 +327,28 @@ mod tests {
     #[test]
     fn probe_reports_unreachable_when_nothing_answers() {
         assert_eq!(probe_game(&dead_addr()), Err(AttachError::Unreachable));
+    }
+
+    #[test]
+    fn push_state_reaches_bombsquad_without_waiting_for_the_process_tick() {
+        let bombsquad = UdpSocket::bind("127.0.0.1:0").unwrap();
+        let addr = bombsquad.local_addr().unwrap().to_string();
+        let server = thread::spawn(move || {
+            let mut buf = [0u8; 256];
+            let (_, from) = bombsquad.recv_from(&mut buf).unwrap(); // ID request
+            bombsquad.send_to(&[protocol::MSG_ID_RESPONSE, 3, protocol::V2_RESPONSE_FLAG], from).unwrap();
+            bombsquad.set_read_timeout(Some(Duration::from_millis(50))).unwrap();
+            let (len, _) = bombsquad.recv_from(&mut buf).expect("state should arrive immediately");
+            buf[..len].to_vec()
+        });
+
+        let mut client = UdpClient::new().unwrap();
+        assert_eq!(client.connect(&addr, "Sam#sp0"), Ok(3));
+        client.push_state(0x02, 200, 128);
+
+        let packet = server.join().unwrap();
+        assert_eq!(packet[0], protocol::MSG_STATE2);
+        assert_eq!(packet[1], 3); // player id
+        assert_eq!(&packet[4..7], &[0x02, 200, 128]);
     }
 }

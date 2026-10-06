@@ -21,6 +21,8 @@ export class ControllerState {
   private buttons = 0;
   private joyX = 0;
   private joyY = 0;
+  /** Last state handed to onChange, as `buttons,h,v`. */
+  private lastEmitted = '';
   onChange: ((state: InputState) => void) | null = null;
 
   getState(): InputState {
@@ -60,7 +62,14 @@ export class ControllerState {
     this._notify();
   }
 
+  // Touch moves arrive at 60-120 Hz but the wire format has 256 steps per axis,
+  // and a thumb in the dead zone or pinned at the rim repeats the same value.
+  // Only emit real changes; the 1 s keepalive re-sends the current state anyway.
   private _notify() {
-    if (this.onChange) this.onChange(this.getState());
+    const state = this.getState();
+    const key = `${state.buttons},${state.h},${state.v}`;
+    if (key === this.lastEmitted) return;
+    this.lastEmitted = key;
+    if (this.onChange) this.onChange(state);
   }
 }

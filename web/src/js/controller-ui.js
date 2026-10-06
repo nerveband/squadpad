@@ -281,12 +281,15 @@ export function initControllerUI(opts) {
     connection.sendState(encoded);
   };
 
+  // Changes are sent immediately (onChange). While idle, repeat the current
+  // state once a second so the host always has it; the host keeps the
+  // BombSquad session alive on its own, so faster repeats only add relay traffic.
   const keepaliveInterval = setInterval(() => {
     if (connection.connected) {
       const encoded = encodeStateV2(controller.getState());
       connection.sendState(encoded);
     }
-  }, 100);
+  }, 1000);
 
   // ---- Connection timer -------------------------------------------------
   let connectStartTime = null;

@@ -102,6 +102,18 @@ Trademark risk: keep "BombSquad" descriptive ("for BombSquad"), not in the app n
 4. Store review; respond to rejections (expected areas: minimum functionality 4.2, IP 5.2).
 5. Tag `native-v1.0.0` (web keeps its own `v*` tags).
 
+## Latency notes (2026-10-06)
+
+Done:
+- Desktop host sends each player state to BombSquad on arrival. It used to queue it for the 100 ms process tick, adding 0-100 ms (about 50 ms average) to every relay and LAN web input. Ships with the next desktop release (regression test in `udp_client.rs`).
+- Native and web controllers emit only when the quantised state (256 steps per axis) changes; the native joystick also skips the UI-thread→JS hop for unchanged steps.
+- Idle keepalive 1/s on native and web (was 10/s); verified idle players stay in BombSquad.
+
+Measured, not changed (decisions):
+- Relay round trip from this network (TDS Telecom, Farragut TN) is ~138 ms. Fly's edge for this ISP is `lax`, and the only relay machine is in `iad`, so traffic goes TN → LA → VA and back. TCP to the edge alone is ~66 ms. Fly routes to the nearest edge per ISP, so other networks may differ. Options: keep `iad` (best for typical US East users), move the single machine to a central region such as `ord`/`dfw` (rooms are in memory, so the relay must stay a single machine), or move the relay to a platform with a single-location room object behind a global edge (bigger change).
+- Cold start: `auto_stop_machines = "stop"` with `min_machines_running = 0` meant the first request after idle took ~3 s. Only the first host to go online pays it. `min_machines_running = 1` removes it at the cost of an always-on machine.
+- Relay server settings are already right: `ws` per-message compression off, TCP no-delay on.
+
 ## Phase 7: After launch
 
 - EAS Update for JS-only fixes (`eas-update` skill); native module changes need a new build.

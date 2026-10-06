@@ -71,6 +71,19 @@ describe('ControllerState', () => {
     expect(states[1].v).toBe(64);
   });
 
+  test('joystick moves within one wire step emit once; a real change emits again', () => {
+    const c = new ControllerState();
+    const states: { h: number; v: number }[] = [];
+    c.onChange = (s) => states.push(s);
+    c.setJoystick(1, 0);
+    c.setJoystick(1.4, 0);   // pinned at the rim: clamps to the same value
+    c.setJoystick(0.999, 0); // rounds to the same h (255)
+    expect(states).toHaveLength(1);
+    c.setJoystick(0.5, 0);
+    expect(states).toHaveLength(2);
+    expect(states[1].h).toBe(191);
+  });
+
   test('reset clears all state', () => {
     const c = new ControllerState();
     c.pressButton('punch');
