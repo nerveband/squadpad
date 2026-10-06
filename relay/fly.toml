@@ -7,9 +7,11 @@ primary_region = "iad"
 [http_service]
   internal_port = 43212
   force_https = true
-  auto_stop_machines = "stop"
+  # Always on: rooms live in this one machine's memory, and stopping it made
+  # the first host after idle wait ~3 s for a cold start.
+  auto_stop_machines = "off"
   auto_start_machines = true
-  min_machines_running = 0
+  min_machines_running = 1
 
 [[services]]
   protocol = "tcp"

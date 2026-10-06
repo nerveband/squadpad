@@ -109,9 +109,10 @@ Done:
 - Native and web controllers emit only when the quantised state (256 steps per axis) changes; the native joystick also skips the UI-thread→JS hop for unchanged steps.
 - Idle keepalive 1/s on native and web (was 10/s); verified idle players stay in BombSquad.
 
-Measured, not changed (decisions):
+Relay decisions (2026-10-06):
 - Relay round trip from this network (TDS Telecom, Farragut TN) is ~138 ms. Fly's edge for this ISP is `lax`, and the only relay machine is in `iad`, so traffic goes TN → LA → VA and back. TCP to the edge alone is ~66 ms. Fly routes to the nearest edge per ISP, so other networks may differ. Options: keep `iad` (best for typical US East users), move the single machine to a central region such as `ord`/`dfw` (rooms are in memory, so the relay must stay a single machine), or move the relay to a platform with a single-location room object behind a global edge (bigger change).
-- Cold start: `auto_stop_machines = "stop"` with `min_machines_running = 0` meant the first request after idle took ~3 s. Only the first host to go online pays it. `min_machines_running = 1` removes it at the cost of an always-on machine.
+- Region: kept `iad`. Moving to a central region would trade roughly 15 ms saved on the TDS→`lax` route for roughly 20 ms added for typical East Coast players, so it is not clearly better without player-location data.
+- Cold start: fixed. The machine now has autostop off (`fly machine update --autostop=off`, same image `deployment-01M404WQVJ86TS4W1KRDG62AH9`) and `fly.toml` says `auto_stop_machines = "off"`, `min_machines_running = 1`, so future deploys keep it. `/health` answers in ~0.28 s instead of ~3 s after idle.
 - Relay server settings are already right: `ws` per-message compression off, TCP no-delay on.
 
 ## Phase 7: After launch
