@@ -1,4 +1,4 @@
-import { initControllerUI } from './controller-ui.js?v=0.4.0';
+import { initControllerUI } from './controller-ui.js?v=0.4.1';
 
 // Host dashboard logic. Communicates with the Tauri backend
 // via window.__TAURI__.core.invoke() to control the WebSocket server

@@ -7,9 +7,9 @@
 //     initControllerUI({ joystickZone, joystickBase, ... });
 
 // ?v= busts CDN/browser copies of older modules; bump with the release version
-import { Controller } from './controller.js?v=0.4.0';
-import { Connection } from './connection.js?v=0.4.0';
-import { encodeStateV2 } from './protocol.js?v=0.4.0';
+import { Controller } from './controller.js?v=0.4.1';
+import { Connection } from './connection.js?v=0.4.1';
+import { encodeStateV2 } from './protocol.js?v=0.4.1';
 
 /**
  * Wire up joystick touch, button touch, keyboard input, visual feedback,
