@@ -61,7 +61,8 @@ public class ExpoGamepadModule: Module {
     controller.extendedGamepad?.valueChangedHandler = { [weak self] gamepad, element in
       self?.sendEvent("onGamepadInput", [
         "leftStickX": gamepad.leftThumbstick.xAxis.value,
-        "leftStickY": gamepad.leftThumbstick.yAxis.value,
+        // GameController reports up as +1; the app uses screen orientation (down = +1).
+        "leftStickY": -gamepad.leftThumbstick.yAxis.value,
         "buttonA": gamepad.buttonA.isPressed,
         "buttonB": gamepad.buttonB.isPressed,
         "buttonX": gamepad.buttonX.isPressed,

@@ -12,7 +12,9 @@
       "supportsTablet": true,
       "infoPlist": {
         "NSLocalNetworkUsageDescription": "SquadPad uses the local network to find BombSquad games nearby.",
-        "NSBonjourServices": ["_bombsquad._udp"],
+        "NSBonjourServices": [
+          "_bombsquad._udp"
+        ],
         "ITSAppUsesNonExemptEncryption": false
       }
     },
@@ -42,6 +44,14 @@
           "imageWidth": 200,
           "resizeMode": "contain",
           "backgroundColor": "#0d0b1a"
+        }
+      ],
+      [
+        "expo-build-properties",
+        {
+          "ios": {
+            "enableSceneSupport": true
+          }
         }
       ]
     ]

@@ -1,82 +1,74 @@
 package expo.modules.gamepad
 
+import android.content.Context
+import android.hardware.input.InputManager
+import android.os.Handler
+import android.os.Looper
 import android.view.InputDevice
-import android.view.KeyEvent
-import android.view.MotionEvent
 import expo.modules.kotlin.modules.Module
 import expo.modules.kotlin.modules.ModuleDefinition
 
 class ExpoGamepadModule : Module() {
-  private var lastLeftX = 0f
-  private var lastLeftY = 0f
+  private var inputManager: InputManager? = null
+  private val knownDevices = mutableMapOf<Int, Map<String, String>>()
+
+  private val deviceListener = object : InputManager.InputDeviceListener {
+    override fun onInputDeviceAdded(deviceId: Int) {
+      val info = describe(InputDevice.getDevice(deviceId)) ?: return
+      knownDevices[deviceId] = info
+      sendEvent("onControllerConnected", info)
+    }
+
+    override fun onInputDeviceRemoved(deviceId: Int) {
+      val info = knownDevices.remove(deviceId) ?: return
+      if (knownDevices.isEmpty()) GamepadInput.reset()
+      sendEvent("onControllerDisconnected", mapOf("id" to info.getValue("id")))
+    }
+
+    override fun onInputDeviceChanged(deviceId: Int) = Unit
+  }
 
   override fun definition() = ModuleDefinition {
     Name("ExpoGamepad")
 
     Events("onControllerConnected", "onControllerDisconnected", "onGamepadInput")
 
+    OnCreate {
+      val context = appContext.reactContext ?: return@OnCreate
+      inputManager = (context.getSystemService(Context.INPUT_SERVICE) as? InputManager)?.also {
+        it.registerInputDeviceListener(deviceListener, Handler(Looper.getMainLooper()))
+      }
+      InputDevice.getDeviceIds().forEach { id ->
+        describe(InputDevice.getDevice(id))?.let { knownDevices[id] = it }
+      }
+    }
+
+    OnStartObserving("onGamepadInput") {
+      GamepadInput.sink = { snapshot -> sendEvent("onGamepadInput", snapshot) }
+    }
+
+    OnStopObserving("onGamepadInput") {
+      GamepadInput.sink = null
+      GamepadInput.reset()
+    }
+
+    OnDestroy {
+      GamepadInput.sink = null
+      inputManager?.unregisterInputDeviceListener(deviceListener)
+      inputManager = null
+    }
+
     Function("getConnectedControllers") {
-      val devices = InputDevice.getDeviceIds()
-        .mapNotNull { InputDevice.getDevice(it) }
-        .filter { it.sources and InputDevice.SOURCE_GAMEPAD == InputDevice.SOURCE_GAMEPAD }
-        .map { device ->
-          mapOf(
-            "id" to device.descriptor,
-            "name" to device.name,
-            "vendorName" to (device.name ?: "Unknown"),
-          )
-        }
-      devices
+      InputDevice.getDeviceIds().mapNotNull { describe(InputDevice.getDevice(it)) }
     }
   }
 
-  fun handleMotionEvent(event: MotionEvent): Boolean {
-    if (event.source and InputDevice.SOURCE_JOYSTICK != InputDevice.SOURCE_JOYSTICK) {
-      return false
-    }
-
-    val leftX = event.getAxisValue(MotionEvent.AXIS_X)
-    val leftY = event.getAxisValue(MotionEvent.AXIS_Y)
-
-    if (leftX != lastLeftX || leftY != lastLeftY) {
-      lastLeftX = leftX
-      lastLeftY = leftY
-
-      sendEvent("onGamepadInput", mapOf(
-        "leftStickX" to leftX,
-        "leftStickY" to leftY,
-        "buttonA" to false,
-        "buttonB" to false,
-        "buttonX" to false,
-        "buttonY" to false,
-        "leftTrigger" to event.getAxisValue(MotionEvent.AXIS_LTRIGGER),
-        "rightTrigger" to event.getAxisValue(MotionEvent.AXIS_RTRIGGER),
-      ))
-    }
-    return true
-  }
-
-  fun handleKeyEvent(event: KeyEvent): Boolean {
-    if (event.source and InputDevice.SOURCE_GAMEPAD != InputDevice.SOURCE_GAMEPAD) {
-      return false
-    }
-
-    val isPressed = event.action == KeyEvent.ACTION_DOWN
-    val buttonA = event.keyCode == KeyEvent.KEYCODE_BUTTON_A && isPressed
-    val buttonB = event.keyCode == KeyEvent.KEYCODE_BUTTON_B && isPressed
-    val buttonX = event.keyCode == KeyEvent.KEYCODE_BUTTON_X && isPressed
-    val buttonY = event.keyCode == KeyEvent.KEYCODE_BUTTON_Y && isPressed
-
-    sendEvent("onGamepadInput", mapOf(
-      "leftStickX" to lastLeftX,
-      "leftStickY" to lastLeftY,
-      "buttonA" to buttonA,
-      "buttonB" to buttonB,
-      "buttonX" to buttonX,
-      "buttonY" to buttonY,
-      "leftTrigger" to 0f,
-      "rightTrigger" to 0f,
-    ))
-    return true
+  private fun describe(device: InputDevice?): Map<String, String>? {
+    if (device == null || device.isVirtual || !GamepadInput.isGamepad(device)) return null
+    return mapOf(
+      "id" to device.descriptor,
+      "name" to device.name,
+      "vendorName" to device.name,
+    )
   }
 }
