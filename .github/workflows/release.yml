@@ -5,7 +5,23 @@ on:
     tags: ['v*']
 
 jobs:
+  # Create the release once. When each matrix job created it, the two macOS
+  # jobs could finish together and the loser failed with a duplicate release.
+  create-release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release view "$GITHUB_REF_NAME" -R "$GITHUB_REPOSITORY" >/dev/null 2>&1 ||
+            gh release create "$GITHUB_REF_NAME" -R "$GITHUB_REPOSITORY" \
+              --title "SquadPad $GITHUB_REF_NAME" \
+              --notes 'Download the SquadPad desktop app for your platform below.'
+
   release:
+    needs: create-release
     strategy:
       fail-fast: false
       matrix:
