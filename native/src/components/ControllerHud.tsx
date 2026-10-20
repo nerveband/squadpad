@@ -6,6 +6,9 @@ import { Colors } from '../theme/colors';
 import { FontSize, FontWeight, Fonts } from '../theme/typography';
 import { Spacing, Radius } from '../theme/spacing';
 import type { Settings } from '../hooks/useSettings';
+import type { ConnectionMode } from '../connection/failure-messages';
+
+const MODE_LABEL: Record<ConnectionMode, string> = { lan: 'Wi-Fi', relay: 'Online room' };
 
 interface ControllerHudProps {
   visible: boolean;
@@ -14,7 +17,8 @@ interface ControllerHudProps {
   onUpdate: (partial: Partial<Settings>) => void;
   lagMs: number | null;
   connectTime: string;
-  connectionMode: string;
+  connectionMode: ConnectionMode;
+  /** Host IP or room code. */
   host: string;
   onAllSettings?: () => void;
 }
@@ -144,10 +148,10 @@ export function ControllerHud({
             <Text style={hudStyles.sectionLabel}>Connection</Text>
             <View style={hudStyles.statRow}>
               <Text style={hudStyles.statLabel}>Mode</Text>
-              <Text style={hudStyles.statValue}>{connectionMode}</Text>
+              <Text style={hudStyles.statValue}>{MODE_LABEL[connectionMode]}</Text>
             </View>
             <View style={hudStyles.statRow}>
-              <Text style={hudStyles.statLabel}>Host</Text>
+              <Text style={hudStyles.statLabel}>{connectionMode === 'relay' ? 'Room' : 'Host'}</Text>
               <Text style={hudStyles.statValue} numberOfLines={1}>{host}</Text>
             </View>
             <View style={hudStyles.statRow}>

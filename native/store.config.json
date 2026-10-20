@@ -1,0 +1,92 @@
+{
+  "configVersion": 0,
+  "apple": {
+    "copyright": "2026 Ashraf Ali",
+    "categories": [
+      "UTILITIES",
+      "ENTERTAINMENT"
+    ],
+    "info": {
+      "en-US": {
+        "title": "SquadPad",
+        "subtitle": "Party controller on your phone",
+        "promoText": "Turn every phone in the room into a game controller. Join a BombSquad game on your Wi-Fi in one tap, or play from anywhere with a two-word room code.",
+        "description": "SquadPad turns your phone into a game controller for BombSquad, the party game by Eric Froemling. No extra gamepads to buy, charge or pass around: everyone grabs their own phone and jumps in.\n\nPLAY ON YOUR WI-FI\nOpen BombSquad on a computer or tablet, open SquadPad on your phone, and tap the game when it shows up under Nearby Games. You can also type the host's IP address.\n\nPLAY FROM ANYWHERE\nWhen the host shares the game with the free SquadPad desktop app, friends join with a two-word room code from any network.\n\nBUILT FOR THUMBS\n• Floating or fixed joystick with adjustable sensitivity\n• Big jump, punch, bomb and throw buttons laid out for fast thumbs\n• Haptic feedback on every press, with three strengths\n• Portrait or landscape\n• Live latency readout, so you know your connection is healthy\n\nPRIVATE AND FREE\nNo account, no ads, no tracking. On Wi-Fi your controller talks straight to the game, and nothing leaves your network. SquadPad is open source.\n\nWHAT YOU NEED\n• BombSquad running on a computer or tablet. The desktop versions for Windows, Mac and Linux work best.\n• For online rooms: the free SquadPad desktop app on the host computer, from squadpad.org.\n\nSquadPad is an unofficial companion app. It is not affiliated with or endorsed by BombSquad or its developer.",
+        "keywords": [
+          "gamepad",
+          "joystick",
+          "couch",
+          "co-op",
+          "multiplayer",
+          "remote",
+          "local",
+          "wifi",
+          "friends",
+          "game night",
+          "family",
+          "group",
+          "pad",
+          "play"
+        ],
+        "releaseNotes": "First release.",
+        "marketingUrl": "https://squadpad.org",
+        "supportUrl": "https://github.com/nerveband/squadpad/issues",
+        "privacyPolicyUrl": "https://squadpad.org/privacy.html",
+        "screenshots": {
+          "APP_IPHONE_67": [
+            "./store/screenshots/iphone-69/01.jpg",
+            "./store/screenshots/iphone-69/02.jpg",
+            "./store/screenshots/iphone-69/03.jpg",
+            "./store/screenshots/iphone-69/04.jpg",
+            "./store/screenshots/iphone-69/05.jpg",
+            "./store/screenshots/iphone-69/06.jpg"
+          ],
+          "APP_IPAD_PRO_3GEN_129": [
+            "./store/screenshots/ipad-13/01.jpg",
+            "./store/screenshots/ipad-13/02.jpg",
+            "./store/screenshots/ipad-13/03.jpg",
+            "./store/screenshots/ipad-13/04.jpg",
+            "./store/screenshots/ipad-13/05.jpg"
+          ]
+        }
+      }
+    },
+    "advisory": {
+      "alcoholTobaccoOrDrugUseOrReferences": "NONE",
+      "contests": "NONE",
+      "gamblingSimulated": "NONE",
+      "gunsOrOtherWeapons": "NONE",
+      "horrorOrFearThemes": "NONE",
+      "matureOrSuggestiveThemes": "NONE",
+      "medicalOrTreatmentInformation": "NONE",
+      "profanityOrCrudeHumor": "NONE",
+      "sexualContentGraphicAndNudity": "NONE",
+      "sexualContentOrNudity": "NONE",
+      "violenceCartoonOrFantasy": "NONE",
+      "violenceRealistic": "NONE",
+      "violenceRealisticProlongedGraphicOrSadistic": "NONE",
+      "gambling": false,
+      "lootBox": false,
+      "advertising": false,
+      "unrestrictedWebAccess": false,
+      "userGeneratedContent": false,
+      "messagingAndChat": false,
+      "healthOrWellnessTopics": false,
+      "parentalControls": false,
+      "ageAssurance": false,
+      "kidsAgeBand": null,
+      "ageRatingOverride": "NONE",
+      "koreaAgeRatingOverride": "NONE"
+    },
+    "release": {
+      "automaticRelease": false
+    },
+    "review": {
+      "firstName": "Ashraf",
+      "lastName": "Ali",
+      "email": "nerveband@gmail.com",
+      "demoRequired": false,
+      "notes": "SquadPad is a phone controller for BombSquad (a free party game for Windows, Mac and Linux). It does not contain a game itself; it sends joystick and button input to a BombSquad game that is running on a computer.\n\nNo account or login is needed.\n\nHOW TO TEST ON THE SAME WI-FI\n1. On a Mac on the same Wi-Fi as the test iPhone, install and open BombSquad from https://www.ballistica.net/downloads and stay on its main menu.\n2. Open SquadPad and allow Local Network access when asked.\n3. Tap the game under Nearby Games, or open Advanced and type the Mac's IP address, then tap Connect.\n4. The controller screen shows a live timer and latency. Press the green Jump button: BombSquad's menu responds (Jump selects the highlighted item).\n\nHOW TO TEST ONLINE (ROOM CODE)\nThe host runs the free SquadPad desktop app (https://github.com/nerveband/squadpad/releases), starts the server and clicks Go Online, which shows a two-word room code. Enter that code under Cloud Relay in the app. If it helps, contact us at nerveband@gmail.com and we will host a live room at a time that suits you.\n\nLOCAL NETWORK\nThe app uses the local network only to find BombSquad games (a one-byte UDP query to the subnet broadcast address, port 43210) and to send controller input to the chosen game.\n\nSquadPad is an unofficial companion app and is not affiliated with BombSquad or its developer."
+    }
+  }
+}

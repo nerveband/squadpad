@@ -1,0 +1,128 @@
+{
+ "iphone": [
+  {
+   "eyebrow": "Party game controller",
+   "headline": "Your phone is the <em>controller</em>",
+   "shot": "iphone-controller.png",
+   "accent": "teal"
+  },
+  {
+   "eyebrow": "Same Wi-Fi",
+   "headline": "Tap a game nearby. <em>You're in.</em>",
+   "shot": "iphone-home.png",
+   "accent": "teal",
+   "callout": [
+    53,
+    1190,
+    1267,
+    1771
+   ]
+  },
+  {
+   "eyebrow": "Online rooms",
+   "headline": "Play anywhere with a <em>two-word code</em>",
+   "shot": "iphone-room.png",
+   "accent": "violet",
+   "callout": [
+    53,
+    1806,
+    1267,
+    2420
+   ]
+  },
+  {
+   "eyebrow": "Built for thumbs",
+   "headline": "Hold it <em>your way</em>",
+   "shot": "iphone-landscape.png",
+   "landscape": true,
+   "accent": "gold",
+   "chips": [
+    "Floating joystick",
+    "Haptics",
+    "Portrait or landscape",
+    "Live latency"
+   ],
+   "chipsTop": 1860
+  },
+  {
+   "eyebrow": "Make it yours",
+   "headline": "Tune it to <em>your thumbs</em>",
+   "shot": "iphone-hud.png",
+   "accent": "gold"
+  },
+  {
+   "eyebrow": "Free and open source",
+   "headline": "No account. No ads. <em>No tracking.</em>",
+   "icon": true,
+   "accent": "violet",
+   "chips": [
+    "Works on your Wi-Fi",
+    "Online rooms",
+    "Open source",
+    "Unofficial companion app"
+   ],
+   "chipsTop": 1820
+  }
+ ],
+ "ipad": [
+  {
+   "eyebrow": "Party game controller",
+   "headline": "Every screen is a <em>controller</em>",
+   "shot": "ipad-controller.png",
+   "accent": "teal"
+  },
+  {
+   "eyebrow": "Same Wi-Fi",
+   "headline": "Tap a game nearby. <em>You're in.</em>",
+   "shot": "ipad-home.png",
+   "accent": "teal",
+   "callout": [
+    561,
+    726,
+    1503,
+    1131
+   ],
+   "calloutW": 1500
+  },
+  {
+   "eyebrow": "Online rooms",
+   "headline": "Play anywhere with a <em>two-word code</em>",
+   "shot": "ipad-home.png",
+   "accent": "violet",
+   "callout": [
+    561,
+    1139,
+    1503,
+    1695
+   ],
+   "calloutW": 1500
+  },
+  {
+   "eyebrow": "Make it yours",
+   "headline": "Tune it to <em>your thumbs</em>",
+   "shot": "ipad-hud.png",
+   "accent": "gold",
+   "callout": [
+    1545,
+    69,
+    2064,
+    1290
+   ],
+   "calloutW": 760,
+   "calloutMinTop": 700
+  },
+  {
+   "eyebrow": "Free and open source",
+   "headline": "No account. No ads. <em>No tracking.</em>",
+   "icon": true,
+   "accent": "violet",
+   "chips": [
+    "Works on your Wi-Fi",
+    "Online rooms",
+    "Open source",
+    "Unofficial companion app"
+   ],
+   "chipsTop": 1700
+  }
+ ]
+}

@@ -45,13 +45,13 @@ Install paths: iOS dev build via `eas build --profile development` (internal dis
 ## Phase 3: Accounts and identifiers
 
 ### Apple (existing developer account)
-- [ ] Confirm the Team ID and add `appleTeamId` to `native/eas.json`.
-- [ ] Register the explicit App ID `org.squadpad.app` (squadpad.org is ours).
-- [ ] Request the multicast networking entitlement at <https://developer.apple.com/contact/request/networking-multicast> (needs the account holder's Apple ID login). Suggested answers:
+- [x] Team ID 7HQVB2S4BX in `native/eas.json` (`appleTeamId`).
+- [x] Explicit App ID `org.squadpad.app` registered (EAS created it with the signing credentials).
+- [x] Multicast networking entitlement requested (request ID 5KKTQC5497; Apple replies to the account holder's email). Answers used:
   - App name: SquadPad. Bundle ID: `org.squadpad.app`.
   - Purpose: SquadPad is a phone game controller for BombSquad. To find BombSquad games on the player's local network it sends a one-byte UDP query to the subnet broadcast address on port 43210 and listens for the host's unicast reply. It sends no other broadcast or multicast traffic, and the scan runs only while the player is on the join screen. (Submit after the Phase 4 fix that stops discovery on the controller screen, so this statement is true.)
 - [ ] When granted: add `com.apple.developer.networking.multicast: true` under `ios.entitlements` in `app.json`. Adding it before approval breaks signing.
-- [ ] Create the App Store Connect record; put its numeric id in `ascAppId`.
+- [x] App Store Connect record: SquadPad, Apple ID 6824930888 (`ascAppId` in `eas.json`). Build 1.0.0 (3) is on TestFlight.
 
 ### Google (organization account)
 - [ ] Create a Play Console developer account as an **organization**: WAVEDEPTH INC, D-U-N-S **101895565** (D&B email to info@wavedepth.com, 2026-01-31; address 10903 Parkgate Ln, Knoxville TN 37934). Legal name and address must match D&B exactly. Organization accounts skip the 12-tester/14-day closed test rule.
@@ -59,7 +59,7 @@ Install paths: iOS dev build via `eas build --profile development` (internal dis
 - [ ] Create a Google Cloud service account with Play Console access; store the JSON key outside git and point `serviceAccountKeyPath` at it.
 
 ### Expo / EAS
-- [ ] `eas login` (account to choose), `eas init` to write `extra.eas.projectId` into `app.json`.
+- [x] Account `wavedepth`, project `@wavedepth/squadpad` (`extra.eas.projectId` in `app.json`).
 
 ## Phase 4: Product polish
 
@@ -78,21 +78,25 @@ Install paths: iOS dev build via `eas build --profile development` (internal dis
 - [x] Joystick is visible at rest (dim ghost in Floating mode), so players know where to put their thumb. Android elevation artifact on the thumb removed.
 - [x] Deep links: `?room=word+word` (QR format) normalised; `name` honoured.
 - [x] Web host: LAN address shown as `http://<ip>:43211/?lan=1` so phones open straight into LAN join (ships with the next desktop release).
+- [x] Controller panel shows the mode as "Wi-Fi" / "Online room" (was the raw `lan` / `relay`), and labels the room code "Room" instead of "Host".
 - [ ] Optional per the official `expo-upgrade` skill: React Compiler, `expo-sqlite/localStorage` instead of AsyncStorage. Not release blockers.
 
 ## Phase 5: Store listing
 
+iOS listing is drafted in [`native/store/README.md`](../../native/store/README.md) (all fields, privacy label, age rating, review notes) and [`native/store.config.json`](../../native/store.config.json) (EAS metadata format). Review copy: <https://share.wavedepth.com/squadpad-appstore-review/>.
+
 | Item | App Store | Google Play |
 |---|---|---|
-| Name / subtitle | SquadPad: controller for BombSquad | same |
-| Description | Unofficial companion; not affiliated with Eric Froemling/Ballistica | same |
-| Screenshots | 6.9" iPhone, 13" iPad (`supportsTablet: true`) | phone, 7" and 10" tablet, feature graphic 1024×500 |
-| Privacy | App Privacy labels: no data collected (verify relay logs) | Data safety form |
-| Rating | Age rating questionnaire | IARC questionnaire |
-| Export compliance | `ITSAppUsesNonExemptEncryption: false` set | n/a |
-| Review notes | Explain a BombSquad host is required; give a test path via relay room code | same |
+| Name / subtitle | ☑ SquadPad / "Party controller on your phone" | ☐ |
+| Description, keywords, promo text | ☑ `store.config.json` | ☐ |
+| Screenshots | ☑ 6 × 6.9" iPhone, 5 × 13" iPad in `native/store/screenshots/` (rebuild with `render.sh`) | ☐ phone, 7" and 10" tablet, feature graphic 1024×500 |
+| Privacy | ☑ Answers drafted: data collected, not linked, not tracking (relay logs nickname and connection events) | ☐ Data safety form |
+| Rating | ☑ Questionnaire answers drafted, all "None" (expected 4+) | ☐ IARC questionnaire |
+| Export compliance | ☑ `ITSAppUsesNonExemptEncryption: false` set | n/a |
+| Review notes | ☑ BombSquad host required; LAN and room-code test paths; offer to host a live room | ☐ |
+| Uploaded to the store | ☐ needs approval | ☐ |
 
-Trademark risk: keep "BombSquad" descriptive ("for BombSquad"), not in the app name's leading position, and add the non-affiliation line. Consider asking the developer for permission.
+Trademark: "BombSquad" stays descriptive (the description says what the app works with), is not in the name, subtitle or keywords, and every surface carries the non-affiliation line. Consider asking the developer for permission.
 
 ## Phase 6: Build, submit, release
 
