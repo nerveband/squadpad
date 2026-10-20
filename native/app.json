@@ -51,6 +51,13 @@
           }
         }
       ]
-    ]
+    ],
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "96f6aa9b-9f50-4760-aff7-ca58867b3c5b"
+      }
+    },
+    "owner": "wavedepth"
   }
 }
