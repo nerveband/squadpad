@@ -13,13 +13,14 @@ ICON = W.parents[1] / "assets" / "icon.png"
 TEAL, VIOLET, GOLD, INK = "#5CC4B0", "#B48CDB", "#E8C840", "#F4F1FA"
 
 BASE_CSS = """
+@font-face{font-family:'Outfit';src:url('%(font)s') format('truetype');font-weight:100 900}
 *{margin:0;padding:0;box-sizing:border-box}
 body{width:%(w)dpx;height:%(h)dpx;overflow:hidden;background:#0d0b1a url('%(bg)s') center/cover no-repeat;
-font-family:-apple-system,'SF Pro Display',system-ui,sans-serif;color:%(ink)s;position:relative}
+font-family:'Outfit',sans-serif;color:%(ink)s;position:relative}
 .scrim{position:absolute;left:0;right:0;top:0;height:%(scrim)dpx;background:linear-gradient(rgba(13,11,26,.78) 55%%,rgba(13,11,26,0))}
-.copy{position:absolute;left:0;right:0;top:%(top)dpx;text-align:center;padding:0 %(pad)dpx}
-.eyebrow{font-size:%(eb)dpx;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:%(accent)s;margin-bottom:%(gap)dpx}
-h1{font-size:%(hs)dpx;line-height:1.06;font-weight:800;letter-spacing:-.02em;text-shadow:0 4px 30px rgba(0,0,0,.5)}
+.copy{position:absolute;left:0;right:0;top:0;height:%(band)dpx;display:flex;align-items:center;justify-content:center;
+text-align:center;padding:0 %(pad)dpx}
+h1{font-size:%(hs)dpx;line-height:1.04;font-weight:800;letter-spacing:-.035em;text-shadow:0 4px 30px rgba(0,0,0,.5)}
 h1 em{font-style:normal;color:%(accent)s;white-space:nowrap}
 .dev{position:absolute;filter:drop-shadow(0 40px 80px rgba(0,0,0,.6))}
 .dev img.shot{position:absolute;object-fit:cover;object-position:top;display:block}
@@ -60,12 +61,12 @@ def ipad(shot, x, y, w, ratio):
 
 def slide(s, kind):
     if kind == "iphone":
-        cw, ch, hs, eb, top, pad, bg = 1320, 2868, 128, 44, 190, 90, f"{A}/bg-portrait.jpg"
+        cw, ch, hs, band, pad, bg = 1320, 2868, 146, 740, 80, f"{A}/bg-portrait.jpg"
     else:
-        cw, ch, hs, eb, top, pad, bg = 2064, 2752, 140, 46, 160, 200, f"{A}/bg-ipad.jpg"
+        cw, ch, hs, band, pad, bg = 2064, 2752, 156, 700, 200, f"{A}/bg-ipad.jpg"
     accent = {"teal": TEAL, "violet": VIOLET, "gold": GOLD}[s.get("accent", "teal")]
-    css = BASE_CSS % dict(w=cw, h=ch, bg=bg, ink=INK, top=top, pad=pad, eb=eb, gap=28, hs=hs, accent=accent,
-                          scrim=ch // 4)
+    css = BASE_CSS % dict(w=cw, h=ch, bg=bg, ink=INK, band=band, pad=pad, hs=hs, accent=accent,
+                          scrim=ch // 4, font=A / "fonts" / "Outfit[wght].ttf")
     shot = str(W / "raw" / s["shot"]) if s.get("shot") else None
     screen = None  # (left, top, scale) of the device screen on the canvas, for callouts
     if s.get("icon"):
@@ -107,7 +108,7 @@ def slide(s, kind):
                            for c in s["chips"])
                  + "</div>")
     return (f'<!doctype html><html><head><meta charset="utf-8"><style>{css}</style></head><body>'
-            f'<div class="scrim"></div><div class="copy"><div class="eyebrow">{s["eyebrow"]}</div><h1>{s["headline"]}</h1></div>'
+            f'<div class="scrim"></div><div class="copy"><h1>{s["headline"]}</h1></div>'
             f'{dev}{callout}{chips}</body></html>')
 
 

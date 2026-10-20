@@ -1,14 +1,12 @@
 {
  "iphone": [
   {
-   "eyebrow": "Party game controller",
    "headline": "Your phone is the <em>controller</em>",
    "shot": "iphone-controller.png",
    "accent": "teal"
   },
   {
-   "eyebrow": "Same Wi-Fi",
-   "headline": "Tap a game nearby. <em>You're in.</em>",
+   "headline": "Tap a game.<br><em>You're in.</em>",
    "shot": "iphone-home.png",
    "accent": "teal",
    "callout": [
@@ -19,7 +17,6 @@
    ]
   },
   {
-   "eyebrow": "Online rooms",
    "headline": "Play anywhere with a <em>two-word code</em>",
    "shot": "iphone-room.png",
    "accent": "violet",
@@ -31,7 +28,6 @@
    ]
   },
   {
-   "eyebrow": "Built for thumbs",
    "headline": "Hold it <em>your way</em>",
    "shot": "iphone-landscape.png",
    "landscape": true,
@@ -45,14 +41,12 @@
    "chipsTop": 1860
   },
   {
-   "eyebrow": "Make it yours",
    "headline": "Tune it to <em>your thumbs</em>",
    "shot": "iphone-hud.png",
    "accent": "gold"
   },
   {
-   "eyebrow": "Free and open source",
-   "headline": "No account. No ads. <em>No tracking.</em>",
+   "headline": "No account.<br>No ads.<br><em>No tracking.</em>",
    "icon": true,
    "accent": "violet",
    "chips": [
@@ -66,13 +60,11 @@
  ],
  "ipad": [
   {
-   "eyebrow": "Party game controller",
    "headline": "Every screen is a <em>controller</em>",
    "shot": "ipad-controller.png",
    "accent": "teal"
   },
   {
-   "eyebrow": "Same Wi-Fi",
    "headline": "Tap a game nearby. <em>You're in.</em>",
    "shot": "ipad-home.png",
    "accent": "teal",
@@ -85,7 +77,6 @@
    "calloutW": 1500
   },
   {
-   "eyebrow": "Online rooms",
    "headline": "Play anywhere with a <em>two-word code</em>",
    "shot": "ipad-home.png",
    "accent": "violet",
@@ -98,7 +89,6 @@
    "calloutW": 1500
   },
   {
-   "eyebrow": "Make it yours",
    "headline": "Tune it to <em>your thumbs</em>",
    "shot": "ipad-hud.png",
    "accent": "gold",
@@ -112,7 +102,6 @@
    "calloutMinTop": 700
   },
   {
-   "eyebrow": "Free and open source",
    "headline": "No account. No ads. <em>No tracking.</em>",
    "icon": true,
    "accent": "violet",
