@@ -85,6 +85,7 @@
       "firstName": "Ashraf",
       "lastName": "Ali",
       "email": "nerveband@gmail.com",
+      "phone": "+1 865 219 3042",
       "demoRequired": false,
       "notes": "SquadPad is a phone controller for BombSquad (a free party game for Windows, Mac and Linux). It does not contain a game itself; it sends joystick and button input to a BombSquad game that is running on a computer.\n\nNo account or login is needed.\n\nHOW TO TEST ON THE SAME WI-FI\n1. On a Mac on the same Wi-Fi as the test iPhone, install and open BombSquad from https://www.ballistica.net/downloads and stay on its main menu.\n2. Open SquadPad and allow Local Network access when asked.\n3. Tap the game under Nearby Games, or open Advanced and type the Mac's IP address, then tap Connect.\n4. The controller screen shows a live timer and latency. Press the green Jump button: BombSquad's menu responds (Jump selects the highlighted item).\n\nHOW TO TEST ONLINE (ROOM CODE)\nThe host runs the free SquadPad desktop app (https://github.com/nerveband/squadpad/releases), starts the server and clicks Go Online, which shows a two-word room code. Enter that code under Cloud Relay in the app. If it helps, contact us at nerveband@gmail.com and we will host a live room at a time that suits you.\n\nLOCAL NETWORK\nThe app uses the local network only to find BombSquad games (a one-byte UDP query to the subnet broadcast address, port 43210) and to send controller input to the chosen game.\n\nSquadPad is an unofficial companion app and is not affiliated with BombSquad or its developer."
     }
