@@ -22,7 +22,14 @@
     "production": {
       "ios": {
         "appleTeamId": "7HQVB2S4BX",
-        "ascAppId": "6824930888"
+        "ascAppId": "6824930888",
+        "ascApiKeyId": "PF336Z5SFA",
+        "ascApiKeyIssuerId": "69a6de8c-f4a0-47e3-e053-5b8c7c11a4d1",
+        "ascApiKeyPath": "./.asc/AuthKey_PF336Z5SFA.p8"
+      },
+      "android": {
+        "track": "internal",
+        "releaseStatus": "draft"
       }
     }
   }
