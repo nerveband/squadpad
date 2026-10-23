@@ -10,6 +10,9 @@
     "ios": {
       "bundleIdentifier": "org.squadpad.app",
       "supportsTablet": true,
+      "entitlements": {
+        "com.apple.developer.networking.multicast": true
+      },
       "infoPlist": {
         "NSLocalNetworkUsageDescription": "SquadPad finds BombSquad games on your Wi-Fi network and sends your controller input to them.",
         "ITSAppUsesNonExemptEncryption": false
