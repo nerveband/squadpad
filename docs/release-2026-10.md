@@ -7,11 +7,11 @@ Working notes for the first App Store and Google Play release of the native app 
 |Area|State|Evidence|
 |---|---|---|
 |iOS multicast entitlement|Done|Apple granted it Oct 23. `com.apple.developer.networking.multicast` is in `app.json`; the App ID `org.squadpad.app` has Multicast Networking checked (portal read-back after reload); EAS regenerated App Store profile `S9BXABZC2T`, whose entitlements include the key (ASC API read)|
-|TestFlight|Builds 1.0.0 (4) and (5) processed|ASC API: `processingState VALID`, internal `IN_BETA_TESTING`. Build 5 adds the inline name edit. Ashraf (nerveband@gmail.com) is in the internal group "Team (Expo)" with access to all builds. Device test by Ashraf pending|
-|App Store|Not submitted|Waits for Ashraf's TestFlight result. Listing text, screenshots and review notes are ready in `native/store.config.json` (`eas metadata:lint` passes); reviewer phone added|
+|TestFlight|Builds 1.0.0 (4), (5), (6) processed|ASC API: `processingState VALID`. Build 5 adds the inline name edit, build 6 the joystick rotation fix. Ashraf (nerveband@gmail.com) is in the internal group "Team (Expo)" with access to all builds. Device test by Ashraf pending|
+|App Store|Listing pushed, not submitted|Version string 1.0.0; `eas metadata:push` synced description, keywords, URLs, categories, age rating, review contact and notes, 6 iPhone + 5 iPad screenshots (ASC API read-back). Remaining: App Privacy answers in the App Store Connect web UI (no API; Aside's 1Password was locked), Ashraf's TestFlight result, then attach build 6 and submit|
 |Android minimum version|Android 7.0 (API 24), unchanged|See "Android compatibility"|
 |Google Play account|Created and verified|Organization account "wavedepth", ID 7899252951962949465, owner info@wavedepth.com, nerveband@gmail.com is Admin. Organization, representative, website and phones verified Oct 23|
-|Play app|Internal testing live; production not started|App "SquadPad" (`org.squadpad.app`, ID 4976457335530149121). Release 3 (1.0.0) "Available to internal testers"; opt-in https://play.google.com/apps/internaltest/4701532482254706041|
+|Play app|Internal testing live; production not started|App "SquadPad" (`org.squadpad.app`, ID 4976457335530149121). Internal release "1.0.0" = versionCode 4 (joystick fix), uploaded by `eas submit` and rolled out Oct 24 2:12 AM; opt-in https://play.google.com/apps/internaltest/4701532482254706041|
 |Play listing and policy forms|Saved, not sent for review|Main store listing, store settings and every App content declaration saved ("You're all caught up"). Answers in `native/store/play/README.md`|
 |Play graphics|Done and uploaded|`native/store/play/screenshots/` (5 phone, 4 + 4 tablet, feature graphic, icon)|
 |Website|"Coming soon" line live|squadpad.org shows "Phone apps for iPhone and Android are coming soon to the App Store and Google Play." No badges until a listing is live. Deployed with `netlify deploy --prod --dir=web/src`|
@@ -55,11 +55,11 @@ Registration (done in the Aside browser as info@wavedepth.com, Oct 23):
 
 Listing, data safety, content rating, target audience and the service account steps: [`native/store/play/README.md`](../native/store/play/README.md).
 
-Signed release: EAS production builds, versionCode 2 (first) and 3 (with the HUD change and permission cleanup). The upload key is the EAS-managed keystore created Oct 23; Play App Signing holds the app signing key. Later builds go up with `eas submit -p android` once a service account exists (steps in the Play README).
+Signed release: EAS production builds, versionCode 2, 3 and 4. The upload key is the EAS-managed keystore created Oct 23; Play App Signing holds the app signing key. Uploads go through `eas submit -p android` with the service account `eas-submit@wavedepth-play-publishing.iam.gserviceaccount.com` (GCP project `wavedepth-play-publishing`, owner nerveband@gmail.com, only the Play Android Developer API enabled, no IAM roles; Play permissions: release to testing and production on SquadPad only). Its JSON key lives only in 1Password ("SquadPad Play service account (eas-submit)"); `~/.local/share/squadpad/sp-eas-android` writes it to the git-ignored `native/.asc/` for the run and shreds it. Submits land as drafts (the app is unpublished), so roll them out in Play Console.
 
 ## Fixes found during release testing
 
-- Joystick after rotation (Android): the controller remounts on rotation and the mode effect could run before the new layout size reached the shared values, leaving the resting joystick in the top-left corner until the first touch. Fixed in `Joystick.tsx` (commit 72acbf1); verified on the Pixel 8 emulator by rotating a connected controller. Not yet in a store build (build 5 / versionCode 3 predate it).
+- Joystick after rotation (Android): the controller remounts on rotation and the mode effect could run before the new layout size reached the shared values, leaving the resting joystick in the top-left corner until the first touch. Fixed in `Joystick.tsx` (commit 72acbf1); verified on the Pixel 8 emulator by rotating a connected controller. Shipped in iOS build 6 and Android versionCode 4.
 
 ## Ported March changes
 
