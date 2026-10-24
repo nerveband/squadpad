@@ -18,6 +18,8 @@ native/modules/*/android/.cxx/
 native/.kotlin/
 # App Store Connect API key, written only while eas-cli runs
 native/.asc/
+# Private verification documents (never commit)
+docs/private/
 
 # Metro
 .metro-health-check*
