@@ -28,6 +28,7 @@
         "ascApiKeyPath": "./.asc/AuthKey_PF336Z5SFA.p8"
       },
       "android": {
+        "serviceAccountKeyPath": "./.asc/play-service-account.json",
         "track": "internal",
         "releaseStatus": "draft"
       }
