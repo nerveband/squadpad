@@ -7,11 +7,14 @@ Working notes for the first App Store and Google Play release of the native app 
 |Area|State|Evidence|
 |---|---|---|
 |iOS multicast entitlement|Done|Apple granted it Oct 23. `com.apple.developer.networking.multicast` is in `app.json`; the App ID `org.squadpad.app` has Multicast Networking checked (portal read-back after reload); EAS regenerated App Store profile `S9BXABZC2T`, whose entitlements include the key (ASC API read)|
-|TestFlight|Build 1.0.0 (4) processed|ASC API: `processingState VALID`, internal state `IN_BETA_TESTING`. Ashraf (nerveband@gmail.com) is in the internal group "Team (Expo)" with access to all builds|
+|TestFlight|Builds 1.0.0 (4) and (5) processed|ASC API: `processingState VALID`, internal `IN_BETA_TESTING`. Build 5 adds the inline name edit. Ashraf (nerveband@gmail.com) is in the internal group "Team (Expo)" with access to all builds. Device test by Ashraf pending|
+|App Store|Not submitted|Waits for Ashraf's TestFlight result. Listing text, screenshots and review notes are ready in `native/store.config.json` (`eas metadata:lint` passes); reviewer phone added|
 |Android minimum version|Android 7.0 (API 24), unchanged|See "Android compatibility"|
-|Google Play account|Created, verification in progress|Organization account "wavedepth", ID 7899252951962949465, owner info@wavedepth.com|
-|Play listing, data safety, rating|Drafted|`native/store/play/README.md`|
-|Play graphics|Feature graphic and icon done; screenshots in progress|`native/store/play/screenshots/`|
+|Google Play account|Created and verified|Organization account "wavedepth", ID 7899252951962949465, owner info@wavedepth.com, nerveband@gmail.com is Admin. Organization, representative, website and phones verified Oct 23|
+|Play app|Internal testing live; production not started|App "SquadPad" (`org.squadpad.app`, ID 4976457335530149121). Release 3 (1.0.0) "Available to internal testers"; opt-in https://play.google.com/apps/internaltest/4701532482254706041|
+|Play listing and policy forms|Saved, not sent for review|Main store listing, store settings and every App content declaration saved ("You're all caught up"). Answers in `native/store/play/README.md`|
+|Play graphics|Done and uploaded|`native/store/play/screenshots/` (5 phone, 4 + 4 tablet, feature graphic, icon)|
+|Website|"Coming soon" line live|squadpad.org shows "Phone apps for iPhone and Android are coming soon to the App Store and Google Play." No badges until a listing is live. Deployed with `netlify deploy --prod --dir=web/src`|
 
 ## Accounts and names
 
@@ -44,12 +47,19 @@ Registration (done in the Aside browser as info@wavedepth.com, Oct 23):
 2. New payments profile created from the D-U-N-S number (the older `wavedepth` Google Cloud payments profile was left alone).
 3. Organization phone and public phone +1 865-219-3042, website https://wavedepth.com, public and contact email info@wavedepth.com, contact name Ashraf Ali.
 4. $25 fee paid by Ashraf; receipt emailed to info@wavedepth.com.
-5. nerveband@gmail.com invited as Admin (status "Invite sent"; accept from that inbox).
-6. Verification: organization document = TN SOS 2025 Annual Report filing acknowledgment (WAVEDEPTH INC, 10903 Parkgate Ln); website verified through the existing Search Console domain property `sc-domain:wavedepth.com`; representative ID and phone code pending.
+5. nerveband@gmail.com added as Admin (invite accepted in Aside; Users and permissions shows Active).
+6. Verification, all passed on Oct 23: organization document = TN SOS 2025 Annual Report filing acknowledgment (WAVEDEPTH INC, 10903 Parkgate Ln; the 2020 charter is not in the TNCaB account); authorized representative = Ashraf's 2025 NY driver license (front and back photos); website verified through the existing Search Console domain property `sc-domain:wavedepth.com` (no DNS change); contact and developer phone verified by SMS. Private copies stay in `docs/private/` (git-ignored).
+7. App created: SquadPad, `org.squadpad.app`, App, Free. The package name check passed, so it is registered to this account (Android developer verification).
+8. Internal testing: AAB versionCode 3 uploaded by hand (Google requires the first upload in the console), tester list "wavedepth internal" (nerveband@gmail.com), rolled out Oct 23 9:20 PM.
+9. Store listing, store settings (Tools; info@wavedepth.com; squadpad.org) and all App content declarations saved. Nothing has been sent for review; production waits for Ashraf's go.
 
-Listing, data safety, content rating, target audience, first manual upload and the service account steps: [`native/store/play/README.md`](../native/store/play/README.md).
+Listing, data safety, content rating, target audience and the service account steps: [`native/store/play/README.md`](../native/store/play/README.md).
 
-Signed release: EAS production build, versionCode 2, AAB on EAS (`eas build:list -p android`). The upload key is the EAS-managed keystore created Oct 23; Play App Signing holds the app signing key.
+Signed release: EAS production builds, versionCode 2 (first) and 3 (with the HUD change and permission cleanup). The upload key is the EAS-managed keystore created Oct 23; Play App Signing holds the app signing key. Later builds go up with `eas submit -p android` once a service account exists (steps in the Play README).
+
+## Fixes found during release testing
+
+- Joystick after rotation (Android): the controller remounts on rotation and the mode effect could run before the new layout size reached the shared values, leaving the resting joystick in the top-left corner until the first touch. Fixed in `Joystick.tsx` (commit 72acbf1); verified on the Pixel 8 emulator by rotating a connected controller. Not yet in a store build (build 5 / versionCode 3 predate it).
 
 ## Ported March changes
 
