@@ -44,7 +44,7 @@ The app has no analytics, ads, accounts or tracking SDKs. But when someone joins
 
 |Data type|Linked to user|Used for tracking|Purpose|
 |---|---|---|---|
-|User Content → Other User Content (player nickname in relay logs)|No|No|App Functionality|
+|User Content → Other User Content (player nickname in relay logs)|Yes (stored with the IP address)|No|App Functionality|
 
 No Diagnostics row: the app has no crash reporting or analytics SDK, and Google Play's Data safety form was answered the same way (Name only).
 
@@ -86,5 +86,5 @@ cd native/store/screenshots
 
 1. Set `apple.review.phone`, then run `eas metadata:lint`.
 2. Push text and screenshots: `eas metadata:push` from `native/` with App Store Connect API credentials. On m1pro-server, `~/.local/share/squadpad/eas-with-asc.sh` provides them: it takes `EXPO_TOKEN` and `ASC_P8` from Secret Gate (1Password items "Expo wavedepth EAS token (squadpad-eas)" and "App Store Connect API key SquadPad EAS (PF336Z5SFA)") and deletes the key file afterwards. Or paste the fields by hand in App Store Connect.
-3. App Privacy: answer as in the table above.
-4. Select build 3 (1.0.0) and submit for review.
+3. App Privacy: answer as in the table above (published Oct 24).
+4. Select build 6 (1.0.0) and submit for review.

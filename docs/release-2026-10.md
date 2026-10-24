@@ -8,7 +8,7 @@ Working notes for the first App Store and Google Play release of the native app 
 |---|---|---|
 |iOS multicast entitlement|Done|Apple granted it Oct 23. `com.apple.developer.networking.multicast` is in `app.json`; the App ID `org.squadpad.app` has Multicast Networking checked (portal read-back after reload); EAS regenerated App Store profile `S9BXABZC2T`, whose entitlements include the key (ASC API read)|
 |TestFlight|Builds 1.0.0 (4), (5), (6) processed|ASC API: `processingState VALID`. Build 5 adds the inline name edit, build 6 the joystick rotation fix. Ashraf (nerveband@gmail.com) is in the internal group "Team (Expo)" with access to all builds. Device test by Ashraf pending|
-|App Store|Listing pushed, not submitted|Version string 1.0.0; `eas metadata:push` synced description, keywords, URLs, categories, age rating, review contact and notes, 6 iPhone + 5 iPad screenshots (ASC API read-back). Remaining: App Privacy answers in the App Store Connect web UI (no API; Aside's 1Password was locked), Ashraf's TestFlight result, then attach build 6 and submit|
+|App Store|Listing and App Privacy done, not submitted|Version string 1.0.0; `eas metadata:push` synced description, keywords, URLs, categories, age rating, review contact and notes, 6 iPhone + 5 iPad screenshots (ASC API read-back). App Privacy published Oct 24 ("Published a few seconds ago by Ashraf Ali"): Other User Content, App Functionality, linked to identity, no tracking. Remaining: Ashraf's TestFlight result, then attach build 6 and submit|
 |Android minimum version|Android 7.0 (API 24), unchanged|See "Android compatibility"|
 |Google Play account|Created and verified|Organization account "wavedepth", ID 7899252951962949465, owner info@wavedepth.com, nerveband@gmail.com is Admin. Organization, representative, website and phones verified Oct 23|
 |Play app|Internal testing live; production not started|App "SquadPad" (`org.squadpad.app`, ID 4976457335530149121). Internal release "1.0.0" = versionCode 4 (joystick fix), uploaded by `eas submit` and rolled out Oct 24 2:12 AM; opt-in https://play.google.com/apps/internaltest/4701532482254706041|
@@ -21,7 +21,8 @@ Working notes for the first App Store and Google Play release of the native app 
 - Display name everywhere: `wavedepth` (lowercase). Legal entity where one is required: `WAVEDEPTH INC` exactly (Play payments profile, D&B match, a future Apple organization membership).
 - D-U-N-S 101895565. D&B record as returned by Google: WAVEDEPTH INC, 10903 Parkgate Ln, Knoxville, TN 37934-3086.
 - Tennessee SOS: WAVEDEPTH INC, control number 001075356, for-profit corporation, Active, formed 1/24/2020. On Oct 23 the record showed "Revenue Standing: Not Good" (Department of Revenue), worth checking.
-- Apple: Individual membership, team 7HQVB2S4BX (Ashraf Ali), renews Aug 2, 2027. App Store seller name stays "Ashraf Ali" until the organization migration happens.
+- Apple: Individual membership, team 7HQVB2S4BX (Ashraf Ali), renews Aug 2, 2027. App Store seller name stays "Ashraf Ali" until the organization migration happens. Migration request form (developer.apple.com/contact/request/migrate-individual-account) not submitted yet: it needs Ashraf's answers on DBA/trade name, whether WAVEDEPTH INC already has its own Apple Developer membership, and the tax ID type on the current membership.
+- Google Cloud project `wavedepth-play-publishing`: owners nerveband@gmail.com and info@wavedepth.com (invited from the IAM console and accepted as info@ on Oct 24; `gcloud projects get-iam-policy` shows both under `roles/owner`).
 
 ## iOS
 
