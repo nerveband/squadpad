@@ -113,9 +113,14 @@ export function Joystick({ onMove, sensitivity = 1.0, mode = 'floating' }: Joyst
     .minDistance(0);
 
   // Re-centre and fade to the new resting opacity when the mode changes.
+  // Skip the re-centre until the zone has a size: on (re)mount, for example
+  // after rotating, this effect can run before the layout write lands and
+  // would park the ghost joystick at the zone's top-left corner.
   useEffect(() => {
-    baseX.value = zoneW.value / 2;
-    baseY.value = zoneH.value * 0.55;
+    if (zoneW.value > 0) {
+      baseX.value = zoneW.value / 2;
+      baseY.value = zoneH.value * 0.55;
+    }
     baseOpacity.value = withTiming(REST_OPACITY[mode], { duration: 200 });
   }, [mode, baseX, baseY, baseOpacity, zoneW, zoneH]);
 
