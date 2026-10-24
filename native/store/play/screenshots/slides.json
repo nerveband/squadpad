@@ -1,0 +1,11 @@
+{
+  "phone": [
+    {"headline": "Your phone is the <em>controller</em>", "shot": "phone-controller.png", "accent": "teal"},
+    {"headline": "Tap a game.<br><em>You're in.</em>", "shot": "phone-home.png", "accent": "teal"},
+    {"headline": "Hold it <em>your way</em>", "shot": "phone-landscape.png", "landscape": true, "accent": "gold",
+     "chips": ["Floating joystick", "Vibration", "Portrait or landscape", "Live latency"], "chipsTop": 1240},
+    {"headline": "Tune it to <em>your thumbs</em>", "shot": "phone-hud.png", "accent": "gold"},
+    {"headline": "No account.<br>No ads.<br><em>No tracking.</em>", "icon": true, "accent": "violet",
+     "chips": ["Works on your Wi-Fi", "Online rooms", "Open source", "Unofficial companion app"], "chipsTop": 1260}
+  ]
+}
