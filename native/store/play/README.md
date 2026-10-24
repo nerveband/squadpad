@@ -91,9 +91,8 @@ Data types collected:
 |Type|Collected|Shared|Processed ephemerally|Required or optional|Purposes|
 |---|---|---|---|---|---|
 |Personal info > Name (player nickname, only when joining an online room)|Yes|No|No|Optional|App functionality; Fraud prevention, security, and compliance|
-|App info and performance > Diagnostics (relay connection events)|Yes|No|No|Optional|App functionality; Fraud prevention, security, and compliance|
 
-Everything else: not collected. If relay logging is removed later, both rows can go and the answer becomes "No data collected".
+Everything else: not collected. The app has no crash reporting or analytics SDK, so Diagnostics is not declared; LAN play and settings never leave the device or the user's network. The relay sees the IP address of each connection (used for rate limiting and in the 7-day logs), which is not a separate Play data type. If relay logging of names is removed later, the answer becomes "No data collected".
 
 ## Graphics
 

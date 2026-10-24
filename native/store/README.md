@@ -45,7 +45,8 @@ The app has no analytics, ads, accounts or tracking SDKs. But when someone joins
 |Data type|Linked to user|Used for tracking|Purpose|
 |---|---|---|---|
 |User Content → Other User Content (player nickname in relay logs)|No|No|App Functionality|
-|Diagnostics → Other Diagnostic Data (relay connection events)|No|No|App Functionality|
+
+No Diagnostics row: the app has no crash reporting or analytics SDK, and Google Play's Data safety form was answered the same way (Name only).
 
 If relay logging is removed later, the label can change to "Data Not Collected".
 
