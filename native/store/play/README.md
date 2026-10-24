@@ -82,8 +82,9 @@ The app has no analytics, ads, accounts or third-party SDKs that collect data. W
 |---|---|
 |Does your app collect or share any of the required user data types?|Yes|
 |Is all of the user data collected by your app encrypted in transit?|Yes (relay traffic is WSS/TLS)|
-|Do you provide a way for users to request that their data is deleted?|No (logs expire automatically after 7 days; nothing is linked to an account)|
-|Shared with third parties|None|
+|Account creation|My app does not allow users to create an account; users cannot log in with outside accounts|
+|Do you provide a way for users to request that their data is deleted?|"No, but user data is automatically deleted within 90 days" (Fly.io keeps the logs 7 days; nothing is linked to an account)|
+|Shared with third parties|None (Fly.io hosts the relay as a service provider, which Play treats as not sharing)|
 
 Data types collected:
 

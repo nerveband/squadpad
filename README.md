@@ -51,13 +51,13 @@ Players on the same Wi-Fi can also skip the room code: they open the `http://<yo
 - **Phones can't open the LAN address.** Allow SquadPad through your firewall. On Windows, allow it for both Private and Public networks.
 
 
-## Native app (Beta)
+## Phone apps (coming soon)
 
-SquadPad also has a native mobile app for iOS and Android, built with React Native and Expo. It provides a more polished controller experience with haptic feedback, local network discovery, and smooth animations.
+SquadPad also has a native app for iPhone and Android, built with React Native and Expo. It adds haptic feedback, automatic discovery of BombSquad games on your Wi-Fi, and smooth animations.
 
-**This is beta software.** The native app is functional but still under active development. Expect rough edges.
+**Status (October 2026):** the iPhone app is in TestFlight and the Android app is in Google Play internal testing. Both are coming to the App Store and Google Play; this section will link to the store pages once they are live. Android 7.0 or later is required.
 
-The native app lives in the `native/` directory. See [Development](#native-app-1) below for setup instructions.
+The app lives in the `native/` directory. See [Development](#native-app-1) below for setup instructions, and [`docs/release-2026-10.md`](docs/release-2026-10.md) for the release notes.
 
 
 ## How it works
