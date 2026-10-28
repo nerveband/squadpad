@@ -1,7 +1,7 @@
 import { Pressable, Text, StyleSheet, View, ViewStyle } from 'react-native';
 import Animated, { useSharedValue, useAnimatedStyle, withSpring } from 'react-native-reanimated';
 import { Colors } from '../theme/colors';
-import { FontSize, FontWeight } from '../theme/typography';
+import { Fonts, FontSize, FontWeight } from '../theme/typography';
 import { Radius, Spacing } from '../theme/spacing';
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
@@ -56,10 +56,12 @@ const styles = StyleSheet.create({
     shadowRadius: 12,
   },
   title: {
+    fontFamily: Fonts.bold,
     fontSize: FontSize.lg,
     fontWeight: FontWeight.bold,
   },
   description: {
+    fontFamily: Fonts.primary,
     color: Colors.textDim,
     fontSize: FontSize.sm,
     textAlign: 'center',

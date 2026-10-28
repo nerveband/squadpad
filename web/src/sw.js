@@ -1,11 +1,14 @@
 // SquadPad Service Worker - caches the app shell for offline/PWA support.
 // Network-first for everything on this origin so fixes reach returning players
 // immediately; the cache is only a fallback when offline.
-const CACHE_NAME = 'squadpad-v2';
+const CACHE_NAME = 'squadpad-v3';
 const SHELL_ASSETS = [
   '/',
   '/index.html',
   '/css/style.css',
+  '/fonts/IoskeleyMono-Regular.woff2',
+  '/fonts/IoskeleyMono-SemiBold.woff2',
+  '/fonts/IoskeleyMono-Bold.woff2',
   '/js/ui.js',
   '/js/controller-ui.js',
   '/js/controller.js',

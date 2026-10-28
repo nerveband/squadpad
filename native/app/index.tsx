@@ -1,9 +1,14 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, type ComponentType, type ReactElement, type ReactNode } from 'react';
 import { View, Text, StyleSheet, ScrollView, Pressable, Image, Linking } from 'react-native';
 import { useRouter, useLocalSearchParams, useIsFocused, useFocusEffect } from 'expo-router';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { useFoldable } from '../src/hooks/useFoldable';
 import { LinearGradient } from 'expo-linear-gradient';
 import MaskedView from '@react-native-masked-view/masked-view';
+
+const GradientMask = MaskedView as unknown as ComponentType<{
+  maskElement: ReactElement;
+  children: ReactNode;
+}>;
 import { WifiHigh, Globe, CaretDown, CaretUp, Info } from 'phosphor-react-native';
 import Animated, { useSharedValue, useAnimatedStyle, withRepeat, withTiming, Easing, FadeIn } from 'react-native-reanimated';
 import { StyledTextInput } from '../src/components/StyledTextInput';
@@ -14,7 +19,7 @@ import { useDiscovery } from '../src/hooks/useDiscovery';
 import { useConnectionHistory } from '../src/hooks/useConnectionHistory';
 import { useSettings } from '../src/hooks/useSettings';
 import { Colors } from '../src/theme/colors';
-import { FontSize, FontWeight } from '../src/theme/typography';
+import { Fonts, FontSize, FontWeight } from '../src/theme/typography';
 import { Spacing, Radius } from '../src/theme/spacing';
 import type { DiscoveredGame } from '../src/connection/discovery';
 
@@ -22,6 +27,7 @@ export default function HomeScreen() {
   const router = useRouter();
   const searchParams = useLocalSearchParams<{ room?: string; name?: string }>();
   const { settings, update, loaded } = useSettings();
+  const { insets, isWide, fold } = useFoldable();
   const [playerName, setPlayerName] = useState(settings.playerName);
   const [connecting, setConnecting] = useState(false);
   const [showAdvanced, setShowAdvanced] = useState(false);
@@ -103,6 +109,144 @@ export default function HomeScreen() {
     });
   };
 
+  const padStyle = {
+    paddingTop: Math.max(insets.top + Spacing.sm, Spacing.lg),
+    paddingBottom: Math.max(insets.bottom + Spacing.xl, Spacing.xxl),
+    paddingLeft: Math.max(insets.left + Spacing.lg, Spacing.lg),
+    paddingRight: Math.max(insets.right + Spacing.lg, Spacing.lg),
+  };
+
+  // When a vertical fold division is active, size the left pane up to the fold
+  // and leave a clear gutter over the crease.
+  const hasVerticalFold = fold?.orientation === 'vertical';
+  const leftPaneStyle = hasVerticalFold
+    ? { width: Math.max(240, fold.x - Math.max(insets.left + Spacing.lg, Spacing.lg) - 14) }
+    : styles.paneFlex;
+  const foldGap = hasVerticalFold ? Math.max(28, fold.width + 28) : 28;
+
+  const nearbyCard = (
+    <GlassCard style={styles.card}>
+      <View style={styles.cardHeader}>
+        <WifiHigh size={22} color={Colors.teal} weight="bold" />
+        <Text style={styles.cardTitle}>Nearby Games</Text>
+      </View>
+      <Text style={styles.cardDescription}>
+        BombSquad games on your Wi-Fi network
+      </Text>
+      <GameList
+        games={games}
+        scanning={scanning}
+        error={discoveryError}
+        onSelect={handleSelectGame}
+        onManualEntry={() => setShowAdvanced(true)}
+      />
+    </GlassCard>
+  );
+
+  const relayAndAdvanced = (
+    <>
+      {/* Room Code - cloud relay */}
+      <GlassCard style={styles.card}>
+        <View style={styles.cardHeader}>
+          <Globe size={22} color={Colors.purple} weight="bold" />
+          <Text style={styles.cardTitle}>Cloud Relay</Text>
+        </View>
+        <Text style={styles.cardDescription}>
+          Join a game anywhere using a room code
+        </Text>
+        <RoomCodeInput onJoin={handleJoinRoom} loading={connecting} />
+
+        {/* History chips */}
+        {history.length > 0 && (
+          <View style={styles.historySection}>
+            <Text style={styles.historyLabel}>Recent</Text>
+            <View style={styles.chips}>
+              {history.map((code) => (
+                <Pressable
+                  key={code}
+                  onPress={() => handleJoinRoom(code)}
+                  style={({ pressed }) => [styles.chip, pressed && styles.chipPressed]}
+                >
+                  <Text style={styles.chipText}>{code}</Text>
+                </Pressable>
+              ))}
+            </View>
+          </View>
+        )}
+      </GlassCard>
+
+      {/* Advanced - collapsible */}
+      <Pressable
+        onPress={() => setShowAdvanced(!showAdvanced)}
+        style={styles.advancedToggle}
+      >
+        <Text style={styles.advancedToggleText}>Advanced</Text>
+        {showAdvanced
+          ? <CaretUp size={16} color={Colors.textDim} weight="bold" />
+          : <CaretDown size={16} color={Colors.textDim} weight="bold" />
+        }
+      </Pressable>
+
+      {showAdvanced && (
+        <Animated.View entering={FadeIn.duration(200)}>
+          <GlassCard style={styles.card}>
+            <Text style={styles.label}>Direct IP Address</Text>
+            <Text style={styles.cardDescription}>
+              Connect directly to a BombSquad host by IP
+            </Text>
+            <View style={styles.ipRow}>
+              <StyledTextInput
+                mono
+                value={manualIp}
+                onChangeText={setManualIp}
+                placeholder="192.168.1.100"
+                keyboardType="numbers-and-punctuation"
+                autoCapitalize="none"
+                autoCorrect={false}
+                style={styles.ipInput}
+                onSubmitEditing={handleDirectConnect}
+              />
+              <Pressable
+                onPress={handleDirectConnect}
+                style={[styles.connectBtn, !manualIp.trim() && styles.connectBtnDisabled]}
+                disabled={!manualIp.trim()}
+              >
+                <Text style={styles.connectBtnText}>Connect</Text>
+              </Pressable>
+            </View>
+          </GlassCard>
+        </Animated.View>
+      )}
+
+      {/* How to Host info */}
+      <Pressable
+        onPress={() => setShowHostInfo(!showHostInfo)}
+        style={styles.hostInfoToggle}
+      >
+        <Info size={16} color={Colors.textDim} weight="bold" />
+        <Text style={styles.hostInfoToggleText}>How do I host a game?</Text>
+      </Pressable>
+
+      {showHostInfo && (
+        <Animated.View entering={FadeIn.duration(200)}>
+          <GlassCard style={styles.card}>
+            <Text style={styles.hostInfoText}>
+              To host a game, run BombSquad on a computer or tablet on your local network.
+              Players on the same Wi-Fi will see it under &quot;Nearby Games&quot; automatically.
+            </Text>
+            <Text style={[styles.hostInfoText, { marginTop: 8 }]}>
+              For remote players, use the SquadPad desktop app to create a room code
+              that connects through the cloud relay.
+            </Text>
+            <Text style={[styles.hostInfoText, { marginTop: 8, color: Colors.textDim }]}>
+              Learn more at squadpad.org
+            </Text>
+          </GlassCard>
+        </Animated.View>
+      )}
+    </>
+  );
+
   return (
     <View style={styles.container}>
       <LinearGradient
@@ -118,183 +262,131 @@ export default function HomeScreen() {
         end={{ x: 0.2, y: 0.2 }}
       />
 
-      <SafeAreaView style={styles.safe} edges={['top']}>
-        <ScrollView
-          contentContainerStyle={styles.content}
-          keyboardShouldPersistTaps="handled"
-          bounces={false}
-        >
-          {/* Brand — bomb icon + gradient title matching web */}
-          <View style={styles.brand}>
-            <Animated.View style={[styles.bombIconWrap, floatStyle]}>
-              <Image
-                source={require('../assets/icon-hero.png')}
-                style={styles.bombIcon}
-                resizeMode="contain"
-              />
-            </Animated.View>
-            <MaskedView
-              maskElement={<Text style={styles.titleMask}>SquadPad</Text>}
-            >
-              <LinearGradient
-                colors={[Colors.teal, Colors.purple, Colors.gold]}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-              >
-                <Text style={[styles.titleMask, { opacity: 0 }]}>SquadPad</Text>
-              </LinearGradient>
-            </MaskedView>
-            <Text style={styles.subtitle}>Game Controller for BombSquad</Text>
-          </View>
-
-          {/* Player name */}
-          <View style={styles.section}>
-            <Text style={styles.label}>Your Name</Text>
-            <StyledTextInput
-              value={playerName}
-              onChangeText={setPlayerName}
-              placeholder="Player"
-              autoCapitalize="words"
-              autoCorrect={false}
-              maxLength={20}
-            />
-          </View>
-
-          {/* Nearby Games - primary */}
-          <GlassCard style={styles.card}>
-            <View style={styles.cardHeader}>
-              <WifiHigh size={22} color={Colors.teal} weight="bold" />
-              <Text style={styles.cardTitle}>Nearby Games</Text>
-            </View>
-            <Text style={styles.cardDescription}>
-              BombSquad games on your Wi-Fi network
-            </Text>
-            <GameList
-              games={games}
-              scanning={scanning}
-              error={discoveryError}
-              onSelect={handleSelectGame}
-              onManualEntry={() => setShowAdvanced(true)}
-            />
-          </GlassCard>
-
-          {/* Room Code - cloud relay */}
-          <GlassCard style={styles.card}>
-            <View style={styles.cardHeader}>
-              <Globe size={22} color={Colors.purple} weight="bold" />
-              <Text style={styles.cardTitle}>Cloud Relay</Text>
-            </View>
-            <Text style={styles.cardDescription}>
-              Join a game anywhere using a room code
-            </Text>
-            <RoomCodeInput onJoin={handleJoinRoom} loading={connecting} />
-
-            {/* History chips */}
-            {history.length > 0 && (
-              <View style={styles.historySection}>
-                <Text style={styles.historyLabel}>Recent</Text>
-                <View style={styles.chips}>
-                  {history.map((code) => (
-                    <Pressable
-                      key={code}
-                      onPress={() => handleJoinRoom(code)}
-                      style={({ pressed }) => [styles.chip, pressed && styles.chipPressed]}
-                    >
-                      <Text style={styles.chipText}>{code}</Text>
-                    </Pressable>
-                  ))}
-                </View>
-              </View>
-            )}
-          </GlassCard>
-
-          {/* Advanced - collapsible */}
-          <Pressable
-            onPress={() => setShowAdvanced(!showAdvanced)}
-            style={styles.advancedToggle}
-          >
-            <Text style={styles.advancedToggleText}>Advanced</Text>
-            {showAdvanced
-              ? <CaretUp size={16} color={Colors.textDim} weight="bold" />
-              : <CaretDown size={16} color={Colors.textDim} weight="bold" />
-            }
-          </Pressable>
-
-          {showAdvanced && (
-            <Animated.View entering={FadeIn.duration(200)}>
-              <GlassCard style={styles.card}>
-                <Text style={styles.label}>Direct IP Address</Text>
-                <Text style={styles.cardDescription}>
-                  Connect directly to a BombSquad host by IP
-                </Text>
-                <View style={styles.ipRow}>
-                  <StyledTextInput
-                    value={manualIp}
-                    onChangeText={setManualIp}
-                    placeholder="192.168.1.100"
-                    keyboardType="numbers-and-punctuation"
-                    autoCapitalize="none"
-                    autoCorrect={false}
-                    style={styles.ipInput}
-                    onSubmitEditing={handleDirectConnect}
+      <ScrollView
+        contentContainerStyle={[
+          styles.content,
+          isWide && styles.contentWide,
+          padStyle,
+        ]}
+        keyboardShouldPersistTaps="handled"
+        bounces={false}
+      >
+        {isWide ? (
+          <View style={[styles.twoPaneRow, { gap: foldGap }]}>
+            <View style={[styles.paneCol, leftPaneStyle]}>
+              <View style={styles.brand}>
+                <Animated.View style={[styles.bombIconWrap, floatStyle]}>
+                  <Image
+                    source={require('../assets/icon-hero.png')}
+                    style={styles.bombIconCompact}
+                    resizeMode="contain"
                   />
-                  <Pressable
-                    onPress={handleDirectConnect}
-                    style={[styles.connectBtn, !manualIp.trim() && styles.connectBtnDisabled]}
-                    disabled={!manualIp.trim()}
+                </Animated.View>
+                <GradientMask maskElement={<Text style={styles.titleMask}>SquadPad</Text>}>
+                  <LinearGradient
+                    colors={[Colors.teal, Colors.purple, Colors.gold]}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
                   >
-                    <Text style={styles.connectBtnText}>Connect</Text>
-                  </Pressable>
-                </View>
-              </GlassCard>
-            </Animated.View>
-          )}
+                    <Text style={[styles.titleMask, { opacity: 0 }]}>SquadPad</Text>
+                  </LinearGradient>
+                </GradientMask>
+                <Text style={styles.subtitle}>Game Controller for BombSquad</Text>
+              </View>
 
-          {/* How to Host info */}
-          <Pressable
-            onPress={() => setShowHostInfo(!showHostInfo)}
-            style={styles.hostInfoToggle}
-          >
-            <Info size={16} color={Colors.textDim} weight="bold" />
-            <Text style={styles.hostInfoToggleText}>How do I host a game?</Text>
-          </Pressable>
+              <View style={styles.section}>
+                <Text style={styles.label}>Your Name</Text>
+                <StyledTextInput
+                  value={playerName}
+                  onChangeText={setPlayerName}
+                  placeholder="Player"
+                  autoCapitalize="words"
+                  autoCorrect={false}
+                  maxLength={20}
+                />
+              </View>
 
-          {showHostInfo && (
-            <Animated.View entering={FadeIn.duration(200)}>
-              <GlassCard style={styles.card}>
-                <Text style={styles.hostInfoText}>
-                  To host a game, run BombSquad on a computer or tablet on your local network.
-                  Players on the same Wi-Fi will see it under "Nearby Games" automatically.
+              {nearbyCard}
+            </View>
+
+            <View style={[styles.paneCol, styles.paneFlex]}>
+              {relayAndAdvanced}
+              <Pressable onPress={() => router.push('/settings')} style={styles.settingsLink}>
+                <Text style={styles.settingsLinkText}>Settings</Text>
+              </Pressable>
+              <View style={styles.footer}>
+                <Text style={styles.credits}>
+                  Unofficial companion app. BombSquad is made by Eric Froemling.
                 </Text>
-                <Text style={[styles.hostInfoText, { marginTop: 8 }]}>
-                  For remote players, use the SquadPad desktop app to create a room code
-                  that connects through the cloud relay.
-                </Text>
-                <Text style={[styles.hostInfoText, { marginTop: 8, color: Colors.textDim }]}>
-                  Learn more at squadpad.org
-                </Text>
-              </GlassCard>
-            </Animated.View>
-          )}
-
-          {/* Settings link */}
-          <Pressable onPress={() => router.push('/settings')} style={styles.settingsLink}>
-            <Text style={styles.settingsLinkText}>Settings</Text>
-          </Pressable>
-
-          <View style={styles.footer}>
-            <Text style={styles.credits}>
-              Unofficial companion app. BombSquad is made by Eric Froemling.
-            </Text>
-            <Pressable
-              onPress={() => Linking.openURL('https://github.com/nerveband/squadpad')}
-              hitSlop={8}
-            >
-              <Text style={styles.openSourceLink}>Open Source</Text>
-            </Pressable>
+                <Pressable
+                  onPress={() => Linking.openURL('https://github.com/nerveband/squadpad')}
+                  hitSlop={8}
+                >
+                  <Text style={styles.openSourceLink}>Open Source</Text>
+                </Pressable>
+              </View>
+            </View>
           </View>
-        </ScrollView>
-      </SafeAreaView>
+        ) : (
+          <>
+            {/* Brand: bomb icon + gradient title matching web */}
+            <View style={styles.brand}>
+              <Animated.View style={[styles.bombIconWrap, floatStyle]}>
+                <Image
+                  source={require('../assets/icon-hero.png')}
+                  style={styles.bombIcon}
+                  resizeMode="contain"
+                />
+              </Animated.View>
+              <GradientMask
+                maskElement={<Text style={styles.titleMask}>SquadPad</Text>}
+              >
+                <LinearGradient
+                  colors={[Colors.teal, Colors.purple, Colors.gold]}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                >
+                  <Text style={[styles.titleMask, { opacity: 0 }]}>SquadPad</Text>
+                </LinearGradient>
+              </GradientMask>
+              <Text style={styles.subtitle}>Game Controller for BombSquad</Text>
+            </View>
+
+            {/* Player name */}
+            <View style={styles.section}>
+              <Text style={styles.label}>Your Name</Text>
+              <StyledTextInput
+                value={playerName}
+                onChangeText={setPlayerName}
+                placeholder="Player"
+                autoCapitalize="words"
+                autoCorrect={false}
+                maxLength={20}
+              />
+            </View>
+
+            {nearbyCard}
+            {relayAndAdvanced}
+
+            {/* Settings link */}
+            <Pressable onPress={() => router.push('/settings')} style={styles.settingsLink}>
+              <Text style={styles.settingsLinkText}>Settings</Text>
+            </Pressable>
+
+            <View style={styles.footer}>
+              <Text style={styles.credits}>
+                Unofficial companion app. BombSquad is made by Eric Froemling.
+              </Text>
+              <Pressable
+                onPress={() => Linking.openURL('https://github.com/nerveband/squadpad')}
+                hitSlop={8}
+              >
+                <Text style={styles.openSourceLink}>Open Source</Text>
+              </Pressable>
+            </View>
+          </>
+        )}
+      </ScrollView>
     </View>
   );
 }
@@ -307,16 +399,25 @@ const styles = StyleSheet.create({
   bgGradient: {
     ...StyleSheet.absoluteFill,
   },
-  safe: {
-    flex: 1,
-  },
   content: {
-    padding: Spacing.lg,
     gap: Spacing.lg,
     maxWidth: 500,
     alignSelf: 'center',
     width: '100%',
-    paddingBottom: Spacing.xxl,
+  },
+  contentWide: {
+    maxWidth: 960,
+  },
+  twoPaneRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    width: '100%',
+  },
+  paneCol: {
+    gap: Spacing.lg,
+  },
+  paneFlex: {
+    flex: 1,
   },
   brand: {
     alignItems: 'center',
@@ -336,13 +437,20 @@ const styles = StyleSheet.create({
     height: 132, // aspect ratio ~719:791
     marginBottom: -8,
   },
+  bombIconCompact: {
+    width: 96,
+    height: 106,
+    marginBottom: -6,
+  },
   titleMask: {
+    fontFamily: Fonts.extrabold,
     fontSize: 36,
     fontWeight: FontWeight.extrabold,
     letterSpacing: -1.5,
     textAlign: 'center',
   },
   subtitle: {
+    fontFamily: Fonts.primary,
     color: Colors.textDim,
     fontSize: FontSize.sm,
     marginTop: 2,
@@ -351,6 +459,7 @@ const styles = StyleSheet.create({
     gap: Spacing.sm,
   },
   label: {
+    fontFamily: Fonts.semibold,
     color: Colors.textDim,
     fontSize: FontSize.sm,
     fontWeight: FontWeight.semibold,
@@ -366,11 +475,13 @@ const styles = StyleSheet.create({
     gap: Spacing.sm,
   },
   cardTitle: {
+    fontFamily: Fonts.bold,
     color: Colors.text,
     fontSize: FontSize.lg,
     fontWeight: FontWeight.bold,
   },
   cardDescription: {
+    fontFamily: Fonts.primary,
     color: Colors.textDim,
     fontSize: FontSize.sm,
     lineHeight: 20,
@@ -381,6 +492,7 @@ const styles = StyleSheet.create({
     gap: Spacing.xs,
   },
   historyLabel: {
+    fontFamily: Fonts.semibold,
     color: Colors.textDim,
     fontSize: FontSize.xs,
     fontWeight: FontWeight.semibold,
@@ -404,6 +516,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(155,107,190,0.15)',
   },
   chipText: {
+    fontFamily: Fonts.monoSemibold,
     color: Colors.purple,
     fontSize: FontSize.sm,
     fontWeight: FontWeight.semibold,
@@ -416,6 +529,7 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.xs,
   },
   advancedToggleText: {
+    fontFamily: Fonts.semibold,
     color: Colors.textDim,
     fontSize: FontSize.sm,
     fontWeight: FontWeight.semibold,
@@ -438,6 +552,7 @@ const styles = StyleSheet.create({
     opacity: 0.4,
   },
   connectBtnText: {
+    fontFamily: Fonts.bold,
     color: '#fff',
     fontSize: FontSize.md,
     fontWeight: FontWeight.bold,
@@ -450,10 +565,12 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.xs,
   },
   hostInfoToggleText: {
+    fontFamily: Fonts.primary,
     color: Colors.textDim,
     fontSize: FontSize.sm,
   },
   hostInfoText: {
+    fontFamily: Fonts.primary,
     color: Colors.text,
     fontSize: FontSize.sm,
     lineHeight: 20,
@@ -463,6 +580,7 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.xs,
   },
   settingsLinkText: {
+    fontFamily: Fonts.semibold,
     color: Colors.purple,
     fontSize: FontSize.sm,
     fontWeight: FontWeight.semibold,
@@ -472,12 +590,14 @@ const styles = StyleSheet.create({
     gap: Spacing.xs,
   },
   credits: {
+    fontFamily: Fonts.primary,
     color: Colors.textDim,
     fontSize: FontSize.xs,
     textAlign: 'center',
     opacity: 0.6,
   },
   openSourceLink: {
+    fontFamily: Fonts.semibold,
     color: Colors.teal,
     fontSize: FontSize.xs,
     fontWeight: FontWeight.semibold,

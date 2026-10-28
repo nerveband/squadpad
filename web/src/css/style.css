@@ -4,6 +4,28 @@
    purple-violet, teal-cyan, warm pink, deep indigo background.
    ============================================================ */
 
+
+@font-face {
+  font-family: 'Ioskeley Mono';
+  src: url('../fonts/IoskeleyMono-Regular.woff2') format('woff2');
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Ioskeley Mono';
+  src: url('../fonts/IoskeleyMono-SemiBold.woff2') format('woff2');
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Ioskeley Mono';
+  src: url('../fonts/IoskeleyMono-Bold.woff2') format('woff2');
+  font-style: normal;
+  font-weight: 700 800;
+  font-display: swap;
+}
 /* --- Palette Variables --- */
 :root {
   --bg-deep:       #0d0b1a;
@@ -81,7 +103,7 @@ body {
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
   touch-action: pan-y;
-  padding: 20px 0;
+  padding: max(20px, env(safe-area-inset-top)) env(safe-area-inset-right) max(20px, env(safe-area-inset-bottom)) env(safe-area-inset-left);
   background:
     radial-gradient(ellipse at 50% 20%, rgba(155,107,190,0.12) 0%, transparent 50%),
     radial-gradient(ellipse at 30% 70%, rgba(92,196,176,0.06) 0%, transparent 50%),
@@ -438,7 +460,7 @@ body {
   min-width: 0;
   padding: 14px 12px;
   font-size: 1.05rem;
-  font-family: 'JetBrains Mono', 'SF Mono', monospace;
+  font-family: 'Ioskeley Mono', 'SF Mono', monospace;
   font-weight: 400;
   text-align: center;
   text-transform: lowercase;
@@ -564,13 +586,42 @@ body {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 6px 12px;
+  padding-top: max(6px, env(safe-area-inset-top));
+  padding-right: max(12px, env(safe-area-inset-right));
+  padding-bottom: 6px;
+  padding-left: max(12px, env(safe-area-inset-left));
   background: rgba(0,0,0,0.4);
   border-bottom: 1px solid rgba(255,255,255,0.04);
   flex-shrink: 0;
   z-index: 10;
 }
 
+.hud-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.hud-menu-btn {
+  height: 36px;
+  padding: 0 10px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  font-family: inherit;
+  border: 1px solid rgba(232,200,64,0.28);
+  border-radius: 8px;
+  background: rgba(232,200,64,0.08);
+  color: var(--gold);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  transition: background 0.15s, border-color 0.15s;
+}
+.hud-menu-btn:active {
+  background: rgba(232,200,64,0.22);
+  border-color: var(--gold);
+}
 #menu-btn {
   width: 36px;
   height: 36px;
@@ -596,14 +647,14 @@ body {
 }
 
 .connect-timer {
-  font-family: 'JetBrains Mono', monospace;
+  font-family: 'Ioskeley Mono', monospace;
   font-size: 0.75rem;
   color: var(--teal);
   opacity: 0.7;
 }
 
 #lag-display {
-  font-family: 'JetBrains Mono', 'SF Mono', 'Consolas', monospace;
+  font-family: 'Ioskeley Mono', 'SF Mono', 'Consolas', monospace;
   font-size: 0.75rem;
   color: var(--teal);            /* default teal = good */
   min-width: 50px;
@@ -618,7 +669,7 @@ body {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 12px;
+  padding: 12px max(12px, env(safe-area-inset-right)) max(12px, env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left));
   overflow: hidden;
   position: relative;
 }
@@ -666,7 +717,7 @@ body {
   transform: translateX(-50%);
   font-size: 0.75rem;
   color: #555;
-  font-family: 'JetBrains Mono', 'SF Mono', 'Consolas', monospace;
+  font-family: 'Ioskeley Mono', 'SF Mono', 'Consolas', monospace;
   pointer-events: none;
   letter-spacing: 1px;
 }
@@ -802,6 +853,28 @@ body {
     grid-template-columns: 54px 54px 54px;
     grid-template-rows: 54px 54px 54px;
     gap: 2px;
+  }
+}
+
+/* ============================================================
+   Responsive: Foldable dual-viewport segments (Book & Tabletop)
+   ============================================================ */
+@media (horizontal-viewport-segments: 2) {
+  #joystick-zone {
+    width: env(viewport-segment-width 0 0, 48%);
+  }
+  #button-zone {
+    width: env(viewport-segment-width 1 0, 48%);
+  }
+}
+@media (vertical-viewport-segments: 2) {
+  #controls {
+    align-items: flex-end;
+    padding-bottom: max(20px, env(safe-area-inset-bottom));
+  }
+  #joystick-zone,
+  #button-zone {
+    height: env(viewport-segment-height 0 1, 50%);
   }
 }
 
@@ -1086,7 +1159,7 @@ body {
 }
 
 .share-value {
-  font-family: 'JetBrains Mono', monospace;
+  font-family: 'Ioskeley Mono', monospace;
   font-size: 0.95rem;
   font-weight: 700;
   color: #e0e0e0;
@@ -1243,7 +1316,7 @@ body {
 .url-display {
   display: block;
   padding: 10px 14px;
-  font-family: 'JetBrains Mono', 'SF Mono', 'Consolas', monospace;
+  font-family: 'Ioskeley Mono', 'SF Mono', 'Consolas', monospace;
   font-size: 0.85rem;
   background: rgba(255,255,255,0.04);
   border: 1px solid rgba(255,255,255,0.08);
@@ -1253,7 +1326,7 @@ body {
 }
 
 .room-code {
-  font-family: 'JetBrains Mono', 'SF Mono', 'Consolas', monospace;
+  font-family: 'Ioskeley Mono', 'SF Mono', 'Consolas', monospace;
   font-size: 1.8rem;
   font-weight: 800;
   letter-spacing: 4px;
@@ -1299,7 +1372,7 @@ body {
 }
 
 .player-lag {
-  font-family: 'JetBrains Mono', 'SF Mono', 'Consolas', monospace;
+  font-family: 'Ioskeley Mono', 'SF Mono', 'Consolas', monospace;
   font-size: 0.75rem;
   min-width: 48px;
   text-align: right;
@@ -1361,7 +1434,7 @@ body {
 }
 
 .game-addr {
-  font-family: 'JetBrains Mono', 'SF Mono', 'Consolas', monospace;
+  font-family: 'Ioskeley Mono', 'SF Mono', 'Consolas', monospace;
   font-size: 0.75rem;
   color: #888;
 }
@@ -1427,7 +1500,7 @@ body {
   border: 1px solid rgba(255,255,255,0.06);
   border-radius: 8px;
   padding: 10px 12px;
-  font-family: 'JetBrains Mono', monospace;
+  font-family: 'Ioskeley Mono', monospace;
   font-size: 0.72rem;
   line-height: 1.6;
   color: #888;
@@ -1531,7 +1604,7 @@ body {
   padding: 4px 10px;
   font-size: 0.8rem;
   font-weight: 600;
-  font-family: 'JetBrains Mono', monospace;
+  font-family: 'Ioskeley Mono', monospace;
   color: var(--gold);
   background: rgba(232,200,64,0.08);
   border: 1px solid rgba(232,200,64,0.2);
@@ -1579,7 +1652,7 @@ body {
   right: -6px;
   font-size: 0.7rem;
   font-weight: 800;
-  font-family: 'JetBrains Mono', monospace;
+  font-family: 'Ioskeley Mono', monospace;
   background: rgba(0,0,0,0.85);
   color: #fff;
   padding: 2px 6px;
@@ -1671,7 +1744,7 @@ body {
   padding: 6px 14px;
   font-size: 0.8rem;
   font-weight: 700;
-  font-family: 'JetBrains Mono', monospace;
+  font-family: 'Ioskeley Mono', monospace;
   background: rgba(255,255,255,0.06);
   border: 1px solid rgba(255,255,255,0.12);
   border-radius: 6px;
@@ -1767,7 +1840,7 @@ body {
   border: 1px solid rgba(255,255,255,0.08);
   background: rgba(255,255,255,0.04);
   color: var(--text-dim);
-  font-family: 'JetBrains Mono', monospace;
+  font-family: 'Ioskeley Mono', monospace;
   font-size: 0.72rem;
   cursor: pointer;
   transition: border-color 0.25s, background 0.25s, color 0.25s, transform 0.2s;
@@ -1950,7 +2023,7 @@ details[open] .advanced-toggle::after {
   width: 100%;
   padding: 10px 12px;
   font-size: 0.9rem;
-  font-family: 'JetBrains Mono', 'SF Mono', 'Consolas', monospace;
+  font-family: 'Ioskeley Mono', 'SF Mono', 'Consolas', monospace;
   text-align: center;
   background: rgba(255,255,255,0.05);
   border: 1.5px solid rgba(255,255,255,0.1);
@@ -2048,7 +2121,7 @@ details[open] .advanced-toggle::after {
   line-height: 1.1;
 }
 .zoom-url {
-  font-family: 'JetBrains Mono', monospace;
+  font-family: 'Ioskeley Mono', monospace;
   font-size: 2.4rem;
   font-weight: 700;
   color: var(--teal);
@@ -2062,7 +2135,7 @@ details[open] .advanced-toggle::after {
   margin-top: 16px;
 }
 .zoom-code {
-  font-family: 'JetBrains Mono', monospace;
+  font-family: 'Ioskeley Mono', monospace;
   font-size: 5rem;
   font-weight: 800;
   letter-spacing: 6px;

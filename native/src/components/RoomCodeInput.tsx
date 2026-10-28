@@ -1,8 +1,8 @@
-import { useRef, useState } from 'react';
+import { useRef, useState, type ComponentRef } from 'react';
 import { View, Text, TextInput, StyleSheet } from 'react-native';
 import { PrimaryButton } from './PrimaryButton';
 import { Colors } from '../theme/colors';
-import { FontSize, FontWeight } from '../theme/typography';
+import { Fonts, FontSize, FontWeight } from '../theme/typography';
 import { Radius, Spacing } from '../theme/spacing';
 
 interface RoomCodeInputProps {
@@ -13,8 +13,8 @@ interface RoomCodeInputProps {
 export function RoomCodeInput({ onJoin, loading }: RoomCodeInputProps) {
   const [word1, setWord1] = useState('');
   const [word2, setWord2] = useState('');
-  const word2Ref = useRef<TextInput>(null);
-  const word1Ref = useRef<TextInput>(null);
+  const word2Ref = useRef<ComponentRef<typeof TextInput>>(null);
+  const word1Ref = useRef<ComponentRef<typeof TextInput>>(null);
 
   const handleWord1Change = (text: string) => {
     const clean = text.toLowerCase().replace(/[^a-z]/g, '');
@@ -89,6 +89,7 @@ const styles = StyleSheet.create({
     gap: Spacing.sm,
   },
   title: {
+    fontFamily: Fonts.semibold,
     color: Colors.text,
     fontSize: FontSize.md,
     fontWeight: FontWeight.semibold,
@@ -104,13 +105,14 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
     borderColor: Colors.border,
     borderRadius: Radius.md,
+    fontFamily: Fonts.mono,
     color: Colors.text,
-    fontSize: FontSize.lg,
-    fontWeight: FontWeight.semibold,
+    fontSize: FontSize.md,
+    fontWeight: FontWeight.regular,
     paddingVertical: 12,
     paddingHorizontal: 16,
     textAlign: 'center',
-    letterSpacing: 1,
+    letterSpacing: 0.5,
   },
   joinButton: {
     paddingHorizontal: 20,

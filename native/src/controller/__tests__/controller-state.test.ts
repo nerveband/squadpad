@@ -1,4 +1,5 @@
 import { ControllerState } from '../controller-state';
+import { getZone } from '../touch-zones';
 
 describe('ControllerState', () => {
   test('initial state is centered with no buttons', () => {
@@ -94,5 +95,27 @@ describe('ControllerState', () => {
     expect(s.buttons).toBe(0);
     expect(s.h).toBe(128);
     expect(s.v).toBe(128);
+  });
+});
+
+describe('getZone diamond quadrant & foldable crease filter', () => {
+  const cx = 300;
+  const cy = 220;
+  const radius = 200;
+
+  test('maps top, left, right, bottom around cluster center to throw(0), punch(1), bomb(2), jump(3)', () => {
+    expect(getZone(cx, cy - 80, cx, cy, radius)).toBe(0); // throw
+    expect(getZone(cx - 80, cy, cx, cy, radius)).toBe(1); // punch
+    expect(getZone(cx + 80, cy, cx, cy, radius)).toBe(2); // bomb
+    expect(getZone(cx, cy + 80, cx, cy, radius)).toBe(3); // jump
+  });
+
+  test('rejects stray touches near the foldable center crease outside maxRadius', () => {
+    expect(getZone(cx - 240, cy, cx, cy, radius)).toBe(-1);
+    expect(getZone(cx, cy - 250, cx, cy, radius)).toBe(-1);
+  });
+
+  test('returns -1 when cluster center is unmeasured', () => {
+    expect(getZone(100, 100, 0, 0, radius)).toBe(-1);
   });
 });

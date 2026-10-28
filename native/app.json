@@ -52,11 +52,17 @@
         }
       ],
       [
-        "expo-build-properties",
+        "expo-font",
         {
-          "ios": {
-            "enableSceneSupport": true
-          }
+          "fonts": [
+            "./assets/fonts/Outfit-Regular.ttf",
+            "./assets/fonts/Outfit-SemiBold.ttf",
+            "./assets/fonts/Outfit-Bold.ttf",
+            "./assets/fonts/Outfit-ExtraBold.ttf",
+            "./assets/fonts/Ioskeley-Mono.ttf",
+            "./assets/fonts/Ioskeley-Mono-Semibold.ttf",
+            "./assets/fonts/Ioskeley-Mono-Bold.ttf"
+          ]
         }
       ]
     ],

@@ -1,14 +1,15 @@
 import { useState } from 'react';
 import { TextInput as RNTextInput, StyleSheet, TextInputProps, View } from 'react-native';
 import { Colors } from '../theme/colors';
-import { FontSize } from '../theme/typography';
+import { Fonts, FontSize } from '../theme/typography';
 import { Radius } from '../theme/spacing';
 
 interface StyledTextInputProps extends TextInputProps {
-  // Extends all RN TextInput props
+  /** Use Ioskeley Mono for technical fields like IP addresses. */
+  mono?: boolean;
 }
 
-export function StyledTextInput(props: StyledTextInputProps) {
+export function StyledTextInput({ mono, style, ...props }: StyledTextInputProps) {
   const [focused, setFocused] = useState(false);
 
   return (
@@ -24,7 +25,7 @@ export function StyledTextInput(props: StyledTextInputProps) {
           setFocused(false);
           props.onBlur?.(e);
         }}
-        style={[styles.input, props.style]}
+        style={[styles.input, mono && styles.inputMono, style]}
       />
     </View>
   );
@@ -47,9 +48,13 @@ const styles = StyleSheet.create({
     elevation: 4,
   },
   input: {
+    fontFamily: Fonts.semibold,
     color: Colors.text,
     fontSize: FontSize.md,
     paddingVertical: 12,
     paddingHorizontal: 16,
+  },
+  inputMono: {
+    fontFamily: Fonts.mono,
   },
 });

@@ -5,7 +5,7 @@ import Animated, { FadeIn, FadeOut, SlideInRight, SlideOutRight } from 'react-na
 import { Colors } from '../theme/colors';
 import { FontSize, FontWeight, Fonts } from '../theme/typography';
 import { Spacing, Radius } from '../theme/spacing';
-import type { Settings } from '../hooks/useSettings';
+import type { Settings, RunMode } from '../hooks/useSettings';
 import type { ConnectionMode } from '../connection/failure-messages';
 
 const MODE_LABEL: Record<ConnectionMode, string> = { lan: 'Wi-Fi', relay: 'Online room' };
@@ -108,7 +108,8 @@ export function ControllerHud({
   if (!visible) return null;
 
   const safeTop = Math.max(insets.top + 12, 20);
-
+  const safeRight = Math.max(insets.right + Spacing.md, Spacing.md);
+  const safeBottom = Math.max(insets.bottom + 28, 40);
   const lagColor = lagMs == null ? Colors.textDim
     : lagMs < 80 ? Colors.teal
     : lagMs <= 150 ? Colors.gold
@@ -129,7 +130,14 @@ export function ControllerHud({
       <Animated.View
         entering={SlideInRight.duration(200)}
         exiting={SlideOutRight.duration(200)}
-        style={[hudStyles.panel, { paddingTop: safeTop }]}
+        style={[
+          hudStyles.panel,
+          {
+            width: 280 + insets.right,
+            paddingTop: safeTop,
+            paddingRight: safeRight,
+          },
+        ]}
       >
         <View style={hudStyles.header}>
           <Text style={hudStyles.title}>Controller</Text>
@@ -141,7 +149,7 @@ export function ControllerHud({
         <ScrollView
           showsVerticalScrollIndicator={false}
           bounces={false}
-          contentContainerStyle={{ paddingBottom: 40 }}
+          contentContainerStyle={{ paddingBottom: safeBottom }}
         >
           {/* Connection info */}
           <View style={hudStyles.section}>
@@ -203,6 +211,22 @@ export function ControllerHud({
               value={settings.joystickStyle}
               onChange={(v) => onUpdate({ joystickStyle: v })}
             />
+            <HudSegments<RunMode>
+              label="Run Trigger"
+              options={[
+                { key: 'buttonHold', label: 'Hold' },
+                { key: 'button', label: 'Button' },
+                { key: 'stickEdge', label: 'Stick' },
+              ]}
+              value={settings.runMode}
+              onChange={(v) => onUpdate({ runMode: v })}
+            />
+
+            <HudToggle
+              label="Left-Handed"
+              value={settings.leftHanded}
+              onToggle={() => onUpdate({ leftHanded: !settings.leftHanded })}
+            />
 
             <HudToggle
               label="Portrait"
@@ -249,6 +273,7 @@ const hudStyles = StyleSheet.create({
     marginBottom: Spacing.lg,
   },
   title: {
+    fontFamily: Fonts.bold,
     color: Colors.text,
     fontSize: FontSize.lg,
     fontWeight: FontWeight.bold,
@@ -265,6 +290,7 @@ const hudStyles = StyleSheet.create({
     marginBottom: Spacing.lg,
   },
   sectionLabel: {
+    fontFamily: Fonts.semibold,
     color: Colors.textDim,
     fontSize: FontSize.xs,
     fontWeight: FontWeight.semibold,
@@ -279,10 +305,12 @@ const hudStyles = StyleSheet.create({
     paddingVertical: 6,
   },
   statLabel: {
+    fontFamily: Fonts.primary,
     color: Colors.textDim,
     fontSize: FontSize.sm,
   },
   statValue: {
+    fontFamily: Fonts.semibold,
     color: Colors.text,
     fontSize: FontSize.sm,
     fontWeight: FontWeight.semibold,
@@ -295,6 +323,7 @@ const hudStyles = StyleSheet.create({
     paddingVertical: 8,
   },
   label: {
+    fontFamily: Fonts.primary,
     color: Colors.text,
     fontSize: FontSize.sm,
   },
@@ -311,6 +340,7 @@ const hudStyles = StyleSheet.create({
     borderColor: Colors.purple,
   },
   pillText: {
+    fontFamily: Fonts.semibold,
     color: Colors.textDim,
     fontSize: FontSize.xs,
     fontWeight: FontWeight.semibold,
@@ -322,7 +352,7 @@ const hudStyles = StyleSheet.create({
     color: Colors.teal,
     fontSize: FontSize.sm,
     fontWeight: FontWeight.bold,
-    fontFamily: Fonts.mono,
+    fontFamily: Fonts.monoBold,
   },
   settingBlock: {
     marginBottom: 8,
@@ -345,6 +375,7 @@ const hudStyles = StyleSheet.create({
     backgroundColor: 'rgba(155,107,190,0.25)',
   },
   segText: {
+    fontFamily: Fonts.semibold,
     color: Colors.textDim,
     fontSize: 11,
     fontWeight: FontWeight.semibold,
@@ -364,6 +395,7 @@ const hudStyles = StyleSheet.create({
     backgroundColor: 'rgba(155,107,190,0.08)',
   },
   allSettingsText: {
+    fontFamily: Fonts.semibold,
     color: Colors.purple,
     fontSize: FontSize.sm,
     fontWeight: FontWeight.semibold,

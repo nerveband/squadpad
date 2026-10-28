@@ -3,7 +3,7 @@ import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
 import { WarningCircleIcon } from 'phosphor-react-native';
 import { PrimaryButton } from './PrimaryButton';
 import { Colors } from '../theme/colors';
-import { FontSize, FontWeight } from '../theme/typography';
+import { Fonts, FontSize, FontWeight } from '../theme/typography';
 import { Radius, Spacing } from '../theme/spacing';
 import { describeFailure, STAGE_TEXT, type ConnectionMode } from '../connection/failure-messages';
 import type { ConnectionStatus } from '../connection/connection-manager';
@@ -75,6 +75,7 @@ const styles = StyleSheet.create({
     gap: Spacing.sm,
   },
   title: {
+    fontFamily: Fonts.bold,
     color: Colors.text,
     fontSize: FontSize.lg,
     fontWeight: FontWeight.bold,
@@ -82,10 +83,12 @@ const styles = StyleSheet.create({
     marginTop: Spacing.xs,
   },
   target: {
+    fontFamily: Fonts.mono,
     color: Colors.textDim,
     fontSize: FontSize.sm,
   },
   message: {
+    fontFamily: Fonts.primary,
     color: Colors.text,
     fontSize: FontSize.sm,
     lineHeight: 20,
@@ -105,6 +108,7 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.sm,
   },
   leaveText: {
+    fontFamily: Fonts.semibold,
     color: Colors.textDim,
     fontSize: FontSize.md,
     fontWeight: FontWeight.semibold,

@@ -1,13 +1,15 @@
-import { useCallback, useRef } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, { useSharedValue, withSpring, withTiming, runOnJS } from 'react-native-reanimated';
-import { ArrowUp, HandFist, FireSimple, ArrowsOutSimple } from 'phosphor-react-native';
+import { ArrowUp, HandFist, FireSimple, ArrowsOutSimple, PersonSimpleRun } from 'phosphor-react-native';
 import { ButtonVisual, ActionButtonConfig, BUTTON_SIZE } from './ActionButton';
 import { playHaptic, type HapticIntensity } from '../controller/haptics';
 import type { ButtonName } from '../controller/controller-state';
+import { getZone } from '../controller/touch-zones';
+import type { RunMode } from '../hooks/useSettings';
 import { Colors } from '../theme/colors';
-
+import { Fonts, FontSize, FontWeight } from '../theme/typography';
 const BUTTON_GAP = 14;
 // Horizontal gap between punch & bomb — wider than vertical gap
 // so the diamond looks balanced rather than squished.
@@ -42,28 +44,7 @@ const BUTTONS: ActionButtonConfig[] = [
   },
 ];
 
-/**
- * Determine which diamond quadrant a touch falls in by drawing
- * an X through the center of the container.
- *
- *         0 (throw)
- *       /   \
- *   1 (punch) 2 (bomb)
- *       \   /
- *         3 (jump)
- *
- * Returns 0-3 or -1 if container has no size.
- */
-function getZone(x: number, y: number, w: number, h: number): number {
-  if (w === 0 || h === 0) return -1;
-  // Normalize to [-0.5, 0.5] so aspect ratio is accounted for
-  const dx = (x - w / 2) / w;
-  const dy = (y - h / 2) / h;
-  if (Math.abs(dy) >= Math.abs(dx)) {
-    return dy < 0 ? 0 : 3; // top → throw, bottom → jump
-  }
-  return dx < 0 ? 1 : 2; // left → punch, right → bomb
-}
+export { getZone };
 
 function useButtonAnim() {
   return { scale: useSharedValue(1), pressed: useSharedValue(0) };
@@ -74,19 +55,63 @@ interface ActionButtonsProps {
   onPressOut: (name: ButtonName) => void;
   hapticsEnabled: boolean;
   hapticIntensity: HapticIntensity;
+  runMode?: RunMode;
+  /** True when action buttons sit on the left side (left-handed layout). */
+  mirrored?: boolean;
 }
 
-export function ActionButtons({ onPressIn, onPressOut, hapticsEnabled, hapticIntensity }: ActionButtonsProps) {
+export function ActionButtons({
+  onPressIn,
+  onPressOut,
+  hapticsEnabled,
+  hapticIntensity,
+  runMode = 'buttonHold',
+  mirrored = false,
+}: ActionButtonsProps) {
   const b0 = useButtonAnim(); // throw (top)
   const b1 = useButtonAnim(); // punch (left)
   const b2 = useButtonAnim(); // bomb  (right)
   const b3 = useButtonAnim(); // jump  (bottom)
+  const [runBtnPressed, setRunBtnPressed] = useState(false);
 
-  const layoutW = useSharedValue(1);
-  const layoutH = useSharedValue(1);
+  const layoutW = useSharedValue(0);
+  const layoutH = useSharedValue(0);
+  const clusterCenterX = useSharedValue(0);
+  const clusterCenterY = useSharedValue(0);
+  const clusterMaxRadius = useSharedValue(0);
 
-  // Map of touchId → zone index for multi-touch tracking
+  // Map of touchId -> zone index for multi-touch chording and slide rollover
   const activeTouches = useRef(new Map<number, number>());
+  const runHeldByActionRef = useRef(false);
+
+  const isZoneHeld = (zone: number): boolean => {
+    for (const z of activeTouches.current.values()) {
+      if (z === zone) return true;
+    }
+    return false;
+  };
+
+  const syncButtonHoldRun = useCallback(() => {
+    if (runMode !== 'buttonHold') {
+      if (runHeldByActionRef.current) {
+        runHeldByActionRef.current = false;
+        onPressOut('run');
+      }
+      return;
+    }
+    const anyActive = activeTouches.current.size > 0;
+    if (anyActive && !runHeldByActionRef.current) {
+      runHeldByActionRef.current = true;
+      onPressIn('run');
+    } else if (!anyActive && runHeldByActionRef.current) {
+      runHeldByActionRef.current = false;
+      onPressOut('run');
+    }
+  }, [runMode, onPressIn, onPressOut]);
+
+  useEffect(() => {
+    syncButtonHoldRun();
+  }, [syncButtonHoldRun]);
 
   const pressZone = useCallback((zone: number) => {
     const scales = [b0.scale, b1.scale, b2.scale, b3.scale];
@@ -107,24 +132,65 @@ export function ActionButtons({ onPressIn, onPressOut, hapticsEnabled, hapticInt
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [onPressOut]);
 
+  const resolveZone = useCallback((x: number, y: number): number => {
+    const cx = clusterCenterX.value > 0 ? clusterCenterX.value : layoutW.value / 2;
+    const cy = clusterCenterY.value > 0 ? clusterCenterY.value : layoutH.value / 2;
+    return getZone(x, y, cx, cy, clusterMaxRadius.value);
+  }, [clusterCenterX, clusterCenterY, clusterMaxRadius, layoutW, layoutH]);
+
   const handleDown = useCallback((id: number, x: number, y: number) => {
-    const zone = getZone(x, y, layoutW.value, layoutH.value);
+    const zone = resolveZone(x, y);
     if (zone < 0) return;
+    const alreadyHeld = isZoneHeld(zone);
     activeTouches.current.set(id, zone);
-    pressZone(zone);
-  }, [pressZone, layoutW, layoutH]);
+    if (!alreadyHeld) {
+      pressZone(zone);
+    }
+    syncButtonHoldRun();
+  }, [resolveZone, pressZone, syncButtonHoldRun]);
+
+  // Thumb slide / rollover: sliding a finger from Jump to Punch or Bomb smoothly
+  // releases the previous button and triggers the new one without lifting the thumb.
+  const handleMove = useCallback((id: number, x: number, y: number) => {
+    const prevZone = activeTouches.current.get(id);
+    if (prevZone == null) return;
+    const nextZone = resolveZone(x, y);
+    if (nextZone === prevZone) return;
+
+    activeTouches.current.delete(id);
+    if (!isZoneHeld(prevZone)) {
+      releaseZone(prevZone);
+    }
+
+    if (nextZone >= 0) {
+      const alreadyHeld = isZoneHeld(nextZone);
+      activeTouches.current.set(id, nextZone);
+      if (!alreadyHeld) {
+        pressZone(nextZone);
+      }
+    }
+    syncButtonHoldRun();
+  }, [resolveZone, pressZone, releaseZone, syncButtonHoldRun]);
 
   const handleUp = useCallback((id: number) => {
     const zone = activeTouches.current.get(id);
     if (zone == null) return;
     activeTouches.current.delete(id);
-    releaseZone(zone);
-  }, [releaseZone]);
+    if (!isZoneHeld(zone)) {
+      releaseZone(zone);
+    }
+    syncButtonHoldRun();
+  }, [releaseZone, syncButtonHoldRun]);
 
   const gesture = Gesture.Manual()
     .onTouchesDown((e) => {
       for (const t of e.changedTouches) {
         runOnJS(handleDown)(t.id, t.x, t.y);
+      }
+    })
+    .onTouchesMove((e) => {
+      for (const t of e.changedTouches) {
+        runOnJS(handleMove)(t.id, t.x, t.y);
       }
     })
     .onTouchesUp((e) => {
@@ -143,18 +209,36 @@ export function ActionButtons({ onPressIn, onPressOut, hapticsEnabled, hapticInt
     <View
       style={styles.container}
       onLayout={(e) => {
-        layoutW.value = e.nativeEvent.layout.width;
-        layoutH.value = e.nativeEvent.layout.height;
+        const { width, height } = e.nativeEvent.layout;
+        layoutW.value = width;
+        layoutH.value = height;
       }}
     >
-      {/* Single gesture zone — diagonal quadrants via getZone() */}
+      {/* Single gesture zone: diagonal quadrants + slide rollover */}
       <GestureDetector gesture={gesture}>
         <Animated.View style={StyleSheet.absoluteFill} />
       </GestureDetector>
 
-      {/* Visual diamond (touch-transparent) */}
-      <View style={styles.visualLayer} pointerEvents="none">
-        <View style={styles.diamondCluster}>
+      {/* Visual diamond anchored in the ergonomic outer-bottom thumb arc */}
+      <View
+        style={[
+          styles.visualLayer,
+          mirrored ? styles.visualLayerMirrored : styles.visualLayerStandard,
+        ]}
+        pointerEvents="box-none"
+      >
+        <View
+          style={styles.diamondCluster}
+          pointerEvents="none"
+          onLayout={(e) => {
+            const { x, y, width, height } = e.nativeEvent.layout;
+            clusterCenterX.value = x + width / 2;
+            clusterCenterY.value = y + height / 2;
+            // Generous thumb radius around the diamond, capped on wide screens
+            // so stray touches near the foldable center crease are ignored.
+            clusterMaxRadius.value = Math.max(width, height) * 0.85;
+          }}
+        >
           <ButtonVisual config={BUTTONS[0]} scale={b0.scale} pressed={b0.pressed} />
           <View style={styles.diamondMidRow}>
             <ButtonVisual config={BUTTONS[1]} scale={b1.scale} pressed={b1.pressed} />
@@ -162,6 +246,30 @@ export function ActionButtons({ onPressIn, onPressOut, hapticsEnabled, hapticInt
           </View>
           <ButtonVisual config={BUTTONS[3]} scale={b3.scale} pressed={b3.pressed} />
         </View>
+
+        {runMode === 'button' && (
+          <Pressable
+            onPressIn={() => {
+              setRunBtnPressed(true);
+              playHaptic('run', hapticsEnabled, hapticIntensity);
+              onPressIn('run');
+            }}
+            onPressOut={() => {
+              setRunBtnPressed(false);
+              onPressOut('run');
+            }}
+            style={[
+              styles.runBtn,
+              mirrored ? styles.runBtnMirrored : styles.runBtnStandard,
+              runBtnPressed && styles.runBtnPressed,
+            ]}
+            accessibilityRole="button"
+            accessibilityLabel="Hold to run"
+          >
+            <PersonSimpleRun size={18} color="#fff" weight="bold" />
+            <Text style={styles.runBtnText}>RUN</Text>
+          </Pressable>
+        )}
       </View>
     </View>
   );
@@ -177,8 +285,15 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: 'flex-end',
+    paddingHorizontal: 22,
+    paddingBottom: 22,
+  },
+  visualLayerStandard: {
+    alignItems: 'flex-end',
+  },
+  visualLayerMirrored: {
+    alignItems: 'flex-start',
   },
   diamondCluster: {
     alignItems: 'center',
@@ -187,5 +302,36 @@ const styles = StyleSheet.create({
   diamondMidRow: {
     flexDirection: 'row',
     gap: MID_GAP,
+  },
+  runBtn: {
+    position: 'absolute',
+    bottom: 18,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    borderRadius: 22,
+    borderWidth: 1.5,
+    borderColor: 'rgba(92,196,176,0.45)',
+    backgroundColor: 'rgba(58,154,136,0.28)',
+  },
+  runBtnStandard: {
+    right: 16,
+  },
+  runBtnMirrored: {
+    left: 16,
+  },
+  runBtnPressed: {
+    backgroundColor: 'rgba(92,196,176,0.65)',
+    borderColor: '#fff',
+    transform: [{ scale: 0.92 }],
+  },
+  runBtnText: {
+    fontFamily: Fonts.bold,
+    color: '#fff',
+    fontSize: FontSize.xs,
+    fontWeight: FontWeight.bold,
+    letterSpacing: 1,
   },
 });

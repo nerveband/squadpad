@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
-import { View, StyleSheet, useWindowDimensions } from 'react-native';
+import { View, Text, StyleSheet, Pressable } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
+import { StatusBar } from 'expo-status-bar';
 import { LinearGradient } from 'expo-linear-gradient';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { Joystick } from '../src/components/Joystick';
 import { ActionButtons } from '../src/components/ActionButtons';
 import { HudBar } from '../src/components/HudBar';
@@ -10,16 +10,19 @@ import { ControllerHud } from '../src/components/ControllerHud';
 import { ConnectionOverlay } from '../src/components/ConnectionOverlay';
 import { useController } from '../src/hooks/useController';
 import { useSettings } from '../src/hooks/useSettings';
+import { useFoldable } from '../src/hooks/useFoldable';
+import { useGamepad } from '../src/hooks/useGamepad';
 import { ConnectionManager, type ConnectionStatus } from '../src/connection/connection-manager';
 import type { ConnectionMode } from '../src/connection/failure-messages';
 import { Colors } from '../src/theme/colors';
+import { Fonts, FontSize, FontWeight } from '../src/theme/typography';
+import { Radius, Spacing } from '../src/theme/spacing';
 
 export default function ControllerScreen() {
   const router = useRouter();
   const params = useLocalSearchParams<{ host?: string; room?: string; name?: string; mode?: string }>();
-  const { width, height } = useWindowDimensions();
   const { settings, update, loaded } = useSettings();
-  const isPortrait = height > width;
+  const { insets, isPortrait, fold, posture, isTabletopController } = useFoldable();
   const mode: ConnectionMode = params.mode === 'relay' ? 'relay' : 'lan';
   const target = (mode === 'relay' ? params.room : params.host) || '';
 
@@ -86,11 +89,30 @@ export default function ControllerScreen() {
     router.push('/settings');
   }, [router]);
 
+  const handleRunChange = useCallback(
+    (running: boolean) => {
+      if (running) controller.pressButton('run');
+      else controller.releaseButton('run');
+    },
+    [controller],
+  );
+
+  const handleMenuPress = useCallback(() => {
+    controller.pressButton('menu');
+  }, [controller]);
+
+  const handleMenuRelease = useCallback(() => {
+    controller.releaseButton('menu');
+  }, [controller]);
+
   const joystick = (
     <Joystick
       onMove={controller.setJoystick}
+      onRunChange={handleRunChange}
       sensitivity={settings.sensitivity}
       mode={settings.joystickStyle}
+      mirrored={settings.leftHanded}
+      stickEdgeRun={settings.runMode === 'stickEdge'}
     />
   );
   const buttons = (
@@ -99,11 +121,39 @@ export default function ControllerScreen() {
       onPressOut={controller.releaseButton}
       hapticsEnabled={settings.hapticsEnabled}
       hapticIntensity={settings.hapticIntensity}
+      runMode={settings.runMode}
+      mirrored={settings.leftHanded}
     />
   );
 
+  const leftControl = settings.leftHanded ? buttons : joystick;
+  const rightControl = settings.leftHanded ? joystick : buttons;
+
+  // When a vertical fold division is active (Book posture on iPhone Duo or Android
+  // foldable), size the left zone up to the fold and leave a clear crease gutter.
+  const hasVerticalFold = fold?.orientation === 'vertical';
+  const leftZoneStyle = hasVerticalFold
+    ? { width: Math.max(160, fold.x - insets.left) }
+    : styles.zoneFlex;
+  const verticalFoldGutter = hasVerticalFold ? Math.max(24, fold.width + 20) : 0;
+
+  // When a horizontal fold division is active (Tabletop / Flex posture), keep the
+  // status deck above `fold.y` and the touch controls below `fold.y + fold.height`.
+  const hasHorizontalFold = fold?.orientation === 'horizontal';
+  const tabletopTopStyle = hasHorizontalFold
+    ? { height: Math.max(110, fold.y - 48) }
+    : styles.tabletopTopDefault;
+  const horizontalFoldGutter = hasHorizontalFold ? Math.max(20, fold.height + 16) : 12;
+
+  const controlPadStyle = {
+    paddingLeft: Math.max(insets.left + 8, 12),
+    paddingRight: Math.max(insets.right + 8, 12),
+    paddingBottom: Math.max(insets.bottom + 8, 12),
+  };
+
   return (
     <View style={styles.container}>
+      <StatusBar style="light" hidden verticalBarBehaviorIOS="disabled" />
       {/* Background gradients */}
       <LinearGradient
         colors={['rgba(92,196,176,0.10)', 'transparent', 'transparent']}
@@ -127,13 +177,15 @@ export default function ControllerScreen() {
         end={{ x: 0.5, y: 0.8 }}
       />
 
-      <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
+      <View style={styles.safeArea}>
         <HudBar
           playerName={playerName}
           lagMs={controller.lagMs}
           connectTime={controller.connectTime}
           onBack={handleLeave}
           onSettings={() => setHudVisible(true)}
+          onMenuPress={handleMenuPress}
+          onMenuRelease={handleMenuRelease}
           editingName={editingName}
           editNameValue={tempName}
           onNamePress={handleNamePress}
@@ -141,21 +193,67 @@ export default function ControllerScreen() {
           onNameSubmit={handleNameSave}
         />
 
-        {isPortrait ? (
-          <View style={styles.portraitContainer}>
+        {isTabletopController ? (
+          <View style={[styles.tabletopContainer, controlPadStyle]}>
+            <View style={[styles.tabletopDeck, tabletopTopStyle]}>
+              <View style={styles.deckCard}>
+                <View style={styles.deckRow}>
+                  <View>
+                    <Text style={styles.deckLabel}>
+                      {mode === 'relay' ? 'ONLINE ROOM' : 'WI-FI HOST'}
+                    </Text>
+                    <Text style={styles.deckTarget}>{target || 'Connected'}</Text>
+                  </View>
+                  <View style={styles.deckBadges}>
+                    <Pressable
+                      onPress={() => update({ leftHanded: !settings.leftHanded })}
+                      style={[styles.deckPill, settings.leftHanded && styles.deckPillActive]}
+                    >
+                      <Text style={styles.deckPillText}>
+                        {settings.leftHanded ? 'Left-Handed' : 'Right-Handed'}
+                      </Text>
+                    </Pressable>
+                    <Pressable
+                      onPress={() =>
+                        update({
+                          runMode:
+                            settings.runMode === 'buttonHold'
+                              ? 'button'
+                              : settings.runMode === 'button'
+                                ? 'stickEdge'
+                                : 'buttonHold',
+                        })
+                      }
+                      style={styles.deckPill}
+                    >
+                      <Text style={styles.deckPillText}>Run: {settings.runMode}</Text>
+                    </Pressable>
+                  </View>
+                </View>
+              </View>
+            </View>
+            <View style={{ height: horizontalFoldGutter }} />
+            <View style={styles.tabletopControls}>
+              <View style={styles.zoneFlex}>{leftControl}</View>
+              <View style={styles.zoneFlex}>{rightControl}</View>
+            </View>
+          </View>
+        ) : isPortrait ? (
+          <View style={[styles.portraitContainer, controlPadStyle]}>
             <View style={styles.portraitSpacer} />
             <View style={styles.portraitControls}>
-              <View style={styles.portraitJoystick}>{joystick}</View>
-              <View style={styles.portraitButtons}>{buttons}</View>
+              <View style={styles.zoneFlex}>{leftControl}</View>
+              <View style={styles.zoneFlex}>{rightControl}</View>
             </View>
           </View>
         ) : (
-          <View style={styles.landscapeControls}>
-            <View style={styles.joystickZone}>{joystick}</View>
-            <View style={styles.buttonsZone}>{buttons}</View>
+          <View style={[styles.landscapeControls, controlPadStyle]}>
+            <View style={leftZoneStyle}>{leftControl}</View>
+            {verticalFoldGutter > 0 && <View style={{ width: verticalFoldGutter }} />}
+            <View style={styles.zoneFlex}>{rightControl}</View>
           </View>
         )}
-      </SafeAreaView>
+      </View>
 
       {/* Live HUD overlay */}
       <ControllerHud
@@ -192,30 +290,83 @@ const styles = StyleSheet.create({
   landscapeControls: {
     flex: 1,
     flexDirection: 'row',
-    paddingHorizontal: 12,
   },
-  joystickZone: {
-    flex: 1,
-  },
-  buttonsZone: {
+  zoneFlex: {
     flex: 1,
   },
   portraitContainer: {
     flex: 1,
   },
   portraitSpacer: {
-    flex: 0.1,
+    flex: 0.15,
   },
   portraitControls: {
-    flex: 0.9,
+    flex: 0.85,
     flexDirection: 'row',
-    paddingHorizontal: 8,
-    paddingBottom: 16,
   },
-  portraitJoystick: {
+  tabletopContainer: {
     flex: 1,
   },
-  portraitButtons: {
+  tabletopDeck: {
+    justifyContent: 'center',
+    paddingHorizontal: Spacing.md,
+  },
+  tabletopTopDefault: {
+    flex: 0.36,
+  },
+  tabletopControls: {
     flex: 1,
+    flexDirection: 'row',
+  },
+  deckCard: {
+    backgroundColor: 'rgba(255,255,255,0.04)',
+    borderRadius: Radius.lg,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.08)',
+    paddingVertical: Spacing.md,
+    paddingHorizontal: Spacing.lg,
+  },
+  deckRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: Spacing.md,
+  },
+  deckLabel: {
+    fontFamily: Fonts.semibold,
+    color: Colors.textDim,
+    fontSize: FontSize.xs,
+    fontWeight: FontWeight.semibold,
+    letterSpacing: 1,
+  },
+  deckTarget: {
+    fontFamily: Fonts.monoBold,
+    color: Colors.teal,
+    fontSize: FontSize.lg,
+    fontWeight: FontWeight.bold,
+    marginTop: 2,
+  },
+  deckBadges: {
+    flexDirection: 'row',
+    gap: Spacing.sm,
+    flexWrap: 'wrap',
+  },
+  deckPill: {
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: Radius.sm,
+    backgroundColor: 'rgba(255,255,255,0.06)',
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  deckPillActive: {
+    backgroundColor: 'rgba(155,107,190,0.2)',
+    borderColor: Colors.purple,
+  },
+  deckPillText: {
+    fontFamily: Fonts.semibold,
+    color: Colors.text,
+    fontSize: FontSize.xs,
+    fontWeight: FontWeight.semibold,
   },
 });

@@ -20,9 +20,14 @@ export type JoystickStyle = 'floating' | 'fixed';
 
 interface JoystickProps {
   onMove: (x: number, y: number) => void;
+  onRunChange?: (running: boolean) => void;
   sensitivity?: number; // 0.5 to 2.0, default 1.0
   /** floating: the stick centres where the thumb lands. fixed: it stays put. */
   mode?: JoystickStyle;
+  /** True when the joystick zone is on the right side (left-handed layout). */
+  mirrored?: boolean;
+  /** Engage Run when stick deflection reaches the outer rim (>= 92%). */
+  stickEdgeRun?: boolean;
 }
 
 // Opacity of the joystick at rest. Floating shows a dim ghost so players know
@@ -40,13 +45,35 @@ function applyDeadZone(value: number, sensitivity: number): number {
   return sign * Math.min(1, curved);
 }
 
-export function Joystick({ onMove, sensitivity = 1.0, mode = 'floating' }: JoystickProps) {
+function computeRestPosition(width: number, height: number, mirrored: boolean) {
+  'worklet';
+  if (width <= 0 || height <= 0) {
+    return { x: 0, y: 0 };
+  }
+  // Keep the stick within natural thumb reach of the outer bezel on wide
+  // foldables and tablets instead of drifting toward the center crease.
+  const edgeOffset = Math.min(width * 0.5, 130);
+  const x = mirrored ? width - edgeOffset : edgeOffset;
+  const y = Math.min(Math.max(height * 0.56, BASE_SIZE / 2 + 12), Math.max(BASE_SIZE / 2 + 12, height - 125));
+  return { x, y };
+}
+
+export function Joystick({
+  onMove,
+  onRunChange,
+  sensitivity = 1.0,
+  mode = 'floating',
+  mirrored = false,
+  stickEdgeRun = false,
+}: JoystickProps) {
   const zoneW = useSharedValue(0);
   const zoneH = useSharedValue(0);
   const baseX = useSharedValue(0);
   const baseY = useSharedValue(0);
   const thumbX = useSharedValue(0);
   const thumbY = useSharedValue(0);
+  const isActive = useSharedValue(false);
+  const isRunning = useSharedValue(false);
   const baseOpacity = useSharedValue(REST_OPACITY[mode]);
   const borderOpacity = useSharedValue(0.15);
   const thumbGlowOpacity = useSharedValue(0.4);
@@ -59,6 +86,10 @@ export function Joystick({ onMove, sensitivity = 1.0, mode = 'floating' }: Joyst
     onMove(x, y);
   };
 
+  const emitRun = (running: boolean) => {
+    onRunChange?.(running);
+  };
+
   const moveThumb = (touchX: number, touchY: number) => {
     'worklet';
     const dx = touchX - baseX.value;
@@ -69,6 +100,15 @@ export function Joystick({ onMove, sensitivity = 1.0, mode = 'floating' }: Joyst
     thumbY.value = dy * scale;
     const x = applyDeadZone(thumbX.value / MAX_DISTANCE, sensitivity);
     const y = applyDeadZone(thumbY.value / MAX_DISTANCE, sensitivity);
+
+    if (stickEdgeRun) {
+      const rimRun = dist / MAX_DISTANCE >= 0.92;
+      if (rimRun !== isRunning.value) {
+        isRunning.value = rimRun;
+        runOnJS(emitRun)(rimRun);
+      }
+    }
+
     // Touch moves arrive at 60-120 Hz; only cross to JS when the value the
     // game receives (256 steps per axis) actually changes.
     const step = Math.round((x + 1) * 127.5) * 256 + Math.round((y + 1) * 127.5);
@@ -79,12 +119,14 @@ export function Joystick({ onMove, sensitivity = 1.0, mode = 'floating' }: Joyst
 
   const restAt = () => {
     'worklet';
-    baseX.value = zoneW.value / 2;
-    baseY.value = zoneH.value * 0.55;
+    const pos = computeRestPosition(zoneW.value, zoneH.value, mirrored);
+    baseX.value = pos.x;
+    baseY.value = pos.y;
   };
 
   const pan = Gesture.Pan()
     .onBegin((e) => {
+      isActive.value = true;
       if (floating) {
         baseX.value = e.x;
         baseY.value = e.y;
@@ -101,6 +143,7 @@ export function Joystick({ onMove, sensitivity = 1.0, mode = 'floating' }: Joyst
       moveThumb(e.x, e.y);
     })
     .onFinalize(() => {
+      isActive.value = false;
       thumbX.value = withSpring(0, { damping: 15, stiffness: 300 });
       thumbY.value = withSpring(0, { damping: 15, stiffness: 300 });
       if (floating) restAt();
@@ -108,21 +151,23 @@ export function Joystick({ onMove, sensitivity = 1.0, mode = 'floating' }: Joyst
       borderOpacity.value = withTiming(0.15, { duration: 300 });
       thumbGlowOpacity.value = withTiming(0.4, { duration: 300 });
       lastStep.value = -1;
+      if (isRunning.value) {
+        isRunning.value = false;
+        runOnJS(emitRun)(false);
+      }
       runOnJS(emitMove)(0, 0);
     })
     .minDistance(0);
 
-  // Re-centre and fade to the new resting opacity when the mode changes.
-  // Skip the re-centre until the zone has a size: on (re)mount, for example
-  // after rotating, this effect can run before the layout write lands and
-  // would park the ghost joystick at the zone's top-left corner.
+  // Re-centre and fade to the new resting opacity when mode or handedness changes.
   useEffect(() => {
-    if (zoneW.value > 0) {
-      baseX.value = zoneW.value / 2;
-      baseY.value = zoneH.value * 0.55;
+    if (zoneW.value > 0 && !isActive.value) {
+      const pos = computeRestPosition(zoneW.value, zoneH.value, mirrored);
+      baseX.value = pos.x;
+      baseY.value = pos.y;
     }
     baseOpacity.value = withTiming(REST_OPACITY[mode], { duration: 200 });
-  }, [mode, baseX, baseY, baseOpacity, zoneW, zoneH]);
+  }, [mode, mirrored, baseX, baseY, baseOpacity, zoneW, zoneH, isActive]);
 
   const baseStyle = useAnimatedStyle(() => ({
     opacity: baseOpacity.value,
@@ -155,8 +200,18 @@ export function Joystick({ onMove, sensitivity = 1.0, mode = 'floating' }: Joyst
           const { width, height } = e.nativeEvent.layout;
           zoneW.value = width;
           zoneH.value = height;
-          baseX.value = width / 2;
-          baseY.value = height * 0.55;
+          // Guard against mid-drag resizes (such as Live Activity expansion in the
+          // iPhone Duo rail or foldable posture changes) so the base never jumps
+          // away from an active thumb.
+          if (!isActive.value) {
+            const pos = computeRestPosition(width, height, mirrored);
+            baseX.value = pos.x;
+            baseY.value = pos.y;
+          } else {
+            const half = BASE_SIZE / 2;
+            baseX.value = Math.max(half, Math.min(width - half, baseX.value));
+            baseY.value = Math.max(half, Math.min(height - half, baseY.value));
+          }
         }}
       >
         <Animated.View style={[styles.base, baseStyle]}>

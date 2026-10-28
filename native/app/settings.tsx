@@ -1,12 +1,11 @@
-import { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, Pressable, Linking, Platform } from 'react-native';
 import { useRouter } from 'expo-router';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { ArrowLeft } from 'phosphor-react-native';
 import Constants from 'expo-constants';
 import { GlassCard } from '../src/components/GlassCard';
 import { StyledTextInput } from '../src/components/StyledTextInput';
-import { useSettings } from '../src/hooks/useSettings';
+import { useSettings, type RunMode } from '../src/hooks/useSettings';
+import { useFoldable } from '../src/hooks/useFoldable';
 import { Colors } from '../src/theme/colors';
 import { FontSize, FontWeight, Fonts } from '../src/theme/typography';
 import { Spacing, Radius } from '../src/theme/spacing';
@@ -83,6 +82,7 @@ function SensitivityPicker({ value, onChange }: { value: number; onChange: (v: n
 export default function SettingsScreen() {
   const router = useRouter();
   const { settings, update } = useSettings();
+  const { insets, isWide, fold, hinge, posture } = useFoldable();
 
   const deviceInfo = {
     platform: Platform.OS,
@@ -91,131 +91,185 @@ export default function SettingsScreen() {
     sdkVersion: Constants.expoConfig?.sdkVersion || '--',
   };
 
+  const padStyle = {
+    paddingTop: Math.max(insets.top + Spacing.sm, Spacing.lg),
+    paddingBottom: Math.max(insets.bottom + Spacing.xl, Spacing.xxl),
+    paddingLeft: Math.max(insets.left + Spacing.lg, Spacing.lg),
+    paddingRight: Math.max(insets.right + Spacing.lg, Spacing.lg),
+  };
+
+  const hasVerticalFold = fold?.orientation === 'vertical';
+  const leftPaneStyle = hasVerticalFold
+    ? { width: Math.max(240, fold.x - Math.max(insets.left + Spacing.lg, Spacing.lg) - 14) }
+    : styles.paneFlex;
+  const foldGap = hasVerticalFold ? Math.max(28, fold.width + 28) : 28;
+
+  const playerAndControllerCards = (
+    <>
+      {/* Player */}
+      <GlassCard>
+        <Text style={styles.sectionTitle}>Player</Text>
+        <View style={styles.settingRow}>
+          <Text style={styles.settingLabel}>Name</Text>
+        </View>
+        <StyledTextInput
+          value={settings.playerName}
+          onChangeText={(v) => update({ playerName: v })}
+          placeholder="Player"
+          autoCapitalize="words"
+          maxLength={20}
+        />
+      </GlassCard>
+
+      {/* Controller */}
+      <GlassCard>
+        <Text style={styles.sectionTitle}>Controller</Text>
+
+        <SensitivityPicker
+          value={settings.sensitivity}
+          onChange={(v) => update({ sensitivity: v })}
+        />
+
+        <ToggleButton
+          label="Haptic Feedback"
+          value={settings.hapticsEnabled}
+          onToggle={() => update({ hapticsEnabled: !settings.hapticsEnabled })}
+        />
+
+        {settings.hapticsEnabled && (
+          <SegmentPicker
+            label="Haptic Intensity"
+            options={[
+              { key: 'low' as const, label: 'Low' },
+              { key: 'medium' as const, label: 'Medium' },
+              { key: 'high' as const, label: 'High' },
+            ]}
+            value={settings.hapticIntensity}
+            onChange={(v) => update({ hapticIntensity: v })}
+          />
+        )}
+
+        <SegmentPicker
+          label="Joystick Style"
+          options={[
+            { key: 'floating' as const, label: 'Floating' },
+            { key: 'fixed' as const, label: 'Fixed' },
+          ]}
+          value={settings.joystickStyle}
+          onChange={(v) => update({ joystickStyle: v })}
+        />
+
+        <SegmentPicker<RunMode>
+          label="Run Trigger"
+          options={[
+            { key: 'buttonHold', label: 'Hold Action' },
+            { key: 'button', label: 'Run Button' },
+            { key: 'stickEdge', label: 'Full Stick' },
+          ]}
+          value={settings.runMode}
+          onChange={(v) => update({ runMode: v })}
+        />
+
+        <ToggleButton
+          label="Left-Handed Layout (Swap Sides)"
+          value={settings.leftHanded}
+          onToggle={() => update({ leftHanded: !settings.leftHanded })}
+        />
+
+        <ToggleButton
+          label="Allow Portrait Mode"
+          value={settings.allowPortrait}
+          onToggle={() => update({ allowPortrait: !settings.allowPortrait })}
+        />
+      </GlassCard>
+    </>
+  );
+
+  const diagAndAboutCards = (
+    <>
+      {/* Diagnostics */}
+      <GlassCard>
+        <Text style={styles.sectionTitle}>Diagnostics</Text>
+        <View style={styles.diagRow}>
+          <Text style={styles.diagLabel}>Platform</Text>
+          <Text style={styles.diagValue}>{deviceInfo.platform} {deviceInfo.version}</Text>
+        </View>
+        <View style={styles.diagRow}>
+          <Text style={styles.diagLabel}>App Version</Text>
+          <Text style={styles.diagValue}>{deviceInfo.appVersion}</Text>
+        </View>
+        <View style={styles.diagRow}>
+          <Text style={styles.diagLabel}>Expo SDK</Text>
+          <Text style={styles.diagValue}>{deviceInfo.sdkVersion}</Text>
+        </View>
+        <View style={styles.diagRow}>
+          <Text style={styles.diagLabel}>Posture</Text>
+          <Text style={styles.diagValue}>
+            {hinge ? `${posture} (${Math.round(hinge.angle)}°)` : posture}
+          </Text>
+        </View>
+        <View style={styles.diagRow}>
+          <Text style={styles.diagLabel}>Relay</Text>
+          <Text style={styles.diagValue} numberOfLines={1}>{settings.relayUrl}</Text>
+        </View>
+      </GlassCard>
+
+      {/* About */}
+      <GlassCard>
+        <Text style={styles.sectionTitle}>About</Text>
+        <Text style={styles.aboutText}>SquadPad v{deviceInfo.appVersion}</Text>
+        <Text style={styles.aboutText}>Game controller for BombSquad</Text>
+        <Text style={[styles.aboutDim, { marginTop: Spacing.md }]}>
+          Made by{' '}
+          <Text
+            style={styles.aboutLink}
+            onPress={() => Linking.openURL('https://ashrafali.net')}
+          >
+            Ashraf
+          </Text>
+        </Text>
+        <Text style={styles.aboutLink} onPress={() => Linking.openURL('https://squadpad.org')}>
+          squadpad.org
+        </Text>
+        <Text
+          style={[styles.aboutLink, { marginTop: Spacing.sm }]}
+          onPress={() => Linking.openURL('https://squadpad.org/privacy.html')}
+        >
+          Privacy Policy
+        </Text>
+        <Text
+          style={[styles.aboutLink, { marginTop: Spacing.sm }]}
+          onPress={() => Linking.openURL('https://github.com/nerveband/squadpad')}
+        >
+          Open Source on GitHub
+        </Text>
+      </GlassCard>
+    </>
+  );
+
   return (
     <View style={styles.container}>
-      <SafeAreaView style={styles.safe} edges={['top']}>
-        <ScrollView contentContainerStyle={styles.content}>
-          {/* Header */}
-          <View style={styles.header}>
-            <Pressable onPress={() => router.back()} hitSlop={12}>
-              <ArrowLeft size={24} color={Colors.text} weight="bold" />
-            </Pressable>
-            <Text style={styles.headerTitle}>Settings</Text>
+      <ScrollView contentContainerStyle={[styles.content, isWide && styles.contentWide, padStyle]}>
+        {/* Header */}
+        <View style={styles.header}>
+          <Pressable onPress={() => router.back()} hitSlop={12}>
+            <ArrowLeft size={24} color={Colors.text} weight="bold" />
+          </Pressable>
+          <Text style={styles.headerTitle}>Settings</Text>
+        </View>
+
+        {isWide ? (
+          <View style={[styles.twoPaneRow, { gap: foldGap }]}>
+            <View style={[styles.paneCol, leftPaneStyle]}>{playerAndControllerCards}</View>
+            <View style={[styles.paneCol, styles.paneFlex]}>{diagAndAboutCards}</View>
           </View>
-
-          {/* Player */}
-          <GlassCard>
-            <Text style={styles.sectionTitle}>Player</Text>
-            <View style={styles.settingRow}>
-              <Text style={styles.settingLabel}>Name</Text>
-            </View>
-            <StyledTextInput
-              value={settings.playerName}
-              onChangeText={(v) => update({ playerName: v })}
-              placeholder="Player"
-              autoCapitalize="words"
-              maxLength={20}
-            />
-          </GlassCard>
-
-          {/* Controller */}
-          <GlassCard>
-            <Text style={styles.sectionTitle}>Controller</Text>
-
-            <SensitivityPicker
-              value={settings.sensitivity}
-              onChange={(v) => update({ sensitivity: v })}
-            />
-
-            <ToggleButton
-              label="Haptic Feedback"
-              value={settings.hapticsEnabled}
-              onToggle={() => update({ hapticsEnabled: !settings.hapticsEnabled })}
-            />
-
-            {settings.hapticsEnabled && (
-              <SegmentPicker
-                label="Haptic Intensity"
-                options={[
-                  { key: 'low' as const, label: 'Low' },
-                  { key: 'medium' as const, label: 'Medium' },
-                  { key: 'high' as const, label: 'High' },
-                ]}
-                value={settings.hapticIntensity}
-                onChange={(v) => update({ hapticIntensity: v })}
-              />
-            )}
-
-            <SegmentPicker
-              label="Joystick Style"
-              options={[
-                { key: 'floating' as const, label: 'Floating' },
-                { key: 'fixed' as const, label: 'Fixed' },
-              ]}
-              value={settings.joystickStyle}
-              onChange={(v) => update({ joystickStyle: v })}
-            />
-
-            <ToggleButton
-              label="Allow Portrait Mode"
-              value={settings.allowPortrait}
-              onToggle={() => update({ allowPortrait: !settings.allowPortrait })}
-            />
-          </GlassCard>
-
-          {/* Diagnostics */}
-          <GlassCard>
-            <Text style={styles.sectionTitle}>Diagnostics</Text>
-            <View style={styles.diagRow}>
-              <Text style={styles.diagLabel}>Platform</Text>
-              <Text style={styles.diagValue}>{deviceInfo.platform} {deviceInfo.version}</Text>
-            </View>
-            <View style={styles.diagRow}>
-              <Text style={styles.diagLabel}>App Version</Text>
-              <Text style={styles.diagValue}>{deviceInfo.appVersion}</Text>
-            </View>
-            <View style={styles.diagRow}>
-              <Text style={styles.diagLabel}>Expo SDK</Text>
-              <Text style={styles.diagValue}>{deviceInfo.sdkVersion}</Text>
-            </View>
-            <View style={styles.diagRow}>
-              <Text style={styles.diagLabel}>Relay</Text>
-              <Text style={styles.diagValue} numberOfLines={1}>{settings.relayUrl}</Text>
-            </View>
-          </GlassCard>
-
-          {/* About */}
-          <GlassCard>
-            <Text style={styles.sectionTitle}>About</Text>
-            <Text style={styles.aboutText}>SquadPad v{deviceInfo.appVersion}</Text>
-            <Text style={styles.aboutText}>Game controller for BombSquad</Text>
-            <Text style={[styles.aboutDim, { marginTop: Spacing.md }]}>
-              Made by{' '}
-              <Text
-                style={styles.aboutLink}
-                onPress={() => Linking.openURL('https://ashrafali.net')}
-              >
-                Ashraf
-              </Text>
-            </Text>
-            <Text style={styles.aboutLink} onPress={() => Linking.openURL('https://squadpad.org')}>
-              squadpad.org
-            </Text>
-            <Text
-              style={[styles.aboutLink, { marginTop: Spacing.sm }]}
-              onPress={() => Linking.openURL('https://squadpad.org/privacy.html')}
-            >
-              Privacy Policy
-            </Text>
-            <Text
-              style={[styles.aboutLink, { marginTop: Spacing.sm }]}
-              onPress={() => Linking.openURL('https://github.com/nerveband/squadpad')}
-            >
-              Open Source on GitHub
-            </Text>
-          </GlassCard>
-        </ScrollView>
-      </SafeAreaView>
+        ) : (
+          <>
+            {playerAndControllerCards}
+            {diagAndAboutCards}
+          </>
+        )}
+      </ScrollView>
     </View>
   );
 }
@@ -225,16 +279,25 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: Colors.bgDeep,
   },
-  safe: {
-    flex: 1,
-  },
   content: {
-    padding: Spacing.lg,
     gap: Spacing.lg,
     maxWidth: 500,
     alignSelf: 'center',
     width: '100%',
-    paddingBottom: Spacing.xxl,
+  },
+  contentWide: {
+    maxWidth: 960,
+  },
+  twoPaneRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    width: '100%',
+  },
+  paneCol: {
+    gap: Spacing.lg,
+  },
+  paneFlex: {
+    flex: 1,
   },
   header: {
     flexDirection: 'row',
@@ -242,11 +305,13 @@ const styles = StyleSheet.create({
     gap: Spacing.md,
   },
   headerTitle: {
+    fontFamily: Fonts.bold,
     color: Colors.text,
     fontSize: FontSize.xl,
     fontWeight: FontWeight.bold,
   },
   sectionTitle: {
+    fontFamily: Fonts.bold,
     color: Colors.text,
     fontSize: FontSize.lg,
     fontWeight: FontWeight.bold,
@@ -257,6 +322,7 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.md,
   },
   settingLabel: {
+    fontFamily: Fonts.primary,
     color: Colors.text,
     fontSize: FontSize.md,
   },
@@ -269,7 +335,7 @@ const styles = StyleSheet.create({
     color: Colors.teal,
     fontSize: FontSize.sm,
     fontWeight: FontWeight.bold,
-    fontFamily: Fonts.mono,
+    fontFamily: Fonts.monoBold,
   },
   toggleRow: {
     flexDirection: 'row',
@@ -290,6 +356,7 @@ const styles = StyleSheet.create({
     borderColor: Colors.purple,
   },
   toggleText: {
+    fontFamily: Fonts.semibold,
     color: Colors.textDim,
     fontSize: FontSize.sm,
     fontWeight: FontWeight.semibold,
@@ -314,6 +381,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(155,107,190,0.25)',
   },
   segmentText: {
+    fontFamily: Fonts.semibold,
     color: Colors.textDim,
     fontSize: FontSize.sm,
     fontWeight: FontWeight.semibold,
@@ -328,6 +396,7 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
   },
   diagLabel: {
+    fontFamily: Fonts.primary,
     color: Colors.textDim,
     fontSize: FontSize.sm,
   },
@@ -338,16 +407,19 @@ const styles = StyleSheet.create({
     maxWidth: 200,
   },
   aboutText: {
+    fontFamily: Fonts.primary,
     color: Colors.text,
     fontSize: FontSize.md,
     marginBottom: 4,
   },
   aboutDim: {
+    fontFamily: Fonts.primary,
     color: Colors.textDim,
     fontSize: FontSize.sm,
     marginTop: 4,
   },
   aboutLink: {
+    fontFamily: Fonts.semibold,
     color: Colors.teal,
     fontWeight: FontWeight.semibold,
   },

@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <title>SquadPad - Play BombSquad from Any Browser | Free Web Controller</title>
   <meta name="theme-color" content="#0d0b1a">
   <meta name="description" content="Turn your phone or computer into a BombSquad controller. No app install needed — open squadpad.org, enter a room code, and play. Free, open-source, works on any device.">
@@ -32,7 +32,7 @@
   <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/style.css?v=0.4.1">
   <link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/bold/style.css">
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -162,7 +162,10 @@
     <!-- Controller Screen -->
     <div id="controller-screen" hidden>
       <header id="hud">
-        <button id="menu-btn" aria-label="Back"><i class="ph-bold ph-arrow-left"></i></button>
+        <div class="hud-left">
+          <button id="menu-btn" aria-label="Back"><i class="ph-bold ph-arrow-left"></i></button>
+          <button id="ingame-menu-btn" class="hud-menu-btn" aria-label="In-game Menu"><i class="ph-bold ph-pause"></i> Menu</button>
+        </div>
         <span id="game-name">SquadPad</span>
         <button id="player-name-display" class="hud-name" title="Change name"></button>
         <div class="hud-right">

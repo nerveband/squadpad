@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, Pressable, ActivityIndicator, Linking, Platform
 import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
 import { WifiHigh } from 'phosphor-react-native';
 import { Colors } from '../theme/colors';
-import { FontSize, FontWeight } from '../theme/typography';
+import { Fonts, FontSize, FontWeight } from '../theme/typography';
 import { Radius, Spacing } from '../theme/spacing';
 import type { DiscoveredGame } from '../connection/discovery';
 
@@ -99,11 +99,13 @@ const styles = StyleSheet.create({
     gap: Spacing.sm,
   },
   empty: {
+    fontFamily: Fonts.primary,
     color: Colors.textDim,
     fontSize: FontSize.sm,
     fontStyle: 'italic',
   },
   errorText: {
+    fontFamily: Fonts.primary,
     color: Colors.danger,
     fontSize: FontSize.sm,
   },
@@ -114,6 +116,7 @@ const styles = StyleSheet.create({
     borderTopColor: Colors.border,
   },
   hintText: {
+    fontFamily: Fonts.primary,
     color: Colors.textDim,
     fontSize: FontSize.sm,
     lineHeight: 20,
@@ -123,11 +126,13 @@ const styles = StyleSheet.create({
     gap: Spacing.lg,
   },
   hintLink: {
+    fontFamily: Fonts.semibold,
     color: Colors.teal,
     fontSize: FontSize.sm,
     fontWeight: FontWeight.semibold,
   },
   joinText: {
+    fontFamily: Fonts.bold,
     color: Colors.teal,
     fontSize: FontSize.sm,
     fontWeight: FontWeight.bold,
@@ -149,11 +154,13 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   gameName: {
+    fontFamily: Fonts.semibold,
     color: Colors.text,
     fontSize: FontSize.md,
     fontWeight: FontWeight.semibold,
   },
   gameAddress: {
+    fontFamily: Fonts.mono,
     color: Colors.textDim,
     fontSize: FontSize.xs,
   },

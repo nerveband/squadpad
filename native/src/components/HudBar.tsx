@@ -1,6 +1,7 @@
 import { View, Text, TextInput, StyleSheet, Pressable, useWindowDimensions } from 'react-native';
-import { useRef, useEffect, useCallback } from 'react';
-import { ArrowLeft, GearSix, PencilSimple, Check } from 'phosphor-react-native';
+import { useRef, useEffect, useCallback, type ComponentRef } from 'react';
+import { ArrowLeft, GearSix, PencilSimple, Check, Pause } from 'phosphor-react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LagIndicator } from './LagIndicator';
 import { Colors } from '../theme/colors';
 import { Fonts, FontSize, FontWeight } from '../theme/typography';
@@ -11,6 +12,8 @@ interface HudBarProps {
   connectTime: string;
   onBack: () => void;
   onSettings: () => void;
+  onMenuPress?: () => void;
+  onMenuRelease?: () => void;
   editingName: boolean;
   editNameValue: string;
   onNamePress: () => void;
@@ -24,16 +27,18 @@ export function HudBar({
   connectTime,
   onBack,
   onSettings,
+  onMenuPress,
+  onMenuRelease,
   editingName,
   editNameValue,
   onNamePress,
   onNameChange,
   onNameSubmit,
 }: HudBarProps) {
-  const inputRef = useRef<TextInput>(null);
+  const inputRef = useRef<ComponentRef<typeof TextInput>>(null);
   const { width, height } = useWindowDimensions();
-  const blurTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
-
+  const insets = useSafeAreaInsets();
+  const blurTimer = useRef<number | undefined>(undefined);
   // Focus input when editing starts or orientation changes while editing
   useEffect(() => {
     if (editingName) {
@@ -54,14 +59,43 @@ export function HudBar({
     // Delay save so orientation-change refocus can cancel it
     blurTimer.current = setTimeout(() => {
       onNameSubmit();
-    }, 250);
+    }, 250) as unknown as number;
   }, [onNameSubmit]);
 
   return (
-    <View style={styles.bar}>
-      <Pressable onPress={onBack} style={styles.backBtn} hitSlop={16}>
-        <ArrowLeft size={22} color={Colors.text} weight="bold" />
+    <View
+      style={[
+        styles.bar,
+        {
+          paddingTop: Math.max(insets.top + 6, 8),
+          paddingLeft: Math.max(insets.left + 16, 16),
+          paddingRight: Math.max(insets.right + 16, 16),
+        },
+      ]}
+    >
+      <Pressable
+        onPress={onBack}
+        style={styles.backBtn}
+        hitSlop={16}
+        accessibilityRole="button"
+        accessibilityLabel="Leave controller"
+      >
+        <ArrowLeft size={20} color={Colors.text} weight="bold" />
       </Pressable>
+
+      {onMenuPress && (
+        <Pressable
+          onPressIn={onMenuPress}
+          onPressOut={onMenuRelease}
+          style={({ pressed }) => [styles.menuBtn, pressed && styles.menuBtnPressed]}
+          hitSlop={10}
+          accessibilityRole="button"
+          accessibilityLabel="In-game menu"
+        >
+          <Pause size={14} color={Colors.gold} weight="fill" />
+          <Text style={styles.menuBtnText}>Menu</Text>
+        </Pressable>
+      )}
 
       {editingName ? (
         <View style={styles.nameEditWrap}>
@@ -100,8 +134,14 @@ export function HudBar({
         <LagIndicator lagMs={lagMs} />
       </View>
 
-      <Pressable onPress={onSettings} style={styles.settingsBtn} hitSlop={16}>
-        <GearSix size={24} color={Colors.textDim} weight="fill" />
+      <Pressable
+        onPress={onSettings}
+        style={styles.settingsBtn}
+        hitSlop={16}
+        accessibilityRole="button"
+        accessibilityLabel="Controller settings"
+      >
+        <GearSix size={22} color={Colors.textDim} weight="fill" />
       </Pressable>
     </View>
   );
@@ -128,12 +168,34 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  menuBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    height: 36,
+    paddingHorizontal: 10,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(232,200,64,0.28)',
+    backgroundColor: 'rgba(232,200,64,0.08)',
+  },
+  menuBtnPressed: {
+    backgroundColor: 'rgba(232,200,64,0.22)',
+    borderColor: Colors.gold,
+  },
+  menuBtnText: {
+    fontFamily: Fonts.semibold,
+    color: Colors.gold,
+    fontSize: FontSize.xs,
+    fontWeight: FontWeight.semibold,
+  },
   nameBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 5,
   },
   name: {
+    fontFamily: Fonts.semibold,
     color: Colors.text,
     fontSize: FontSize.sm,
     fontWeight: FontWeight.semibold,
@@ -145,6 +207,7 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   nameInput: {
+    fontFamily: Fonts.semibold,
     color: Colors.text,
     fontSize: FontSize.sm,
     fontWeight: FontWeight.semibold,
@@ -169,6 +232,7 @@ const styles = StyleSheet.create({
   },
   brand: {
     flex: 1,
+    fontFamily: Fonts.bold,
     color: Colors.textDim,
     fontSize: FontSize.sm,
     fontWeight: FontWeight.semibold,

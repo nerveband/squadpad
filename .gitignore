@@ -10,6 +10,8 @@ web-build/
 native/.expo/
 native/expo-env.d.ts
 
+# Local project agent skills (not committed)
+.agents/
 # Native builds (regenerated)
 native/ios/
 native/android/

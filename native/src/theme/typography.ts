@@ -1,8 +1,11 @@
-import { Platform } from 'react-native';
-
 export const Fonts = {
-  primary: Platform.select({ ios: 'System', android: 'sans-serif' }),
-  mono: Platform.select({ ios: 'Menlo', android: 'monospace' }),
+  primary: 'Outfit-Regular',
+  semibold: 'Outfit-SemiBold',
+  bold: 'Outfit-Bold',
+  extrabold: 'Outfit-ExtraBold',
+  mono: 'Ioskeley-Mono',
+  monoSemibold: 'Ioskeley-Mono-Semibold',
+  monoBold: 'Ioskeley-Mono-Bold',
 } as const;
 
 export const FontSize = {

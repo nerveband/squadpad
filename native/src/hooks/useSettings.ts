@@ -3,6 +3,8 @@ import type { JoystickStyle } from '../components/Joystick';
 import { useCallback, useSyncExternalStore } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
+export type RunMode = 'buttonHold' | 'button' | 'stickEdge';
+
 export interface Settings {
   playerName: string;
   hapticsEnabled: boolean;
@@ -10,6 +12,8 @@ export interface Settings {
   joystickStyle: JoystickStyle;
   sensitivity: number; // 0.5 to 2.0
   allowPortrait: boolean;
+  leftHanded: boolean;
+  runMode: RunMode;
   relayUrl: string;
 }
 
@@ -20,6 +24,8 @@ export const DEFAULT_SETTINGS: Settings = {
   joystickStyle: 'floating',
   sensitivity: 1.0,
   allowPortrait: true,
+  leftHanded: false,
+  runMode: 'buttonHold',
   relayUrl: 'wss://squadpad-relay.fly.dev',
 };
 

@@ -65,12 +65,19 @@ export function initControllerUI(opts) {
     return joystickBase.offsetWidth / 2 || 70;
   }
 
+  const DEAD_ZONE = 0.15;
   let JOYSTICK_RADIUS = 70;
   let joystickActive = false;
   let joystickTouchId = null;
   let joystickCenterX = 0;
   let joystickCenterY = 0;
 
+  function applyDeadZone(val) {
+    const abs = Math.abs(val);
+    if (abs < DEAD_ZONE) return 0;
+    const sign = val > 0 ? 1 : -1;
+    return sign * Math.min(1, (abs - DEAD_ZONE) / (1 - DEAD_ZONE));
+  }
   function positionJoystickBase(cx, cy) {
     const rect = joystickZone.getBoundingClientRect();
     const localX = cx - rect.left;
@@ -129,9 +136,9 @@ export function initControllerUI(opts) {
 
     joystickThumb.style.transform = `translate(${visualX}px, ${visualY}px)`;
 
-    const nx = Math.max(-1, Math.min(1, dx / JOYSTICK_RADIUS));
-    const ny = Math.max(-1, Math.min(1, dy / JOYSTICK_RADIUS));
-    controller.setJoystick(nx, ny);
+    const rawX = Math.max(-1, Math.min(1, dx / JOYSTICK_RADIUS));
+    const rawY = Math.max(-1, Math.min(1, dy / JOYSTICK_RADIUS));
+    controller.setJoystick(applyDeadZone(rawX), applyDeadZone(rawY));
   }
 
   function onJoystickTouchEnd(e) {
@@ -153,35 +160,88 @@ export function initControllerUI(opts) {
   joystickZone.addEventListener('touchend', onJoystickTouchEnd, { passive: false });
   joystickZone.addEventListener('touchcancel', onJoystickTouchCancel, { passive: false });
 
-  // ---- Action button touch handling -------------------------------------
+  // ---- Action button touch handling (multi-touch + slide rollover + Run) -
   const activeButtonTouches = new Map();
+
+  function isButtonHeld(btn) {
+    for (const activeBtn of activeButtonTouches.values()) {
+      if (activeBtn === btn) return true;
+    }
+    return false;
+  }
+
+  function triggerHaptic(action) {
+    if (hapticsEnabled && navigator.vibrate) {
+      const hapticPatterns = {
+        punch: [20, 10, 15],
+        bomb:  [30],
+        jump:  [8],
+        throw: [12, 8, 12],
+      };
+      navigator.vibrate(hapticPatterns[action] || [10]);
+    }
+  }
+
+  function syncTouchRunState() {
+    if (activeButtonTouches.size > 0) {
+      controller.pressButton('run');
+    } else {
+      controller.releaseButton('run');
+    }
+  }
+
+  function pressActionBtn(btn) {
+    const action = btn.dataset.action;
+    if (!action) return;
+    btn.classList.add('pressed');
+    controller.pressButton(action);
+    triggerHaptic(action);
+  }
+
+  function releaseActionBtn(btn) {
+    const action = btn.dataset.action;
+    btn.classList.remove('pressed');
+    if (action) controller.releaseButton(action);
+  }
 
   function onButtonTouchStart(e) {
     e.preventDefault();
     for (const touch of e.changedTouches) {
       const btn = touch.target.closest('.action-btn');
-      if (!btn) continue;
-      const action = btn.dataset.action;
-      if (!action) continue;
-
+      if (!btn || !btn.dataset.action) continue;
+      const alreadyHeld = isButtonHeld(btn);
       activeButtonTouches.set(touch.identifier, btn);
-      btn.classList.add('pressed');
-      controller.pressButton(action);
-
-      if (hapticsEnabled && navigator.vibrate) {
-        const hapticPatterns = {
-          punch: [20, 10, 15],
-          bomb:  [30],
-          jump:  [8],
-          throw: [12, 8, 12],
-        };
-        navigator.vibrate(hapticPatterns[action] || [10]);
+      if (!alreadyHeld) {
+        pressActionBtn(btn);
       }
     }
+    syncTouchRunState();
   }
 
   function onButtonTouchMove(e) {
     e.preventDefault();
+    for (const touch of e.changedTouches) {
+      const prevBtn = activeButtonTouches.get(touch.identifier);
+      if (!prevBtn && !buttonZone.contains(touch.target)) continue;
+      const el = document.elementFromPoint(touch.clientX, touch.clientY);
+      const nextBtn = el ? el.closest('.action-btn') : null;
+      if (nextBtn === prevBtn) continue;
+
+      if (prevBtn) {
+        activeButtonTouches.delete(touch.identifier);
+        if (!isButtonHeld(prevBtn)) {
+          releaseActionBtn(prevBtn);
+        }
+      }
+      if (nextBtn && nextBtn.dataset.action) {
+        const alreadyHeld = isButtonHeld(nextBtn);
+        activeButtonTouches.set(touch.identifier, nextBtn);
+        if (!alreadyHeld) {
+          pressActionBtn(nextBtn);
+        }
+      }
+    }
+    syncTouchRunState();
   }
 
   function onButtonTouchEnd(e) {
@@ -189,23 +249,16 @@ export function initControllerUI(opts) {
     for (const touch of e.changedTouches) {
       const btn = activeButtonTouches.get(touch.identifier);
       if (!btn) continue;
-      const action = btn.dataset.action;
-      btn.classList.remove('pressed');
-      if (action) controller.releaseButton(action);
       activeButtonTouches.delete(touch.identifier);
+      if (!isButtonHeld(btn)) {
+        releaseActionBtn(btn);
+      }
     }
+    syncTouchRunState();
   }
 
   function onButtonTouchCancel(e) {
-    e.preventDefault();
-    for (const touch of e.changedTouches) {
-      const btn = activeButtonTouches.get(touch.identifier);
-      if (!btn) continue;
-      const action = btn.dataset.action;
-      btn.classList.remove('pressed');
-      if (action) controller.releaseButton(action);
-      activeButtonTouches.delete(touch.identifier);
-    }
+    onButtonTouchEnd(e);
   }
 
   buttonZone.addEventListener('touchstart', onButtonTouchStart, { passive: false });
@@ -213,6 +266,22 @@ export function initControllerUI(opts) {
   buttonZone.addEventListener('touchend', onButtonTouchEnd, { passive: false });
   buttonZone.addEventListener('touchcancel', onButtonTouchCancel, { passive: false });
 
+  // ---- In-game Menu / Pause button in HUD -------------------------------
+  const ingameMenuBtn = document.getElementById('ingame-menu-btn');
+  function onMenuDown(e) {
+    e.preventDefault();
+    controller.pressButton('menu');
+  }
+  function onMenuUp(e) {
+    e.preventDefault();
+    controller.releaseButton('menu');
+  }
+  if (ingameMenuBtn) {
+    ingameMenuBtn.addEventListener('pointerdown', onMenuDown);
+    ingameMenuBtn.addEventListener('pointerup', onMenuUp);
+    ingameMenuBtn.addEventListener('pointercancel', onMenuUp);
+    ingameMenuBtn.addEventListener('pointerleave', onMenuUp);
+  }
   // ---- Keyboard input + visual feedback ---------------------------------
   const actionBtnMap = {};
   document.querySelectorAll('.action-btn[data-action]').forEach(btn => {
@@ -421,8 +490,13 @@ export function initControllerUI(opts) {
     buttonZone.removeEventListener('touchmove', onButtonTouchMove);
     buttonZone.removeEventListener('touchend', onButtonTouchEnd);
     buttonZone.removeEventListener('touchcancel', onButtonTouchCancel);
+    if (ingameMenuBtn) {
+      ingameMenuBtn.removeEventListener('pointerdown', onMenuDown);
+      ingameMenuBtn.removeEventListener('pointerup', onMenuUp);
+      ingameMenuBtn.removeEventListener('pointercancel', onMenuUp);
+      ingameMenuBtn.removeEventListener('pointerleave', onMenuUp);
+    }
 
-    // Keyboard listeners
     document.removeEventListener('keydown', onKeyDown);
     document.removeEventListener('keyup', onKeyUp);
 

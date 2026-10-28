@@ -22,4 +22,4 @@ One repo for everything. Do not split parts into separate repositories: `squadpa
 - The app does not run in Expo Go because of those modules. Use `npx expo run:ios`, `npx expo run:android`, or an EAS development build.
 - iOS UDP uses one bound BSD socket for send and receive (replies come back to the sending port). iOS rejects `255.255.255.255`; discovery uses the subnet broadcast from `getBroadcastAddress()`. Broadcast on a real device requires the `com.apple.developer.networking.multicast` entitlement.
 - Android UDP: `DatagramSocket.receive()` and its option setters are `synchronized` on the socket. Set options before the receive thread starts and keep `soTimeout` on the receive loop, or a setter called from JS deadlocks the JS thread.
-- iOS 27: keep `expo-build-properties` `ios.enableSceneSupport: true` while on SDK 57. Without it, Xcode 27 builds crash at launch. Remove it on SDK 58, where scenes are the default.
+- iOS 27: `native` is on Expo SDK 58, where the UIKit scene lifecycle is the default (`ios.enableSceneSupport` was removed on the SDK 58 upgrade).
