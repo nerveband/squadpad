@@ -61,7 +61,6 @@ export class UdpConnection {
     }
 
     socket.onMessage((data) => {
-      this.lastReceiveTime = Date.now();
       this.handlePacket(data);
     });
 
@@ -144,7 +143,8 @@ export class UdpConnection {
 
     switch (data[0]) {
       case MSG.ID_RESPONSE: {
-        if (this.connected) return;
+        if (this.connected || data.length < 3) return;
+        this.lastReceiveTime = Date.now();
         const response = decodeIdResponse(data);
         this.playerId = response.playerId;
         this.connected = true;
@@ -161,6 +161,8 @@ export class UdpConnection {
         break;
       }
       case MSG.STATE_ACK: {
+        if (!this.connected || data.length < 2) return;
+        this.lastReceiveTime = Date.now();
         const ack = decodeStateAck(data);
         const unacked = (this.writeIndex - this.ackIndex) & 0xFF;
         const stateDiff = (ack.nextIndex - this.ackIndex) & 0xFF;

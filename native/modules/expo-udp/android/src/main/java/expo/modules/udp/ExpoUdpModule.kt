@@ -5,6 +5,7 @@ import android.net.wifi.WifiManager
 import android.os.Build
 import android.os.Process
 import expo.modules.kotlin.modules.Module
+import expo.modules.kotlin.modules.ModuleDefinition
 import java.net.DatagramPacket
 import java.net.DatagramSocket
 import java.net.Inet4Address

@@ -121,7 +121,16 @@ export function createRelay(options = {}) {
     const room = rooms.get(code);
     if (!room) return { success: false, reason: 'not_found' };
     if (room.players.length >= MAX_PLAYERS_PER_ROOM) return { success: false, reason: 'room_full', playerCount: room.players.length };
-    const playerId = room.nextPlayerId++;
+    const usedIds = new Set(room.players.map((p) => p.id));
+    let playerId = room.nextPlayerId & 0xff;
+    for (let i = 0; i < 256; i++) {
+      const candidate = (room.nextPlayerId + i) & 0xff;
+      if (!usedIds.has(candidate)) {
+        playerId = candidate;
+        room.nextPlayerId = (candidate + 1) & 0xff;
+        break;
+      }
+    }
     room.players.push({ id: playerId, ws: playerWs, name: name || 'Player' });
     return { success: true, playerId, hostConfirms: room.confirmsPlayers };
   }

@@ -334,7 +334,7 @@ async fn attach_player(
     // Format: "Name#uniqueid". BombSquad shows only the part before #
     // Limit display name to 10 chars (BombSquad's limit)
     let display_name: String = name.replace('#', "").chars().take(10).collect();
-    let player_name = format!("{}#sp{}", display_name, player_idx);
+    let player_name = format!("{}#sprel{}", display_name, player_idx);
 
     let reply = match udp_client::attach(bombsquad_addr.clone(), player_name).await {
         Ok(udp) => {

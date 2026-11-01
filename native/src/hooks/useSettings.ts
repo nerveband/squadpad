@@ -34,6 +34,7 @@ const STORAGE_KEY = 'squadpad_settings';
 // One store shared by every screen, so a change made in Settings reaches a
 // controller screen that is already mounted underneath it.
 let current: Settings = DEFAULT_SETTINGS;
+let pendingBeforeLoad: Partial<Settings> = {};
 let loaded = false;
 const listeners = new Set<() => void>();
 
@@ -45,7 +46,7 @@ AsyncStorage.getItem(STORAGE_KEY)
   .then((raw) => {
     if (raw) {
       try {
-        current = { ...DEFAULT_SETTINGS, ...JSON.parse(raw) };
+        current = { ...DEFAULT_SETTINGS, ...JSON.parse(raw), ...pendingBeforeLoad };
       } catch {
         // Ignore corrupt storage
       }
@@ -66,10 +67,12 @@ export function useSettings() {
   const isLoaded = useSyncExternalStore(subscribe, () => loaded);
 
   const update = useCallback((partial: Partial<Settings>) => {
+    if (!loaded) {
+      pendingBeforeLoad = { ...pendingBeforeLoad, ...partial };
+    }
     current = { ...current, ...partial };
     AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(current)).catch(() => {});
     emit();
   }, []);
-
   return { settings, update, loaded: isLoaded };
 }

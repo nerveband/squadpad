@@ -57,6 +57,9 @@ export class WsConnection {
     this.userDisconnected = true;
     this.clearTimers();
     if (this.ws) {
+      this.ws.onopen = null;
+      this.ws.onmessage = null;
+      this.ws.onerror = null;
       this.ws.onclose = null;
       this.ws.close(1000, 'User disconnected');
       this.ws = null;
@@ -66,6 +69,9 @@ export class WsConnection {
 
   private open(): void {
     if (this.ws) {
+      this.ws.onopen = null;
+      this.ws.onmessage = null;
+      this.ws.onerror = null;
       this.ws.onclose = null;
       try { this.ws.close(); } catch {}
     }
@@ -75,14 +81,16 @@ export class WsConnection {
     const ws = new WebSocket(this.url);
     ws.binaryType = 'arraybuffer';
     this.ws = ws;
+    this.startReadyTimer();
 
     ws.onopen = () => {
+      if (this.ws !== ws || this.userDisconnected) return;
       this.callbacks.onStage('joining');
       ws.send(JSON.stringify({ type: 'join', room: this.roomCode, name: this.playerName || 'Player' }));
-      this.startReadyTimer();
     };
 
     ws.onmessage = (event) => {
+      if (this.ws !== ws || this.userDisconnected) return;
       if (typeof event.data === 'string') this.handleControl(event.data);
     };
 
@@ -91,7 +99,6 @@ export class WsConnection {
 
     ws.onclose = () => {
       if (this.ws !== ws) return;
-      this.ready = false;
       this.stopPing();
       this.clearReadyTimer();
       if (this.fatal) {

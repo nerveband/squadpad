@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
-import { View, Text, StyleSheet, Pressable } from 'react-native';
+import { AppState, View, Text, StyleSheet, Pressable } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -50,6 +50,7 @@ export default function ControllerScreen() {
   }
   const manager = managerRef.current;
   const controller = useController({ connectionManager: manager });
+  useGamepad(controller.controllerState);
 
   eventsRef.current = {
     onStatusChange: (s) => {
@@ -60,7 +61,15 @@ export default function ControllerScreen() {
     onLagUpdate: controller.pushLag,
   };
 
-  // Connect once settings are loaded (the relay URL lives there); reconnect on Retry.
+  // Clear any held movement/buttons if the app goes to background.
+  useEffect(() => {
+    const sub = AppState.addEventListener('change', (nextState) => {
+      if (nextState !== 'active') {
+        controller.resetController();
+      }
+    });
+    return () => sub.remove();
+  }, [controller]);
   useEffect(() => {
     if (!loaded || !target) return;
     const name = params.name || 'Player';
@@ -86,10 +95,10 @@ export default function ControllerScreen() {
   }, [tempName, update]);
 
   const handleAllSettings = useCallback(() => {
+    controller.resetController();
     setHudVisible(false);
     router.push('/settings');
-  }, [router]);
-
+  }, [controller, router]);
   const handleMenuPress = useCallback(() => {
     controller.pressButton('menu');
   }, [controller]);

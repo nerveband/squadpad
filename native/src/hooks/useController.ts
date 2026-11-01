@@ -81,19 +81,23 @@ export function useController({ connectionManager }: UseControllerOptions) {
   const releaseButton = useCallback((name: ButtonName) => {
     controllerRef.current.releaseButton(name);
   }, []);
+  const resetController = useCallback(() => {
+    controllerRef.current.reset();
+  }, []);
+
   const markConnected = useCallback(() => {
     setConnected(true);
     connectStartRef.current = Date.now();
   }, []);
 
   const markDisconnected = useCallback(() => {
+    controllerRef.current.reset();
     setConnected(false);
     connectStartRef.current = null;
     setConnectTime('0:00');
     lagBufferRef.current = [];
     setLagMs(null);
   }, []);
-
   // Buffer raw lag samples — smoothed display updates every 500ms
   const pushLag = useCallback((ms: number) => {
     lagBufferRef.current.push(ms);
@@ -104,12 +108,15 @@ export function useController({ connectionManager }: UseControllerOptions) {
   }, []);
 
   return {
+    controllerState: controllerRef.current,
     setJoystick,
     setActionMask,
     pressButton,
     releaseButton,
+    resetController,
     lagMs,
     pushLag,
+    connected,
     connectTime,
     markConnected,
     markDisconnected,

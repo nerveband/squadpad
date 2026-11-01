@@ -360,9 +360,20 @@ export function initControllerUI(opts) {
     }
   }
 
+  function resetAllInputs() {
+    controller.reset();
+    resetJoystick();
+    document.querySelectorAll('.action-btn.pressed').forEach((btn) => btn.classList.remove('pressed'));
+  }
+
+  function onVisibilityChange() {
+    if (document.hidden) resetAllInputs();
+  }
+
   document.addEventListener('keydown', onKeyDown, { passive: false });
   document.addEventListener('keyup', onKeyUp);
-
+  window.addEventListener('blur', resetAllInputs);
+  document.addEventListener('visibilitychange', onVisibilityChange);
   // ---- Controller state sending -----------------------------------------
   controller.onChange = (state) => {
     const encoded = encodeStateV2(state);
@@ -518,7 +529,9 @@ export function initControllerUI(opts) {
 
     document.removeEventListener('keydown', onKeyDown);
     document.removeEventListener('keyup', onKeyUp);
-
+    window.removeEventListener('blur', resetAllInputs);
+    document.removeEventListener('visibilitychange', onVisibilityChange);
+    resetAllInputs();
     // Intervals
     clearInterval(keepaliveInterval);
     stopConnectTimer();

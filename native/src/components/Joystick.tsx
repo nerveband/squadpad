@@ -152,7 +152,7 @@ export const Joystick = memo(function Joystick({
       (rimRun ? 1 : 0);
     if (step === lastStep.value) return;
     lastStep.value = step;
-    runOnJS(emitMove)(x, y, stickEdgeRun ? rimRun : undefined);
+    runOnJS(emitMove)(x, y, rimRun);
   };
 
   const restAt = () => {
@@ -174,7 +174,7 @@ export const Joystick = memo(function Joystick({
     thumbGlowOpacity.value = withTiming(0.4, { duration: 300 });
     lastStep.value = -1;
     isRunning.value = false;
-    runOnJS(emitMove)(0, 0, stickEdgeRun ? false : undefined);
+    runOnJS(emitMove)(0, 0, false);
   };
 
   // Manual gesture with explicit touch-ID ownership so a second finger or palm
@@ -237,16 +237,20 @@ export const Joystick = memo(function Joystick({
         .shouldCancelWhenOutside(false),
     [floating, sensitivity, stickEdgeRun, maxDistance, restOpacity, mirrored, compact, emitMove],
   );
-  // Re-centre and fade to the new resting opacity when mode or handedness changes.
+  // Re-centre and fade to the new resting opacity when mode or handedness changes,
+  // and clear stickRun if stickEdgeRun is turned off mid-session.
   useEffect(() => {
+    if (!stickEdgeRun && isRunning.value) {
+      isRunning.value = false;
+      emitMove(0, 0, false);
+    }
     if (zoneW.value > 0 && !isActive.value) {
       const pos = computeRestPosition(zoneW.value, zoneH.value, mirrored, compact);
       baseX.value = pos.x;
       baseY.value = pos.y;
     }
     baseOpacity.value = withTiming(REST_OPACITY[mode], { duration: 200 });
-  }, [mode, mirrored, compact, baseX, baseY, baseOpacity, zoneW, zoneH, isActive]);
-
+  }, [mode, mirrored, compact, stickEdgeRun, baseX, baseY, baseOpacity, zoneW, zoneH, isActive, isRunning, emitMove]);
   const baseStyle = useAnimatedStyle(() => ({
     opacity: baseOpacity.value,
     transform: [

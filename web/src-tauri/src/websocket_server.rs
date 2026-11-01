@@ -178,8 +178,8 @@ async fn handle_player(
         }
     }
 
-    // Connect to BombSquad with name#uniqueid format
-    let bs_name = format!("{}#sp{}", player_name, player_id);
+    // Connect to BombSquad with distinct LAN suffix (#splan{id}) so LAN and Relay IDs never collide
+    let bs_name = format!("{}#splan{}", player_name, player_id);
     let udp = match udp_client::attach(bs_addr.clone(), bs_name).await {
         Ok(udp) => udp,
         Err(e) => {
@@ -248,6 +248,14 @@ async fn handle_player(
                 Some(Ok(Message::Binary(data))) if data.len() >= 3 => {
                     if let Some(player) = players.lock().await.get_mut(&player_id) {
                         player.udp.push_state(data[0], data[1], data[2]);
+                    }
+                }
+                Some(Ok(Message::Text(text))) => {
+                    if let Ok(parsed) = serde_json::from_str::<serde_json::Value>(&text) {
+                        if parsed["type"].as_str() == Some("ping") {
+                            let pong = serde_json::json!({"type": "pong", "ts": parsed["ts"]});
+                            let _ = ws_sender.send(Message::Text(pong.to_string().into())).await;
+                        }
                     }
                 }
                 Some(Ok(_)) => {}

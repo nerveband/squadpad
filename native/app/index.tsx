@@ -84,27 +84,29 @@ export default function HomeScreen() {
     return trimmed;
   };
 
-  // Handle deep link (squadpad://?room=word+word&name=...)
+  const consumedRoomRef = useRef<string | null>(null);
+
+  // Handle deep link (squadpad://?room=word+word&name=...) once settings load
   useEffect(() => {
-    if (searchParams.room) {
-      const name = searchParams.name?.trim();
-      if (name) {
-        setPlayerName(name);
-        setNameError(false);
-      }
-      // Same normalisation as the web client: QR links use "+" or "-" between words.
-      const code = searchParams.room.toLowerCase().split(/[\s+\-]+/).filter(Boolean).join(' ');
-      const candidate = name || playerName.trim() || settings.playerName.trim();
-      if (candidate) {
-        handleJoinRoom(code, candidate);
-      } else {
-        setNameError(true);
-        nameInputRef.current?.focus();
-      }
+    if (!loaded || !searchParams.room) return;
+    if (consumedRoomRef.current === searchParams.room) return;
+    const name = searchParams.name?.trim();
+    if (name) {
+      setPlayerName(name);
+      setNameError(false);
+    }
+    // Same normalisation as the web client: QR links use "+" or "-" between words.
+    const code = searchParams.room.toLowerCase().split(/[\s+\-]+/).filter(Boolean).join(' ');
+    const candidate = name || playerName.trim() || settings.playerName.trim();
+    consumedRoomRef.current = searchParams.room;
+    if (candidate && code) {
+      handleJoinRoom(code, candidate);
+    } else {
+      setNameError(true);
+      nameInputRef.current?.focus();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchParams.room]);
-
+  }, [loaded, searchParams.room, searchParams.name]);
   // Persist name changes
   useEffect(() => {
     if (loaded && playerName !== settings.playerName) {

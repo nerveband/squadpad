@@ -41,6 +41,7 @@ export class Controller {
     this._lastEmitted = ''; // last state handed to onChange, as "buttons,h,v"
     this.keyBindings = { ...DEFAULT_KEYS };
     this._dirs = { up: false, down: false, left: false, right: false };
+    this._heldKeys = new Set();
   }
 
   getState() {
@@ -76,6 +77,7 @@ export class Controller {
   handleKeyDown(code) {
     const action = this.keyBindings[code];
     if (!action) return;
+    this._heldKeys.add(code);
     if (['up', 'down', 'left', 'right'].includes(action)) {
       this._dirs[action] = true;
       this._updateJoystickFromKeys();
@@ -87,6 +89,11 @@ export class Controller {
   handleKeyUp(code) {
     const action = this.keyBindings[code];
     if (!action) return;
+    this._heldKeys.delete(code);
+    // Keep the action active if another physical key mapped to the same action is still held
+    for (const held of this._heldKeys) {
+      if (this.keyBindings[held] === action) return;
+    }
     if (['up', 'down', 'left', 'right'].includes(action)) {
       this._dirs[action] = false;
       this._updateJoystickFromKeys();
@@ -95,6 +102,14 @@ export class Controller {
     }
   }
 
+  reset() {
+    this.buttons = 0;
+    this.joyX = 0;
+    this.joyY = 0;
+    this._dirs = { up: false, down: false, left: false, right: false };
+    this._heldKeys.clear();
+    this._notify();
+  }
   _updateJoystickFromKeys() {
     let x = 0, y = 0;
     if (this._dirs.left) x -= 1;

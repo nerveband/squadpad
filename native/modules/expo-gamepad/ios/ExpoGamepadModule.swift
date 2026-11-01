@@ -3,14 +3,15 @@ import GameController
 
 public class ExpoGamepadModule: Module {
   private var pollTimer: Timer?
-
+  private var connectObserver: NSObjectProtocol?
+  private var disconnectObserver: NSObjectProtocol?
   public func definition() -> ModuleDefinition {
     Name("ExpoGamepad")
 
     Events("onControllerConnected", "onControllerDisconnected", "onGamepadInput")
 
     OnCreate {
-      NotificationCenter.default.addObserver(
+      self.connectObserver = NotificationCenter.default.addObserver(
         forName: .GCControllerDidConnect,
         object: nil,
         queue: .main
@@ -19,7 +20,7 @@ public class ExpoGamepadModule: Module {
         self?.handleConnect(controller)
       }
 
-      NotificationCenter.default.addObserver(
+      self.disconnectObserver = NotificationCenter.default.addObserver(
         forName: .GCControllerDidDisconnect,
         object: nil,
         queue: .main
@@ -29,16 +30,23 @@ public class ExpoGamepadModule: Module {
           "id": controller.vendorName ?? "unknown"
         ])
       }
-
       GCController.controllers().forEach { self.handleConnect($0) }
       GCController.startWirelessControllerDiscovery {}
     }
 
     OnDestroy {
+      if let obs = self.connectObserver {
+        NotificationCenter.default.removeObserver(obs)
+        self.connectObserver = nil
+      }
+      if let obs = self.disconnectObserver {
+        NotificationCenter.default.removeObserver(obs)
+        self.disconnectObserver = nil
+      }
+      GCController.controllers().forEach { $0.extendedGamepad?.valueChangedHandler = nil }
       GCController.stopWirelessControllerDiscovery()
       self.pollTimer?.invalidate()
     }
-
     Function("getConnectedControllers") { () -> [[String: String]] in
       GCController.controllers().map { controller in
         [
@@ -59,10 +67,14 @@ public class ExpoGamepadModule: Module {
 
     // Set up input handler
     controller.extendedGamepad?.valueChangedHandler = { [weak self] gamepad, element in
+      let thumbX = gamepad.leftThumbstick.xAxis.value
+      let thumbY = gamepad.leftThumbstick.yAxis.value
+      let stickX = abs(thumbX) > 0.05 ? thumbX : gamepad.dpad.xAxis.value
+      let stickY = abs(thumbY) > 0.05 ? thumbY : gamepad.dpad.yAxis.value
       self?.sendEvent("onGamepadInput", [
-        "leftStickX": gamepad.leftThumbstick.xAxis.value,
+        "leftStickX": stickX,
         // GameController reports up as +1; the app uses screen orientation (down = +1).
-        "leftStickY": -gamepad.leftThumbstick.yAxis.value,
+        "leftStickY": -stickY,
         "buttonA": gamepad.buttonA.isPressed,
         "buttonB": gamepad.buttonB.isPressed,
         "buttonX": gamepad.buttonX.isPressed,

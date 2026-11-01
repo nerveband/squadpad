@@ -41,12 +41,11 @@ export class ConnectionManager {
     this.setStatus({ kind: 'connecting', stage: 'connecting' });
 
     const udp = new UdpConnection(host, port, {
-      onConnect: () => this.setStatus({ kind: 'connected' }),
-      onFailure: (failure) => this.setStatus({ kind: 'failed', failure }),
-      onLagUpdate: (ms) => this.events.onLagUpdate(ms),
+      onConnect: () => { if (this.udpConnection === udp) this.setStatus({ kind: 'connected' }); },
+      onFailure: (failure) => { if (this.udpConnection === udp) this.setStatus({ kind: 'failed', failure }); },
+      onLagUpdate: (ms) => { if (this.udpConnection === udp) this.events.onLagUpdate(ms); },
     });
     this.udpConnection = udp;
-
     try {
       await udp.connect(playerName);
     } catch (err) {
@@ -60,12 +59,12 @@ export class ConnectionManager {
     this.disconnect();
 
     const ws = new WsConnection(relayUrl, roomCode, playerName, {
-      onStage: (stage) => this.setStatus({ kind: 'connecting', stage }),
-      onConnect: () => this.setStatus({ kind: 'connected' }),
-      onReconnecting: (attempt, maxAttempts) => this.setStatus({ kind: 'reconnecting', attempt, maxAttempts }),
-      onFailure: (failure) => this.setStatus({ kind: 'failed', failure }),
-      onDisconnect: () => this.setStatus({ kind: 'idle' }),
-      onLagUpdate: (ms) => this.events.onLagUpdate(ms),
+      onStage: (stage) => { if (this.wsConnection === ws) this.setStatus({ kind: 'connecting', stage }); },
+      onConnect: () => { if (this.wsConnection === ws) this.setStatus({ kind: 'connected' }); },
+      onReconnecting: (attempt, maxAttempts) => { if (this.wsConnection === ws) this.setStatus({ kind: 'reconnecting', attempt, maxAttempts }); },
+      onFailure: (failure) => { if (this.wsConnection === ws) this.setStatus({ kind: 'failed', failure }); },
+      onDisconnect: () => { if (this.wsConnection === ws) this.setStatus({ kind: 'idle' }); },
+      onLagUpdate: (ms) => { if (this.wsConnection === ws) this.events.onLagUpdate(ms); },
     });
     this.wsConnection = ws;
     ws.connect();

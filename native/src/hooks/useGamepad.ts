@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { GamepadManager } from '../../modules/expo-gamepad';
 import { ControllerState } from '../controller/controller-state';
 
@@ -7,31 +7,29 @@ interface GamepadState {
   controllerName: string | null;
 }
 
-// Maps physical gamepad buttons to BombSquad actions
-function mapGamepadInput(event: {
-  leftStickX: number;
-  leftStickY: number;
-  buttonA: boolean;
-  buttonB: boolean;
-  buttonX: boolean;
-  buttonY: boolean;
-}, controller: ControllerState) {
-  controller.setJoystick(event.leftStickX, event.leftStickY);
-
-  // A = Jump, B = Bomb, X = Punch, Y = Throw
-  if (event.buttonA) controller.pressButton('jump');
-  else controller.releaseButton('jump');
-
-  if (event.buttonB) controller.pressButton('bomb');
-  else controller.releaseButton('bomb');
-
-  if (event.buttonX) controller.pressButton('punch');
-  else controller.releaseButton('punch');
-
-  if (event.buttonY) controller.pressButton('throw');
-  else controller.releaseButton('throw');
+// Maps physical gamepad buttons to BombSquad actions atomically without
+// overwriting touch input.
+function mapGamepadInput(
+  event: {
+    leftStickX: number;
+    leftStickY: number;
+    buttonA: boolean;
+    buttonB: boolean;
+    buttonX: boolean;
+    buttonY: boolean;
+    leftTrigger?: number;
+    rightTrigger?: number;
+  },
+  controller: ControllerState,
+) {
+  let mask = 0;
+  if (event.buttonY) mask |= 1 << 0; // throw
+  if (event.buttonX) mask |= 1 << 1; // punch
+  if (event.buttonB) mask |= 1 << 2; // bomb
+  if (event.buttonA) mask |= 1 << 3; // jump
+  const triggerRun = (event.leftTrigger ?? 0) > 0.25 || (event.rightTrigger ?? 0) > 0.25;
+  controller.setGamepadInput(event.leftStickX, event.leftStickY, mask, triggerRun);
 }
-
 export function useGamepad(controller: ControllerState): GamepadState {
   const [state, setState] = useState<GamepadState>({
     connected: false,
@@ -44,9 +42,9 @@ export function useGamepad(controller: ControllerState): GamepadState {
     });
 
     const disconnectSub = GamepadManager.onControllerDisconnected(() => {
+      controller.clearGamepad();
       setState({ connected: false, controllerName: null });
     });
-
     const inputSub = GamepadManager.onInput((event) => {
       mapGamepadInput(event, controller);
     });

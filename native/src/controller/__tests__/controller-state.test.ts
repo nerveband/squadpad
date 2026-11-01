@@ -129,6 +129,22 @@ describe('ControllerState', () => {
     expect(states[1].h).toBe(128);
     expect(states[1].buttons).toBe(0);
   });
+
+  test('setGamepadInput and clearGamepad coexist with touch input without clobbering it', () => {
+    const c = new ControllerState();
+    c.setJoystick(0.8, 0, true);
+    c.setActionMask(1 << 3, false); // touch Jump held
+
+    // Idle gamepad snapshot does not overwrite touch stick or touch Jump
+    c.setGamepadInput(0, 0, 1 << 1, false); // gamepad Punch pressed
+    expect(c.getState().h).toBe(230);
+    expect(c.getState().buttons).toBe(BTN.JUMP | BTN.PUNCH | BTN.RUN);
+
+    // Unplugging gamepad clears gamepad Punch while keeping touch stick + Jump
+    c.clearGamepad();
+    expect(c.getState().h).toBe(230);
+    expect(c.getState().buttons).toBe(BTN.JUMP | BTN.RUN);
+  });
 });
 
 describe('getZone diamond quadrant & foldable crease filter', () => {
