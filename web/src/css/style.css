@@ -483,6 +483,10 @@ body {
   background: rgba(155,107,190,0.06);
   box-shadow: 0 0 0 3px rgba(155,107,190,0.15), 0 2px 8px rgba(155,107,190,0.1);
 }
+.name-input.input-error {
+  border-color: var(--danger) !important;
+  box-shadow: 0 0 0 3px rgba(232,84,72,0.18);
+}
 
 .btn-primary {
   width: 100%;

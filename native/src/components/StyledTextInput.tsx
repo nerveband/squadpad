@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, type ComponentRef, type Ref } from 'react';
 import { TextInput as RNTextInput, StyleSheet, TextInputProps, View } from 'react-native';
 import { Colors } from '../theme/colors';
 import { Fonts, FontSize } from '../theme/typography';
@@ -7,14 +7,24 @@ import { Radius } from '../theme/spacing';
 interface StyledTextInputProps extends TextInputProps {
   /** Use Ioskeley Mono for technical fields like IP addresses. */
   mono?: boolean;
+  /** Highlight input border in red when a required field is missing. */
+  error?: boolean;
+  inputRef?: Ref<ComponentRef<typeof RNTextInput>>;
 }
 
-export function StyledTextInput({ mono, style, ...props }: StyledTextInputProps) {
+export function StyledTextInput({ mono, error, inputRef, style, ...props }: StyledTextInputProps) {
   const [focused, setFocused] = useState(false);
 
   return (
-    <View style={[styles.wrapper, focused && styles.wrapperFocused]}>
+    <View
+      style={[
+        styles.wrapper,
+        focused && styles.wrapperFocused,
+        error && styles.wrapperError,
+      ]}
+    >
       <RNTextInput
+        ref={inputRef}
         {...props}
         placeholderTextColor={Colors.textDim}
         onFocus={(e) => {
@@ -46,6 +56,9 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.3,
     shadowRadius: 8,
     elevation: 4,
+  },
+  wrapperError: {
+    borderColor: Colors.danger,
   },
   input: {
     fontFamily: Fonts.semibold,

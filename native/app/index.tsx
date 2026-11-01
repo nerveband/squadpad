@@ -1,6 +1,7 @@
-import { useState, useEffect, useCallback, type ComponentType, type ReactElement, type ReactNode } from 'react';
-import { View, Text, StyleSheet, ScrollView, Pressable, Image, Linking } from 'react-native';
+import { useState, useEffect, useCallback, useRef, type ComponentRef, type ComponentType, type ReactElement, type ReactNode } from 'react';
+import { View, Text, TextInput, StyleSheet, ScrollView, Pressable, Image, Linking } from 'react-native';
 import { useRouter, useLocalSearchParams, useIsFocused, useFocusEffect } from 'expo-router';
+import * as Haptics from 'expo-haptics';
 import { useFoldable } from '../src/hooks/useFoldable';
 import { LinearGradient } from 'expo-linear-gradient';
 import MaskedView from '@react-native-masked-view/masked-view';
@@ -29,11 +30,12 @@ export default function HomeScreen() {
   const { settings, update, loaded } = useSettings();
   const { insets, isWide, fold } = useFoldable();
   const [playerName, setPlayerName] = useState(settings.playerName);
+  const [nameError, setNameError] = useState(false);
+  const nameInputRef = useRef<ComponentRef<typeof TextInput>>(null);
   const [connecting, setConnecting] = useState(false);
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [showHostInfo, setShowHostInfo] = useState(false);
   const [manualIp, setManualIp] = useState('');
-  // Scan only while this screen is visible; the controller screen sits on top of it.
   const isFocused = useIsFocused();
   const { games, scanning, error: discoveryError } = useDiscovery(isFocused);
   const { history, addToHistory } = useConnectionHistory();
@@ -61,14 +63,44 @@ export default function HomeScreen() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loaded]);
 
+  const handleNameChange = (text: string) => {
+    setPlayerName(text);
+    if (nameError && text.trim().length > 0) {
+      setNameError(false);
+    }
+  };
+
+  const requireName = (overrideName?: string): string | null => {
+    const trimmed = (overrideName ?? playerName).trim();
+    if (!trimmed) {
+      setNameError(true);
+      nameInputRef.current?.focus();
+      if (settings.hapticsEnabled) {
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning).catch(() => {});
+      }
+      return null;
+    }
+    setNameError(false);
+    return trimmed;
+  };
+
   // Handle deep link (squadpad://?room=word+word&name=...)
   useEffect(() => {
     if (searchParams.room) {
       const name = searchParams.name?.trim();
-      if (name) setPlayerName(name);
+      if (name) {
+        setPlayerName(name);
+        setNameError(false);
+      }
       // Same normalisation as the web client: QR links use "+" or "-" between words.
       const code = searchParams.room.toLowerCase().split(/[\s+\-]+/).filter(Boolean).join(' ');
-      handleJoinRoom(code, name || getName());
+      const candidate = name || playerName.trim() || settings.playerName.trim();
+      if (candidate) {
+        handleJoinRoom(code, candidate);
+      } else {
+        setNameError(true);
+        nameInputRef.current?.focus();
+      }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams.room]);
@@ -81,17 +113,19 @@ export default function HomeScreen() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [playerName]);
 
-  const getName = () => playerName.trim() || 'Player';
-
   const handleSelectGame = (game: DiscoveredGame) => {
+    const name = requireName();
+    if (!name) return;
     setConnecting(true);
     router.push({
       pathname: '/controller',
-      params: { host: game.address, name: getName(), mode: 'lan' },
+      params: { host: game.address, name, mode: 'lan' },
     });
   };
 
-  const handleJoinRoom = (roomCode: string, name: string = getName()) => {
+  const handleJoinRoom = (roomCode: string, overrideName?: string) => {
+    const name = requireName(overrideName);
+    if (!name) return;
     setConnecting(true);
     addToHistory(roomCode);
     router.push({
@@ -102,13 +136,14 @@ export default function HomeScreen() {
 
   const handleDirectConnect = () => {
     if (!manualIp.trim()) return;
+    const name = requireName();
+    if (!name) return;
     setConnecting(true);
     router.push({
       pathname: '/controller',
-      params: { host: manualIp.trim(), name: getName(), mode: 'lan' },
+      params: { host: manualIp.trim(), name, mode: 'lan' },
     });
   };
-
   const padStyle = {
     paddingTop: Math.max(insets.top + Spacing.sm, Spacing.lg),
     paddingBottom: Math.max(insets.bottom + Spacing.xl, Spacing.xxl),
@@ -297,13 +332,18 @@ export default function HomeScreen() {
               <View style={styles.section}>
                 <Text style={styles.label}>Your Name</Text>
                 <StyledTextInput
+                  inputRef={nameInputRef}
+                  error={nameError}
                   value={playerName}
-                  onChangeText={setPlayerName}
-                  placeholder="Player"
+                  onChangeText={handleNameChange}
+                  placeholder="Enter your name"
                   autoCapitalize="words"
                   autoCorrect={false}
                   maxLength={20}
                 />
+                {nameError && (
+                  <Text style={styles.nameErrorText}>Please enter your name first.</Text>
+                )}
               </View>
 
               {nearbyCard}
@@ -356,13 +396,18 @@ export default function HomeScreen() {
             <View style={styles.section}>
               <Text style={styles.label}>Your Name</Text>
               <StyledTextInput
+                inputRef={nameInputRef}
+                error={nameError}
                 value={playerName}
-                onChangeText={setPlayerName}
-                placeholder="Player"
+                onChangeText={handleNameChange}
+                placeholder="Enter your name"
                 autoCapitalize="words"
                 autoCorrect={false}
                 maxLength={20}
               />
+              {nameError && (
+                <Text style={styles.nameErrorText}>Please enter your name first.</Text>
+              )}
             </View>
 
             {nearbyCard}
@@ -465,6 +510,12 @@ const styles = StyleSheet.create({
     fontWeight: FontWeight.semibold,
     textTransform: 'uppercase',
     letterSpacing: 1,
+  },
+  nameErrorText: {
+    fontFamily: Fonts.semibold,
+    color: Colors.danger,
+    fontSize: FontSize.xs,
+    fontWeight: FontWeight.semibold,
   },
   card: {
     gap: Spacing.sm,

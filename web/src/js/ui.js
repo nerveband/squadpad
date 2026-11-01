@@ -191,8 +191,22 @@ document.getElementById('back-to-roles-host').addEventListener('click', () => {
   rolePicker.hidden = false;
 });
 
+function requirePlayerName() {
+  const name = playerNameInput.value.trim();
+  if (!name) {
+    setStatus('Please enter your name first.', true);
+    playerNameInput.classList.add('input-error');
+    playerNameInput.focus();
+    return null;
+  }
+  playerNameInput.classList.remove('input-error');
+  return name;
+}
+
 // Join button: connect via room words
 joinBtn.addEventListener('click', () => {
+  const name = requirePlayerName();
+  if (!name) return;
   const w1 = roomWord1.value.trim().toLowerCase();
   const w2 = roomWord2.value.trim().toLowerCase();
   if (!w1 || !w2) {
@@ -204,10 +218,9 @@ joinBtn.addEventListener('click', () => {
   joinBtn.disabled = true;
 
   const relayUrl = getRelayUrl();
-  connection.connectRelay(relayUrl, code, playerNameInput.value.trim());
+  connection.connectRelay(relayUrl, code, name);
   addToHistory(code);
 });
-
 // Menu button disconnects and returns to connect screen
 menuBtn.addEventListener('click', () => {
   connection.disconnect();
@@ -251,6 +264,8 @@ const joinLanBtn = document.getElementById('join-lan-btn');
 const lanAddressInput = document.getElementById('lan-address');
 
 joinLanBtn.addEventListener('click', () => {
+  const name = requirePlayerName();
+  if (!name) return;
   // Accept "192.168.1.20", "192.168.1.20:43211", or a pasted ws:// / http:// URL
   const addr = lanAddressInput.value.trim().replace(/^[a-z]+:\/\//i, '').replace(/\/.*$/, '');
   if (!addr) {
@@ -258,8 +273,6 @@ joinLanBtn.addEventListener('click', () => {
     return;
   }
   const hostPort = addr.includes(':') ? addr : `${addr}:${LAN_PORT}`;
-  const name = playerNameInput.value.trim();
-
   // Browsers block insecure ws:// connections from an https page like
   // squadpad.org. The host app serves this controller over plain http on the
   // LAN, so continue from there.
@@ -467,6 +480,9 @@ loadBindings();
 playerNameInput.value = localStorage.getItem('squadpad_player_name') || '';
 playerNameInput.addEventListener('input', () => {
   localStorage.setItem('squadpad_player_name', playerNameInput.value);
+  if (playerNameInput.value.trim()) {
+    playerNameInput.classList.remove('input-error');
+  }
   updatePlayerNameDisplay();
 });
 
