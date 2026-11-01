@@ -107,7 +107,10 @@ pub async fn disconnect(relay_handle: SharedRelayHandle) {
 }
 
 async fn open_session(relay_url: &str, requested_code: Option<&str>) -> Result<Session, String> {
-    let (ws_stream, _response) = tokio::time::timeout(CONNECT_TIMEOUT, tokio_tungstenite::connect_async(relay_url))
+    let (ws_stream, _response) = tokio::time::timeout(
+        CONNECT_TIMEOUT,
+        tokio_tungstenite::connect_async_with_config(relay_url, None, true),
+    )
         .await
         .map_err(|_| "Timed out connecting to relay".to_string())?
         .map_err(|e| format!("Failed to connect to relay: {}", e))?;
@@ -215,7 +218,7 @@ async fn run_session(
     let players_process = players.clone();
     let state_process = app_state.clone();
     let process_handle = tokio::spawn(async move {
-        let mut interval = tokio::time::interval(Duration::from_millis(100));
+        let mut interval = tokio::time::interval(Duration::from_millis(25));
         loop {
             interval.tick().await;
             let mut players = players_process.lock().await;

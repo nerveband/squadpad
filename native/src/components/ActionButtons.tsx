@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { memo, useCallback, useEffect, useMemo, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, { useSharedValue, withSpring, withTiming, runOnJS } from 'react-native-reanimated';
@@ -55,6 +55,7 @@ function useButtonAnim() {
 interface ActionButtonsProps {
   onPressIn: (name: ButtonName) => void;
   onPressOut: (name: ButtonName) => void;
+  onMaskChange?: (mask: number, holdRun: boolean) => void;
   hapticsEnabled: boolean;
   hapticIntensity: HapticIntensity;
   runMode?: RunMode;
@@ -64,9 +65,10 @@ interface ActionButtonsProps {
   compact?: boolean;
 }
 
-export function ActionButtons({
+export const ActionButtons = memo(function ActionButtons({
   onPressIn,
   onPressOut,
+  onMaskChange,
   hapticsEnabled,
   hapticIntensity,
   runMode = 'stickEdge',
@@ -95,46 +97,40 @@ export function ActionButtons({
   const touchIds = useSharedValue<number[]>([-1, -1, -1, -1, -1, -1, -1, -1]);
   const touchMasks = useSharedValue<number[]>([0, 0, 0, 0, 0, 0, 0, 0]);
   const currentMask = useSharedValue(0);
-  const runHeldByActionRef = useRef(false);
-
-  // Sync JS button state + haptics only when the 4-bit mask actually changes.
+  // Sync JS button state FIRST (so the UDP/WebSocket packet leaves immediately),
+  // then trigger haptics for newly pressed buttons.
   const applyMaskChange = useCallback(
     (nextMask: number, prevMask: number) => {
-      for (let i = 0; i < 4; i++) {
-        const bit = 1 << i;
-        const wasDown = (prevMask & bit) !== 0;
-        const isDown = (nextMask & bit) !== 0;
-        if (!wasDown && isDown) {
-          playHaptic(BUTTON_NAMES[i], hapticsEnabled, hapticIntensity);
-          onPressIn(BUTTON_NAMES[i]);
-        } else if (wasDown && !isDown) {
-          onPressOut(BUTTON_NAMES[i]);
+      if (onMaskChange) {
+        onMaskChange(nextMask, runMode === 'buttonHold');
+      } else {
+        for (let i = 0; i < 4; i++) {
+          const bit = 1 << i;
+          const wasDown = (prevMask & bit) !== 0;
+          const isDown = (nextMask & bit) !== 0;
+          if (!wasDown && isDown) {
+            onPressIn(BUTTON_NAMES[i]);
+          } else if (wasDown && !isDown) {
+            onPressOut(BUTTON_NAMES[i]);
+          }
         }
       }
 
-      if (runMode === 'buttonHold') {
-        const anyActive = nextMask !== 0;
-        if (anyActive && !runHeldByActionRef.current) {
-          runHeldByActionRef.current = true;
-          onPressIn('run');
-        } else if (!anyActive && runHeldByActionRef.current) {
-          runHeldByActionRef.current = false;
-          onPressOut('run');
+      for (let i = 0; i < 4; i++) {
+        const bit = 1 << i;
+        if ((prevMask & bit) === 0 && (nextMask & bit) !== 0) {
+          playHaptic(BUTTON_NAMES[i], hapticsEnabled, hapticIntensity);
         }
-      } else if (runHeldByActionRef.current) {
-        runHeldByActionRef.current = false;
-        onPressOut('run');
       }
     },
-    [hapticsEnabled, hapticIntensity, onPressIn, onPressOut, runMode],
+    [hapticsEnabled, hapticIntensity, onMaskChange, onPressIn, onPressOut, runMode],
   );
 
   useEffect(() => {
-    if (runMode !== 'buttonHold' && runHeldByActionRef.current) {
-      runHeldByActionRef.current = false;
-      onPressOut('run');
+    if (onMaskChange) {
+      onMaskChange(currentMask.value, runMode === 'buttonHold');
     }
-  }, [runMode, onPressOut]);
+  }, [runMode, onMaskChange, currentMask]);
 
   const updateButtonAnimsWorklet = (nextMask: number, prevMask: number) => {
     'worklet';
@@ -172,29 +168,30 @@ export function ActionButtons({
     }
   };
 
-  const gesture = Gesture.Manual()
-    .onTouchesDown((e) => {
-      'worklet';
-      const cx = clusterCenterX.value > 0 ? clusterCenterX.value : layoutW.value / 2;
-      const cy = clusterCenterY.value > 0 ? clusterCenterY.value : layoutH.value / 2;
-      const maxR = clusterMaxRadius.value;
-      const ids = [...touchIds.value];
-      const masks = [...touchMasks.value];
+  const gesture = useMemo(
+    () =>
+      Gesture.Manual()
+        .onTouchesDown((e) => {
+          'worklet';
+          const cx = clusterCenterX.value > 0 ? clusterCenterX.value : layoutW.value / 2;
+          const cy = clusterCenterY.value > 0 ? clusterCenterY.value : layoutH.value / 2;
+          const maxR = clusterMaxRadius.value;
+          const ids = [...touchIds.value];
+          const masks = [...touchMasks.value];
 
-      for (const t of e.changedTouches) {
-        const mask = getButtonMask(t.x, t.y, cx, cy, sepX, sepY, maxR);
-        if (mask === 0) continue;
-        let slot = ids.indexOf(t.id);
-        if (slot === -1) slot = ids.indexOf(-1);
-        if (slot !== -1) {
-          ids[slot] = t.id;
-          masks[slot] = mask;
-        }
-      }
-      touchIds.value = ids;
-      touchMasks.value = masks;
-      recomputeMaskWorklet();
-    })
+          for (const t of e.changedTouches) {
+            const mask = getButtonMask(t.x, t.y, cx, cy, sepX, sepY, maxR);
+            let slot = ids.indexOf(t.id);
+            if (slot === -1) slot = ids.indexOf(-1);
+            if (slot !== -1) {
+              ids[slot] = t.id;
+              masks[slot] = mask;
+            }
+          }
+          touchIds.value = ids;
+          touchMasks.value = masks;
+          recomputeMaskWorklet();
+        })
     .onTouchesMove((e) => {
       'worklet';
       const cx = clusterCenterX.value > 0 ? clusterCenterX.value : layoutW.value / 2;
@@ -257,9 +254,10 @@ export function ActionButtons({
         touchMasks.value = masks;
         recomputeMaskWorklet();
       }
-    })
-    .shouldCancelWhenOutside(false);
-
+        })
+        .shouldCancelWhenOutside(false),
+    [sepX, sepY, applyMaskChange],
+  );
   return (
     <View
       style={styles.container}
@@ -331,7 +329,7 @@ export function ActionButtons({
       </View>
     </View>
   );
-}
+});
 
 const styles = StyleSheet.create({
   container: {

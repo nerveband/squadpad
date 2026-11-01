@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { memo, useCallback, useEffect, useMemo } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
@@ -20,8 +20,7 @@ const RADIAL_DEAD_ZONE = 0.07; // Small radial deadzone; no per-axis cross lock
 export type JoystickStyle = 'floating' | 'fixed';
 
 interface JoystickProps {
-  onMove: (x: number, y: number) => void;
-  onRunChange?: (running: boolean) => void;
+  onMove: (x: number, y: number, rimRun?: boolean) => void;
   sensitivity?: number; // 0.5 to 2.0, default 1.0
   /** floating: the stick centres where the thumb lands. fixed: it stays put. */
   mode?: JoystickStyle;
@@ -55,9 +54,8 @@ function computeRestPosition(width: number, height: number, mirrored: boolean, c
   return { x, y };
 }
 
-export function Joystick({
+export const Joystick = memo(function Joystick({
   onMove,
-  onRunChange,
   sensitivity = 1.0,
   mode = 'floating',
   mirrored = false,
@@ -74,22 +72,22 @@ export function Joystick({
   const thumbX = useSharedValue(0);
   const thumbY = useSharedValue(0);
   const isActive = useSharedValue(false);
+  const activeTouchId = useSharedValue(-1);
   const isRunning = useSharedValue(false);
   const baseOpacity = useSharedValue(REST_OPACITY[mode]);
   const borderOpacity = useSharedValue(0.15);
   const thumbGlowOpacity = useSharedValue(0.4);
   const restOpacity = REST_OPACITY[mode];
   const floating = mode === 'floating';
-  // Last position sent to JS, quantised to the wire format (h * 256 + v).
+  // Last position sent to JS, quantised to the wire format (h * 512 + v * 2 + run).
   const lastStep = useSharedValue(-1);
 
-  const emitMove = (x: number, y: number) => {
-    onMove(x, y);
-  };
-
-  const emitRun = (running: boolean) => {
-    onRunChange?.(running);
-  };
+  const emitMove = useCallback(
+    (x: number, y: number, rimRun?: boolean) => {
+      onMove(x, y, rimRun);
+    },
+    [onMove],
+  );
 
   const moveThumb = (touchX: number, touchY: number) => {
     'worklet';
@@ -115,9 +113,12 @@ export function Joystick({
     thumbY.value = dy * visualScale;
 
     // Reach full speed inside a tighter radius (`0.70 * maxDistance`) scaled by
-    // sensitivity, with a radial deadzone (no per-axis cross sticking) and
-    // unit-box clamping so diagonal running speed is 100%.
-    const fullSpeedDist = Math.max(10, (floating ? 0.70 : 0.82) * maxDistance / sensitivity);
+    // sensitivity and capped at `0.95 * maxDistance` so full speed is always
+    // reachable even at low sensitivity (0.5) when floating pull-follow clamps `dist`.
+    const fullSpeedDist = Math.max(
+      10,
+      Math.min(maxDistance * 0.95, ((floating ? 0.70 : 0.82) * maxDistance) / sensitivity),
+    );
     const rawMag = dist / fullSpeedDist;
     let x = 0;
     let y = 0;
@@ -142,18 +143,16 @@ export function Joystick({
       y = Math.max(-1, Math.min(1, vy));
     }
 
-    if (stickEdgeRun) {
-      const rimRun = rawMag >= 0.88;
-      if (rimRun !== isRunning.value) {
-        isRunning.value = rimRun;
-        runOnJS(emitRun)(rimRun);
-      }
-    }
+    const rimRun = stickEdgeRun ? dist >= maxDistance * 0.88 : false;
+    isRunning.value = rimRun;
 
-    const step = Math.round((x + 1) * 127.5) * 256 + Math.round((y + 1) * 127.5);
+    const step =
+      Math.round((x + 1) * 127.5) * 512 +
+      Math.round((y + 1) * 127.5) * 2 +
+      (rimRun ? 1 : 0);
     if (step === lastStep.value) return;
     lastStep.value = step;
-    runOnJS(emitMove)(x, y);
+    runOnJS(emitMove)(x, y, stickEdgeRun ? rimRun : undefined);
   };
 
   const restAt = () => {
@@ -163,41 +162,81 @@ export function Joystick({
     baseY.value = pos.y;
   };
 
-  const pan = Gesture.Pan()
-    .onBegin((e) => {
+  const finishTouch = () => {
+    'worklet';
+    activeTouchId.value = -1;
+    isActive.value = false;
+    thumbX.value = withSpring(0, { damping: 15, stiffness: 300 });
+    thumbY.value = withSpring(0, { damping: 15, stiffness: 300 });
+    if (floating) restAt();
+    baseOpacity.value = withTiming(restOpacity, { duration: 300 });
+    borderOpacity.value = withTiming(0.15, { duration: 300 });
+    thumbGlowOpacity.value = withTiming(0.4, { duration: 300 });
+    lastStep.value = -1;
+    isRunning.value = false;
+    runOnJS(emitMove)(0, 0, stickEdgeRun ? false : undefined);
+  };
+
+  // Manual gesture with explicit touch-ID ownership so a second finger or palm
+  // brush in the joystick zone never averages or steals the active thumb coordinates.
+  const pan = useMemo(
+    () =>
+      Gesture.Manual()
+    .onTouchesDown((e) => {
+      'worklet';
+      if (activeTouchId.value !== -1) return;
+      const t = e.changedTouches[0];
+      if (!t) return;
+      activeTouchId.value = t.id;
       isActive.value = true;
       if (floating) {
-        baseX.value = e.x;
-        baseY.value = e.y;
+        baseX.value = t.x;
+        baseY.value = t.y;
         thumbX.value = 0;
         thumbY.value = 0;
       } else {
-        moveThumb(e.x, e.y);
+        moveThumb(t.x, t.y);
       }
-      baseOpacity.value = withTiming(1, { duration: 100 });
-      borderOpacity.value = withTiming(0.4, { duration: 100 });
-      thumbGlowOpacity.value = withTiming(0.8, { duration: 100 });
+      baseOpacity.value = withTiming(1, { duration: 80 });
+      borderOpacity.value = withTiming(0.4, { duration: 80 });
+      thumbGlowOpacity.value = withTiming(0.8, { duration: 80 });
     })
-    .onUpdate((e) => {
-      moveThumb(e.x, e.y);
-    })
-    .onFinalize(() => {
-      isActive.value = false;
-      thumbX.value = withSpring(0, { damping: 15, stiffness: 300 });
-      thumbY.value = withSpring(0, { damping: 15, stiffness: 300 });
-      if (floating) restAt();
-      baseOpacity.value = withTiming(restOpacity, { duration: 300 });
-      borderOpacity.value = withTiming(0.15, { duration: 300 });
-      thumbGlowOpacity.value = withTiming(0.4, { duration: 300 });
-      lastStep.value = -1;
-      if (isRunning.value) {
-        isRunning.value = false;
-        runOnJS(emitRun)(false);
+    .onTouchesMove((e) => {
+      'worklet';
+      const id = activeTouchId.value;
+      if (id === -1) return;
+      for (const t of e.changedTouches) {
+        if (t.id === id) {
+          moveThumb(t.x, t.y);
+          break;
+        }
       }
-      runOnJS(emitMove)(0, 0);
     })
-    .minDistance(0);
-
+    .onTouchesUp((e) => {
+      'worklet';
+      const id = activeTouchId.value;
+      if (id === -1) return;
+      for (const t of e.changedTouches) {
+        if (t.id === id) {
+          finishTouch();
+          break;
+        }
+      }
+    })
+    .onTouchesCancelled((e) => {
+      'worklet';
+      const id = activeTouchId.value;
+      if (id === -1) return;
+      for (const t of e.changedTouches) {
+        if (t.id === id) {
+          finishTouch();
+          break;
+        }
+      }
+        })
+        .shouldCancelWhenOutside(false),
+    [floating, sensitivity, stickEdgeRun, maxDistance, restOpacity, mirrored, compact, emitMove],
+  );
   // Re-centre and fade to the new resting opacity when mode or handedness changes.
   useEffect(() => {
     if (zoneW.value > 0 && !isActive.value) {
@@ -288,7 +327,7 @@ export function Joystick({
       </View>
     </GestureDetector>
   );
-}
+});
 
 const styles = StyleSheet.create({
   zone: {

@@ -90,14 +90,6 @@ export default function ControllerScreen() {
     router.push('/settings');
   }, [router]);
 
-  const handleRunChange = useCallback(
-    (running: boolean) => {
-      if (running) controller.pressButton('run');
-      else controller.releaseButton('run');
-    },
-    [controller],
-  );
-
   const handleMenuPress = useCallback(() => {
     controller.pressButton('menu');
   }, [controller]);
@@ -109,7 +101,6 @@ export default function ControllerScreen() {
   const joystick = (
     <Joystick
       onMove={controller.setJoystick}
-      onRunChange={handleRunChange}
       sensitivity={settings.sensitivity}
       mode={settings.joystickStyle}
       mirrored={settings.leftHanded}
@@ -121,6 +112,7 @@ export default function ControllerScreen() {
     <ActionButtons
       onPressIn={controller.pressButton}
       onPressOut={controller.releaseButton}
+      onMaskChange={controller.setActionMask}
       hapticsEnabled={settings.hapticsEnabled}
       hapticIntensity={settings.hapticIntensity}
       runMode={settings.runMode}

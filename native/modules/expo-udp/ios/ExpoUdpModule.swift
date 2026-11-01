@@ -86,6 +86,9 @@ private final class UdpSocket {
   private var bytesSent = 0
   private var packetsReceived = 0
   private var lastError: String?
+  private var cachedHost: String?
+  private var cachedAddr: sockaddr_in?
+  private var recvBuffer = [UInt8](repeating: 0, count: 2048)
 
   init(id: Int, port: UInt16, onMessage: @escaping (Data, String, Int) -> Void) throws {
     self.id = id
@@ -97,7 +100,8 @@ private final class UdpSocket {
     var yes: Int32 = 1
     setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &yes, socklen_t(MemoryLayout<Int32>.size))
     setsockopt(fd, SOL_SOCKET, SO_NOSIGPIPE, &yes, socklen_t(MemoryLayout<Int32>.size))
-
+    var netServiceVo: Int32 = NET_SERVICE_TYPE_VO
+    setsockopt(fd, SOL_SOCKET, SO_NET_SERVICE_TYPE, &netServiceVo, socklen_t(MemoryLayout<Int32>.size))
     var addr = sockaddr_in()
     addr.sin_len = UInt8(MemoryLayout<sockaddr_in>.size)
     addr.sin_family = sa_family_t(AF_INET)
@@ -119,7 +123,7 @@ private final class UdpSocket {
     self.fd = fd
     self.source = DispatchSource.makeReadSource(
       fileDescriptor: fd,
-      queue: DispatchQueue(label: "expo.udp.socket.\(id)")
+      queue: DispatchQueue(label: "expo.udp.socket.\(id)", qos: .userInteractive)
     )
     source.setEventHandler { [weak self] in self?.drain() }
     source.setCancelHandler { Darwin.close(fd) }
@@ -138,9 +142,22 @@ private final class UdpSocket {
   }
 
   func send(_ data: [UInt8], to address: String, port: UInt16) -> Int {
-    guard var dest = resolveIPv4(address) else {
-      record(error: "cannot resolve \(address)")
-      return -Int(EHOSTUNREACH)
+    var dest: sockaddr_in
+    stats.lock()
+    if cachedHost == address, let cached = cachedAddr {
+      dest = cached
+      stats.unlock()
+    } else {
+      stats.unlock()
+      guard let resolved = resolveIPv4(address) else {
+        record(error: "cannot resolve \(address)")
+        return -Int(EHOSTUNREACH)
+      }
+      stats.lock()
+      cachedHost = address
+      cachedAddr = resolved
+      stats.unlock()
+      dest = resolved
     }
     dest.sin_port = port.bigEndian
     let sent = data.withUnsafeBytes { buffer in
@@ -187,11 +204,10 @@ private final class UdpSocket {
   }
 
   private func drain() {
-    var buffer = [UInt8](repeating: 0, count: 2048)
     while true {
       var from = sockaddr_in()
       var fromLen = socklen_t(MemoryLayout<sockaddr_in>.size)
-      let count = buffer.withUnsafeMutableBytes { raw in
+      let count = recvBuffer.withUnsafeMutableBytes { raw in
         withUnsafeMutablePointer(to: &from) {
           $0.withMemoryRebound(to: sockaddr.self, capacity: 1) {
             recvfrom(fd, raw.baseAddress, raw.count, 0, $0, &fromLen)
@@ -208,7 +224,7 @@ private final class UdpSocket {
       stats.lock()
       packetsReceived += 1
       stats.unlock()
-      onMessage(Data(buffer[0..<count]), ipString(from.sin_addr), Int(UInt16(bigEndian: from.sin_port)))
+      onMessage(Data(recvBuffer[0..<count]), ipString(from.sin_addr), Int(UInt16(bigEndian: from.sin_port)))
     }
   }
 

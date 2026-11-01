@@ -66,8 +66,12 @@ export function useController({ connectionManager }: UseControllerOptions) {
     return () => clearInterval(interval);
   }, []);
 
-  const setJoystick = useCallback((x: number, y: number) => {
-    controllerRef.current.setJoystick(x, y);
+  const setJoystick = useCallback((x: number, y: number, rimRun?: boolean) => {
+    controllerRef.current.setJoystick(x, y, rimRun);
+  }, []);
+
+  const setActionMask = useCallback((mask: number, holdRun?: boolean) => {
+    controllerRef.current.setActionMask(mask, holdRun);
   }, []);
 
   const pressButton = useCallback((name: ButtonName) => {
@@ -77,7 +81,6 @@ export function useController({ connectionManager }: UseControllerOptions) {
   const releaseButton = useCallback((name: ButtonName) => {
     controllerRef.current.releaseButton(name);
   }, []);
-
   const markConnected = useCallback(() => {
     setConnected(true);
     connectStartRef.current = Date.now();
@@ -102,11 +105,11 @@ export function useController({ connectionManager }: UseControllerOptions) {
 
   return {
     setJoystick,
+    setActionMask,
     pressButton,
     releaseButton,
     lagMs,
     pushLag,
-    connected,
     connectTime,
     markConnected,
     markDisconnected,

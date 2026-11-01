@@ -146,6 +146,7 @@ async fn handle_player(
     bs_addr: String,
     mut shutdown: watch::Receiver<bool>,
 ) {
+    let _ = stream.set_nodelay(true);
     let ws_stream = match accept_async(stream).await {
         Ok(ws) => ws,
         Err(_) => return,
@@ -222,7 +223,7 @@ async fn handle_player(
     let players_process = players.clone();
     let state_process = state.clone();
     let process_handle = tokio::spawn(async move {
-        let mut interval = tokio::time::interval(Duration::from_millis(100));
+        let mut interval = tokio::time::interval(Duration::from_millis(25));
         loop {
             interval.tick().await;
             let mut p = players_process.lock().await;

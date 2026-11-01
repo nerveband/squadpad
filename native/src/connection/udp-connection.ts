@@ -7,7 +7,7 @@ import type { ConnectionFailure } from './connection-manager';
 
 const BUFFER_SIZE = 256;
 const MAX_STATES_PER_PACKET = 11;
-const RESEND_INTERVAL = 33;
+const RESEND_INTERVAL = 25;
 const ID_REQUEST_INTERVAL = 500;
 const ID_REQUEST_ATTEMPTS = 8;
 /** BombSquad acks every state, and the controller sends at least one per second. */
@@ -29,11 +29,17 @@ export class UdpConnection {
   private connected = false;
   private lastReceiveTime = 0;
 
-  // Circular state buffer; all indices are mod 256
+  // Circular state buffer; all indices are mod 256. Once a slot is written to
+  // `stateBuffer` and transmitted, it is immutable so BombSquad never ignores
+  // a mutated sequence number as a duplicate retransmit.
   private stateBuffer: (Uint8Array | null)[] = new Array(BUFFER_SIZE).fill(null);
   private stateBirthTime: number[] = new Array(BUFFER_SIZE).fill(0);
   private writeIndex = 0;
   private ackIndex = 0;
+  private lastCommittedButtons = 0;
+  private lastCommittedH = 128;
+  private lastCommittedV = 128;
+  private pendingAnalog: ControllerInput | null = null;
 
   private handshakeTimer: number | null = null;
   private resendTimer: number | null = null;
@@ -78,32 +84,57 @@ export class UdpConnection {
     this.handshakeTimer = setInterval(sendRequest, ID_REQUEST_INTERVAL);
   }
 
+  private commitState(input: ControllerInput, force = false): void {
+    const b = input.buttons & 0xFF;
+    const h = input.h & 0xFF;
+    const v = input.v & 0xFF;
+    if (
+      !force &&
+      this.writeIndex !== this.ackIndex &&
+      b === this.lastCommittedButtons &&
+      h === this.lastCommittedH &&
+      v === this.lastCommittedV
+    ) {
+      return;
+    }
+    this.lastCommittedButtons = b;
+    this.lastCommittedH = h;
+    this.lastCommittedV = v;
+    this.stateBuffer[this.writeIndex] = encodeStateV2(input);
+    this.stateBirthTime[this.writeIndex] = Date.now();
+    this.writeIndex = (this.writeIndex + 1) & 0xFF;
+  }
+
   sendState(input: ControllerInput): void {
     if (!this.connected || !this.socket) return;
 
-    const encoded = encodeStateV2(input);
+    const b = input.buttons & 0xFF;
+    const h = input.h & 0xFF;
+    const v = input.v & 0xFF;
+    const isButtonEdge = b !== this.lastCommittedButtons;
+    const isCenterRelease = h === 128 && v === 128 && (this.lastCommittedH !== 128 || this.lastCommittedV !== 128);
     const unacked = (this.writeIndex - this.ackIndex) & 0xFF;
-    const prevIdx = (this.writeIndex - 1) & 0xFF;
-    const prevState = this.stateBuffer[prevIdx];
 
-    // If several states are already unacknowledged and only the analog stick
-    // moved (buttons unchanged), update the latest queued slot in place so
-    // intermediate stick positions never queue up ahead of a button press.
-    if (unacked >= 3 && unacked < 128 && prevState && prevState[0] === encoded[0]) {
-      this.stateBuffer[prevIdx] = encoded;
-      this.stateBirthTime[prevIdx] = Date.now();
+    // Button transitions and stick return-to-center always commit and transmit
+    // immediately. Analog moves also transmit immediately when fewer than 2
+    // states are in flight; otherwise they update `pendingAnalog` before
+    // sequence assignment so 120 Hz stick moves never build a queue ahead of
+    // button presses or trigger Ballistica's 1..10 sequence-gap stall.
+    if (isButtonEdge || isCenterRelease || unacked < 2) {
+      this.pendingAnalog = null;
+      this.commitState(input);
+      this.sendPendingStates();
     } else {
-      this.stateBuffer[this.writeIndex] = encoded;
-      this.stateBirthTime[this.writeIndex] = Date.now();
-      this.writeIndex = (this.writeIndex + 1) & 0xFF;
+      this.pendingAnalog = input;
     }
-
-    this.sendPendingStates();
   }
 
   disconnect(): void {
     if (this.socket && this.playerId >= 0) {
-      this.socket.send(buildDisconnect(this.playerId), this.host, this.port);
+      const pkt = buildDisconnect(this.playerId);
+      for (let i = 0; i < 3; i++) {
+        this.socket.send(pkt, this.host, this.port);
+      }
     }
     this.cleanup();
   }
@@ -131,14 +162,34 @@ export class UdpConnection {
       }
       case MSG.STATE_ACK: {
         const ack = decodeStateAck(data);
+        const unacked = (this.writeIndex - this.ackIndex) & 0xFF;
         const stateDiff = (ack.nextIndex - this.ackIndex) & 0xFF;
-        // Only advance ackIndex forward (1..127); ignore out-of-order UDP ACKs.
-        if (stateDiff > 0 && stateDiff < 128) {
+        if (stateDiff > 0 && stateDiff <= unacked) {
           const birthTime = this.stateBirthTime[(ack.nextIndex - 1) & 0xFF];
           if (birthTime > 0) {
             this.callbacks.onLagUpdate(Math.max(1, Math.round((Date.now() - birthTime) * 0.5)));
           }
           this.ackIndex = ack.nextIndex;
+          if (this.pendingAnalog && ((this.writeIndex - this.ackIndex) & 0xFF) < 2) {
+            const next = this.pendingAnalog;
+            this.pendingAnalog = null;
+            this.commitState(next);
+            this.sendPendingStates();
+          }
+        } else if (stateDiff > unacked && ((this.ackIndex - ack.nextIndex) & 0xFF) > 16) {
+          // Stale server slot after reconnect: Ballistica kept its previous
+          // `next_state_id` for our player name. Resync our ring indices to the
+          // server's expected `ack.nextIndex` and re-commit the latest state.
+          const latest = this.pendingAnalog ?? {
+            buttons: this.lastCommittedButtons,
+            h: this.lastCommittedH,
+            v: this.lastCommittedV,
+          };
+          this.pendingAnalog = null;
+          this.ackIndex = ack.nextIndex;
+          this.writeIndex = ack.nextIndex;
+          this.commitState(latest, true);
+          this.sendPendingStates();
         }
         break;
       }
@@ -158,14 +209,22 @@ export class UdpConnection {
 
   private sendPendingStates(): void {
     if (!this.socket || this.playerId < 0) return;
+    if (this.pendingAnalog && ((this.writeIndex - this.ackIndex) & 0xFF) < 2) {
+      const next = this.pendingAnalog;
+      this.pendingAnalog = null;
+      this.commitState(next);
+    }
     const unacked = (this.writeIndex - this.ackIndex) & 0xFF;
     if (unacked === 0 || unacked >= 128) return;
 
-    // Match official BombSquad Remote (shipUnAckedStatesV2): always send the
-    // newest `count` states ending at `writeIndex - 1` so the player's latest
-    // turn or button press is in the very first packet that lands.
     const count = Math.min(unacked, MAX_STATES_PER_PACKET);
-    const startIndex = (this.writeIndex - count) & 0xFF;
+    // Send oldest-first up to 21 unacked states so `startIndex === ackIndex`
+    // (diff == 0 on Ballistica); only skip to newest 11 when `unacked >= 22`,
+    // where the first state has `diff >= 11` and triggers Ballistica's skip-ahead.
+    const startIndex =
+      unacked <= 21
+        ? this.ackIndex
+        : ((this.writeIndex - count) & 0xFF);
     const states: Uint8Array[] = [];
     let idx = startIndex;
     for (let i = 0; i < count; i++) {
@@ -177,7 +236,6 @@ export class UdpConnection {
 
     this.socket.send(buildStatePacket(this.playerId, states, startIndex), this.host, this.port);
   }
-
   private fail(failure: ConnectionFailure): void {
     console.warn('[UdpConn] Connection failed:', failure);
     this.cleanup();

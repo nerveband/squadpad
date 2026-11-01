@@ -98,11 +98,15 @@ pub async fn attach(addr: String, player_name: String) -> Result<UdpClient, Atta
 pub struct UdpClient {
     socket: UdpSocket,
     player_id: Option<u8>,
-    // Circular buffer for reliable state delivery
+    // Circular buffer for reliable state delivery (immutable once transmitted)
     states: [[u8; 3]; 256],
     state_birth_times: [Option<Instant>; 256],
     next_state: u8,
     acked_state: u8,
+    last_buttons: u8,
+    last_h: u8,
+    last_v: u8,
+    pending_analog: Option<[u8; 3]>,
     last_send_time: Instant,
     pub lag_ms: f32,
 }
@@ -118,6 +122,10 @@ impl UdpClient {
             state_birth_times: [None; 256],
             next_state: 0,
             acked_state: 0,
+            last_buttons: 0,
+            last_h: 128,
+            last_v: 128,
+            pending_analog: None,
             last_send_time: Instant::now(),
             lag_ms: 0.0,
         })
@@ -196,19 +204,36 @@ impl UdpClient {
     /// Queue a new controller state and send it right away. The periodic
     /// `process()` tick only handles retransmits and acks; waiting for it
     /// added up to 100 ms of input lag for every relay and LAN web player.
-    pub fn push_state(&mut self, buttons: u8, h: u8, v: u8) {
-        let unacked = self.next_state.wrapping_sub(self.acked_state);
-        let prev_idx = self.next_state.wrapping_sub(1) as usize;
-        if unacked >= 3 && unacked < 128 && self.states[prev_idx][0] == buttons {
-            self.states[prev_idx] = [buttons, h, v];
-            self.state_birth_times[prev_idx] = Some(Instant::now());
-        } else {
-            let idx = self.next_state as usize;
-            self.states[idx] = [buttons, h, v];
-            self.state_birth_times[idx] = Some(Instant::now());
-            self.next_state = self.next_state.wrapping_add(1);
+    fn commit_state(&mut self, buttons: u8, h: u8, v: u8, force: bool) {
+        if !force
+            && self.next_state != self.acked_state
+            && buttons == self.last_buttons
+            && h == self.last_h
+            && v == self.last_v
+        {
+            return;
         }
-        self.process();
+        self.last_buttons = buttons;
+        self.last_h = h;
+        self.last_v = v;
+        let idx = self.next_state as usize;
+        self.states[idx] = [buttons, h, v];
+        self.state_birth_times[idx] = Some(Instant::now());
+        self.next_state = self.next_state.wrapping_add(1);
+    }
+
+    pub fn push_state(&mut self, buttons: u8, h: u8, v: u8) {
+        let is_button_edge = buttons != self.last_buttons;
+        let is_center_release = h == 128 && v == 128 && (self.last_h != 128 || self.last_v != 128);
+        let unacked = self.next_state.wrapping_sub(self.acked_state);
+
+        if is_button_edge || is_center_release || unacked < 2 {
+            self.pending_analog = None;
+            self.commit_state(buttons, h, v, false);
+            self.process();
+        } else {
+            self.pending_analog = Some([buttons, h, v]);
+        }
     }
 
     /// Process: resend unacked states, handle incoming ACKs.
@@ -222,23 +247,42 @@ impl UdpClient {
         let mut buf = [0u8; 256];
         while let Ok(len) = self.socket.recv(&mut buf) {
             if let Some(acked) = protocol::decode_state_ack(&buf[..len]) {
+                let unacked = self.next_state.wrapping_sub(self.acked_state);
                 let state_diff = acked.wrapping_sub(self.acked_state);
-                if state_diff > 0 && state_diff < 128 {
+                if state_diff > 0 && state_diff <= unacked {
                     if let Some(birth) = self.state_birth_times[acked.wrapping_sub(1) as usize] {
                         let rtt = birth.elapsed().as_secs_f32() * 1000.0;
                         self.lag_ms = self.lag_ms * 0.5 + rtt * 0.25; // smoothed half-RTT
                     }
                     self.acked_state = acked;
+                } else if state_diff > unacked && self.acked_state.wrapping_sub(acked) > 16 {
+                    let [b, h, v] = self.pending_analog.take().unwrap_or([
+                        self.last_buttons,
+                        self.last_h,
+                        self.last_v,
+                    ]);
+                    self.acked_state = acked;
+                    self.next_state = acked;
+                    self.commit_state(b, h, v, true);
                 }
+            }
+        }
+
+        if self.next_state.wrapping_sub(self.acked_state) < 2 {
+            if let Some([b, h, v]) = self.pending_analog.take() {
+                self.commit_state(b, h, v, false);
             }
         }
 
         // Calculate how many unacked states we have
         let unacked = self.next_state.wrapping_sub(self.acked_state);
         if unacked > 0 && unacked < 128 {
-            // Send the newest `count` states ending at `next_state - 1`
             let count = (unacked as usize).min(11);
-            let start = self.next_state.wrapping_sub(count as u8);
+            let start = if (unacked as usize) <= 21 {
+                self.acked_state
+            } else {
+                self.next_state.wrapping_sub(count as u8)
+            };
             let mut batch: Vec<[u8; 3]> = Vec::with_capacity(count);
             for i in 0..count {
                 let idx = start.wrapping_add(i as u8) as usize;

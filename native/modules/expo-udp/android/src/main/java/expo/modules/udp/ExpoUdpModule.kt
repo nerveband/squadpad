@@ -2,8 +2,9 @@ package expo.modules.udp
 
 import android.content.Context
 import android.net.wifi.WifiManager
+import android.os.Build
+import android.os.Process
 import expo.modules.kotlin.modules.Module
-import expo.modules.kotlin.modules.ModuleDefinition
 import java.net.DatagramPacket
 import java.net.DatagramSocket
 import java.net.Inet4Address
@@ -74,13 +75,15 @@ class ExpoUdpModule : Module() {
   ) {
     private var socket: DatagramSocket? = null
     private var multicastLock: WifiManager.MulticastLock? = null
+    private var lowLatencyLock: WifiManager.WifiLock? = null
     @Volatile private var receiving = false
     @Volatile private var broadcastRequested = false
     @Volatile private var lastError: String? = null
+    @Volatile private var cachedHost: String? = null
+    @Volatile private var cachedAddress: InetAddress? = null
     private val packetsSent = AtomicInteger(0)
     private val bytesSent = AtomicInteger(0)
     private val packetsReceived = AtomicInteger(0)
-
     // DatagramSocket.receive() holds the socket monitor while blocked, and option
     // setters like setBroadcast() are synchronized on it too. Configure the socket
     // before the receive thread starts and give receive() a timeout so the monitor
@@ -92,8 +95,13 @@ class ExpoUdpModule : Module() {
         reuseAddress = true
         this.broadcast = true
         soTimeout = RECEIVE_TIMEOUT_MS
+        try {
+          trafficClass = 0x10 // IPTOS_LOWDELAY
+        } catch (_: Exception) {
+        }
         bind(address)
       }
+      acquireLowLatencyLock()
       receiving = true
       startReceiving()
     }
@@ -118,7 +126,15 @@ class ExpoUdpModule : Module() {
     fun send(data: ByteArray, address: String, port: Int): Int {
       val socket = socket ?: return -1
       return try {
-        socket.send(DatagramPacket(data, data.size, InetAddress.getByName(address), port))
+        val dest = if (cachedHost == address && cachedAddress != null) {
+          cachedAddress!!
+        } else {
+          InetAddress.getByName(address).also {
+            cachedHost = address
+            cachedAddress = it
+          }
+        }
+        socket.send(DatagramPacket(data, data.size, dest, port))
         packetsSent.incrementAndGet()
         bytesSent.addAndGet(data.size)
         data.size
@@ -131,6 +147,7 @@ class ExpoUdpModule : Module() {
     fun close() {
       receiving = false
       releaseLock()
+      releaseLowLatencyLock()
       socket?.close()
       socket = null
     }
@@ -145,14 +162,38 @@ class ExpoUdpModule : Module() {
       "lastError" to lastError,
     )
 
+    private fun acquireLowLatencyLock() {
+      if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q || lowLatencyLock != null) return
+      try {
+        val context = appContext.reactContext ?: return
+        val wifi = context.applicationContext.getSystemService(Context.WIFI_SERVICE) as? WifiManager
+        lowLatencyLock = wifi?.createWifiLock(WifiManager.WIFI_MODE_FULL_LOW_LATENCY, "squadpad-ll-$id")?.apply {
+          setReferenceCounted(false)
+          acquire()
+        }
+      } catch (_: Exception) {
+      }
+    }
+
+    private fun releaseLowLatencyLock() {
+      try {
+        lowLatencyLock?.takeIf { it.isHeld }?.release()
+      } catch (_: Exception) {
+      }
+      lowLatencyLock = null
+    }
+
     private fun releaseLock() {
       multicastLock?.takeIf { it.isHeld }?.release()
       multicastLock = null
     }
-
     private fun startReceiving() {
       val socket = socket ?: return
       thread(name = "expo-udp-$id") {
+        try {
+          Process.setThreadPriority(Process.THREAD_PRIORITY_URGENT_DISPLAY)
+        } catch (_: Exception) {
+        }
         val buffer = ByteArray(2048)
         while (receiving) {
           try {

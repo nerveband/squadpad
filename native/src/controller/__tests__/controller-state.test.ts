@@ -1,5 +1,6 @@
 import { ControllerState } from '../controller-state';
 import { getZone, getButtonMask } from '../touch-zones';
+import { BTN } from '../../protocol/constants';
 
 describe('ControllerState', () => {
   test('initial state is centered with no buttons', () => {
@@ -95,6 +96,38 @@ describe('ControllerState', () => {
     expect(s.buttons).toBe(0);
     expect(s.h).toBe(128);
     expect(s.v).toBe(128);
+  });
+
+  test('setActionMask atomically updates chorded buttons and holdRun in a single emission', () => {
+    const c = new ControllerState();
+    const states: { buttons: number; h: number; v: number }[] = [];
+    c.onChange = (s) => states.push(s);
+
+    // Press Punch (bit 1) + Jump (bit 3) + holdRun in one call
+    c.setActionMask((1 << 1) | (1 << 3), true);
+    expect(states).toHaveLength(1);
+    expect(states[0].buttons).toBe(BTN.PUNCH | BTN.JUMP | BTN.RUN);
+
+    // Release all action buttons -> clears action buttons and holdRun together
+    c.setActionMask(0, true);
+    expect(states).toHaveLength(2);
+    expect(states[1].buttons).toBe(0);
+  });
+
+  test('setJoystick combines analog move and stickEdge rimRun in a single emission', () => {
+    const c = new ControllerState();
+    const states: { buttons: number; h: number; v: number }[] = [];
+    c.onChange = (s) => states.push(s);
+
+    c.setJoystick(1, 0, true);
+    expect(states).toHaveLength(1);
+    expect(states[0].h).toBe(255);
+    expect(states[0].buttons).toBe(BTN.RUN);
+
+    c.setJoystick(0, 0, false);
+    expect(states).toHaveLength(2);
+    expect(states[1].h).toBe(128);
+    expect(states[1].buttons).toBe(0);
   });
 });
 
