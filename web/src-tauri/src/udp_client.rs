@@ -197,10 +197,17 @@ impl UdpClient {
     /// `process()` tick only handles retransmits and acks; waiting for it
     /// added up to 100 ms of input lag for every relay and LAN web player.
     pub fn push_state(&mut self, buttons: u8, h: u8, v: u8) {
-        let idx = self.next_state as usize;
-        self.states[idx] = [buttons, h, v];
-        self.state_birth_times[idx] = Some(Instant::now());
-        self.next_state = self.next_state.wrapping_add(1);
+        let unacked = self.next_state.wrapping_sub(self.acked_state);
+        let prev_idx = self.next_state.wrapping_sub(1) as usize;
+        if unacked >= 3 && unacked < 128 && self.states[prev_idx][0] == buttons {
+            self.states[prev_idx] = [buttons, h, v];
+            self.state_birth_times[prev_idx] = Some(Instant::now());
+        } else {
+            let idx = self.next_state as usize;
+            self.states[idx] = [buttons, h, v];
+            self.state_birth_times[idx] = Some(Instant::now());
+            self.next_state = self.next_state.wrapping_add(1);
+        }
         self.process();
     }
 
@@ -215,21 +222,23 @@ impl UdpClient {
         let mut buf = [0u8; 256];
         while let Ok(len) = self.socket.recv(&mut buf) {
             if let Some(acked) = protocol::decode_state_ack(&buf[..len]) {
-                // Calculate lag from the acked state's birth time
-                if let Some(birth) = self.state_birth_times[acked.wrapping_sub(1) as usize] {
-                    let rtt = birth.elapsed().as_secs_f32() * 1000.0;
-                    self.lag_ms = self.lag_ms * 0.5 + rtt * 0.25; // smoothed half-RTT
+                let state_diff = acked.wrapping_sub(self.acked_state);
+                if state_diff > 0 && state_diff < 128 {
+                    if let Some(birth) = self.state_birth_times[acked.wrapping_sub(1) as usize] {
+                        let rtt = birth.elapsed().as_secs_f32() * 1000.0;
+                        self.lag_ms = self.lag_ms * 0.5 + rtt * 0.25; // smoothed half-RTT
+                    }
+                    self.acked_state = acked;
                 }
-                self.acked_state = acked;
             }
         }
 
         // Calculate how many unacked states we have
         let unacked = self.next_state.wrapping_sub(self.acked_state);
         if unacked > 0 && unacked < 128 {
-            // Resend unacked states (up to 11)
+            // Send the newest `count` states ending at `next_state - 1`
             let count = (unacked as usize).min(11);
-            let start = self.acked_state;
+            let start = self.next_state.wrapping_sub(count as u8);
             let mut batch: Vec<[u8; 3]> = Vec::with_capacity(count);
             for i in 0..count {
                 let idx = start.wrapping_add(i as u8) as usize;

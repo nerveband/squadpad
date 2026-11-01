@@ -3,18 +3,20 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, { useSharedValue, withSpring, withTiming, runOnJS } from 'react-native-reanimated';
 import { ArrowUp, HandFist, FireSimple, ArrowsOutSimple, PersonSimpleRun } from 'phosphor-react-native';
-import { ButtonVisual, ActionButtonConfig, BUTTON_SIZE } from './ActionButton';
+import { ButtonVisual, ActionButtonConfig, BUTTON_SIZE, COMPACT_BUTTON_SIZE } from './ActionButton';
 import { playHaptic, type HapticIntensity } from '../controller/haptics';
 import type { ButtonName } from '../controller/controller-state';
-import { getZone } from '../controller/touch-zones';
+import { getZone, getButtonMask } from '../controller/touch-zones';
 import type { RunMode } from '../hooks/useSettings';
 import { Colors } from '../theme/colors';
 import { Fonts, FontSize, FontWeight } from '../theme/typography';
+
 const BUTTON_GAP = 14;
+const COMPACT_BUTTON_GAP = 8;
 // Horizontal gap between punch & bomb — wider than vertical gap
 // so the diamond looks balanced rather than squished.
-const MID_GAP = BUTTON_SIZE * 0.55;
-
+const MID_GAP = Math.round(BUTTON_SIZE * 0.52);
+const COMPACT_MID_GAP = 28;
 const BUTTON_NAMES = ['throw', 'punch', 'bomb', 'jump'] as const;
 
 const BUTTONS: ActionButtonConfig[] = [
@@ -58,6 +60,8 @@ interface ActionButtonsProps {
   runMode?: RunMode;
   /** True when action buttons sit on the left side (left-handed layout). */
   mirrored?: boolean;
+  /** Use compact diamond sizing for narrow portrait screens. */
+  compact?: boolean;
 }
 
 export function ActionButtons({
@@ -65,14 +69,21 @@ export function ActionButtons({
   onPressOut,
   hapticsEnabled,
   hapticIntensity,
-  runMode = 'buttonHold',
+  runMode = 'stickEdge',
   mirrored = false,
+  compact = false,
 }: ActionButtonsProps) {
-  const b0 = useButtonAnim(); // throw (top)
-  const b1 = useButtonAnim(); // punch (left)
-  const b2 = useButtonAnim(); // bomb  (right)
-  const b3 = useButtonAnim(); // jump  (bottom)
+  const b0 = useButtonAnim(); // throw (top, bit 0)
+  const b1 = useButtonAnim(); // punch (left, bit 1)
+  const b2 = useButtonAnim(); // bomb  (right, bit 2)
+  const b3 = useButtonAnim(); // jump  (bottom, bit 3)
   const [runBtnPressed, setRunBtnPressed] = useState(false);
+
+  const btnSize = compact ? COMPACT_BUTTON_SIZE : BUTTON_SIZE;
+  const midGap = compact ? COMPACT_MID_GAP : MID_GAP;
+  const btnGap = compact ? COMPACT_BUTTON_GAP : BUTTON_GAP;
+  const sepX = (btnSize + midGap) / 2;
+  const sepY = btnSize + btnGap;
 
   const layoutW = useSharedValue(0);
   const layoutH = useSharedValue(0);
@@ -80,127 +91,171 @@ export function ActionButtons({
   const clusterCenterY = useSharedValue(0);
   const clusterMaxRadius = useSharedValue(0);
 
-  // Map of touchId -> zone index for multi-touch chording and slide rollover
-  const activeTouches = useRef(new Map<number, number>());
+  // UI-thread touch tracking (up to 8 simultaneous touches in the button zone)
+  const touchIds = useSharedValue<number[]>([-1, -1, -1, -1, -1, -1, -1, -1]);
+  const touchMasks = useSharedValue<number[]>([0, 0, 0, 0, 0, 0, 0, 0]);
+  const currentMask = useSharedValue(0);
   const runHeldByActionRef = useRef(false);
 
-  const isZoneHeld = (zone: number): boolean => {
-    for (const z of activeTouches.current.values()) {
-      if (z === zone) return true;
-    }
-    return false;
-  };
+  // Sync JS button state + haptics only when the 4-bit mask actually changes.
+  const applyMaskChange = useCallback(
+    (nextMask: number, prevMask: number) => {
+      for (let i = 0; i < 4; i++) {
+        const bit = 1 << i;
+        const wasDown = (prevMask & bit) !== 0;
+        const isDown = (nextMask & bit) !== 0;
+        if (!wasDown && isDown) {
+          playHaptic(BUTTON_NAMES[i], hapticsEnabled, hapticIntensity);
+          onPressIn(BUTTON_NAMES[i]);
+        } else if (wasDown && !isDown) {
+          onPressOut(BUTTON_NAMES[i]);
+        }
+      }
 
-  const syncButtonHoldRun = useCallback(() => {
-    if (runMode !== 'buttonHold') {
-      if (runHeldByActionRef.current) {
+      if (runMode === 'buttonHold') {
+        const anyActive = nextMask !== 0;
+        if (anyActive && !runHeldByActionRef.current) {
+          runHeldByActionRef.current = true;
+          onPressIn('run');
+        } else if (!anyActive && runHeldByActionRef.current) {
+          runHeldByActionRef.current = false;
+          onPressOut('run');
+        }
+      } else if (runHeldByActionRef.current) {
         runHeldByActionRef.current = false;
         onPressOut('run');
       }
-      return;
-    }
-    const anyActive = activeTouches.current.size > 0;
-    if (anyActive && !runHeldByActionRef.current) {
-      runHeldByActionRef.current = true;
-      onPressIn('run');
-    } else if (!anyActive && runHeldByActionRef.current) {
+    },
+    [hapticsEnabled, hapticIntensity, onPressIn, onPressOut, runMode],
+  );
+
+  useEffect(() => {
+    if (runMode !== 'buttonHold' && runHeldByActionRef.current) {
       runHeldByActionRef.current = false;
       onPressOut('run');
     }
-  }, [runMode, onPressIn, onPressOut]);
+  }, [runMode, onPressOut]);
 
-  useEffect(() => {
-    syncButtonHoldRun();
-  }, [syncButtonHoldRun]);
-
-  const pressZone = useCallback((zone: number) => {
+  const updateButtonAnimsWorklet = (nextMask: number, prevMask: number) => {
+    'worklet';
     const scales = [b0.scale, b1.scale, b2.scale, b3.scale];
     const presseds = [b0.pressed, b1.pressed, b2.pressed, b3.pressed];
-    scales[zone].value = withSpring(0.85, { damping: 15, stiffness: 400 });
-    presseds[zone].value = withTiming(1, { duration: 50 });
-    playHaptic(BUTTON_NAMES[zone], hapticsEnabled, hapticIntensity);
-    onPressIn(BUTTON_NAMES[zone]);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [hapticsEnabled, hapticIntensity, onPressIn]);
-
-  const releaseZone = useCallback((zone: number) => {
-    const scales = [b0.scale, b1.scale, b2.scale, b3.scale];
-    const presseds = [b0.pressed, b1.pressed, b2.pressed, b3.pressed];
-    scales[zone].value = withSpring(1, { damping: 12, stiffness: 280 });
-    presseds[zone].value = withTiming(0, { duration: 180 });
-    onPressOut(BUTTON_NAMES[zone]);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [onPressOut]);
-
-  const resolveZone = useCallback((x: number, y: number): number => {
-    const cx = clusterCenterX.value > 0 ? clusterCenterX.value : layoutW.value / 2;
-    const cy = clusterCenterY.value > 0 ? clusterCenterY.value : layoutH.value / 2;
-    return getZone(x, y, cx, cy, clusterMaxRadius.value);
-  }, [clusterCenterX, clusterCenterY, clusterMaxRadius, layoutW, layoutH]);
-
-  const handleDown = useCallback((id: number, x: number, y: number) => {
-    const zone = resolveZone(x, y);
-    if (zone < 0) return;
-    const alreadyHeld = isZoneHeld(zone);
-    activeTouches.current.set(id, zone);
-    if (!alreadyHeld) {
-      pressZone(zone);
-    }
-    syncButtonHoldRun();
-  }, [resolveZone, pressZone, syncButtonHoldRun]);
-
-  // Thumb slide / rollover: sliding a finger from Jump to Punch or Bomb smoothly
-  // releases the previous button and triggers the new one without lifting the thumb.
-  const handleMove = useCallback((id: number, x: number, y: number) => {
-    const prevZone = activeTouches.current.get(id);
-    if (prevZone == null) return;
-    const nextZone = resolveZone(x, y);
-    if (nextZone === prevZone) return;
-
-    activeTouches.current.delete(id);
-    if (!isZoneHeld(prevZone)) {
-      releaseZone(prevZone);
-    }
-
-    if (nextZone >= 0) {
-      const alreadyHeld = isZoneHeld(nextZone);
-      activeTouches.current.set(id, nextZone);
-      if (!alreadyHeld) {
-        pressZone(nextZone);
+    for (let i = 0; i < 4; i++) {
+      const bit = 1 << i;
+      const wasDown = (prevMask & bit) !== 0;
+      const isDown = (nextMask & bit) !== 0;
+      if (!wasDown && isDown) {
+        scales[i].value = withSpring(0.84, { damping: 18, stiffness: 520 });
+        presseds[i].value = withTiming(1, { duration: 25 });
+      } else if (wasDown && !isDown) {
+        scales[i].value = withSpring(1, { damping: 14, stiffness: 340 });
+        presseds[i].value = withTiming(0, { duration: 120 });
       }
     }
-    syncButtonHoldRun();
-  }, [resolveZone, pressZone, releaseZone, syncButtonHoldRun]);
+  };
 
-  const handleUp = useCallback((id: number) => {
-    const zone = activeTouches.current.get(id);
-    if (zone == null) return;
-    activeTouches.current.delete(id);
-    if (!isZoneHeld(zone)) {
-      releaseZone(zone);
+  const recomputeMaskWorklet = () => {
+    'worklet';
+    let nextMask = 0;
+    const masks = touchMasks.value;
+    const ids = touchIds.value;
+    for (let i = 0; i < 8; i++) {
+      if (ids[i] !== -1) {
+        nextMask |= masks[i];
+      }
     }
-    syncButtonHoldRun();
-  }, [releaseZone, syncButtonHoldRun]);
+    const prevMask = currentMask.value;
+    if (nextMask !== prevMask) {
+      currentMask.value = nextMask;
+      updateButtonAnimsWorklet(nextMask, prevMask);
+      runOnJS(applyMaskChange)(nextMask, prevMask);
+    }
+  };
 
   const gesture = Gesture.Manual()
     .onTouchesDown((e) => {
+      'worklet';
+      const cx = clusterCenterX.value > 0 ? clusterCenterX.value : layoutW.value / 2;
+      const cy = clusterCenterY.value > 0 ? clusterCenterY.value : layoutH.value / 2;
+      const maxR = clusterMaxRadius.value;
+      const ids = [...touchIds.value];
+      const masks = [...touchMasks.value];
+
       for (const t of e.changedTouches) {
-        runOnJS(handleDown)(t.id, t.x, t.y);
+        const mask = getButtonMask(t.x, t.y, cx, cy, sepX, sepY, maxR);
+        if (mask === 0) continue;
+        let slot = ids.indexOf(t.id);
+        if (slot === -1) slot = ids.indexOf(-1);
+        if (slot !== -1) {
+          ids[slot] = t.id;
+          masks[slot] = mask;
+        }
       }
+      touchIds.value = ids;
+      touchMasks.value = masks;
+      recomputeMaskWorklet();
     })
     .onTouchesMove((e) => {
+      'worklet';
+      const cx = clusterCenterX.value > 0 ? clusterCenterX.value : layoutW.value / 2;
+      const cy = clusterCenterY.value > 0 ? clusterCenterY.value : layoutH.value / 2;
+      const maxR = clusterMaxRadius.value;
+      const ids = touchIds.value;
+      let changed = false;
+      let nextMasks: number[] | null = null;
+
       for (const t of e.changedTouches) {
-        runOnJS(handleMove)(t.id, t.x, t.y);
+        const slot = ids.indexOf(t.id);
+        if (slot === -1) continue;
+        const mask = getButtonMask(t.x, t.y, cx, cy, sepX, sepY, maxR);
+        const cur = (nextMasks ?? touchMasks.value)[slot];
+        if (mask !== cur) {
+          if (!nextMasks) nextMasks = [...touchMasks.value];
+          nextMasks[slot] = mask;
+          changed = true;
+        }
+      }
+      if (changed && nextMasks) {
+        touchMasks.value = nextMasks;
+        recomputeMaskWorklet();
       }
     })
     .onTouchesUp((e) => {
+      'worklet';
+      const ids = [...touchIds.value];
+      const masks = [...touchMasks.value];
+      let changed = false;
       for (const t of e.changedTouches) {
-        runOnJS(handleUp)(t.id);
+        const slot = ids.indexOf(t.id);
+        if (slot !== -1) {
+          ids[slot] = -1;
+          masks[slot] = 0;
+          changed = true;
+        }
+      }
+      if (changed) {
+        touchIds.value = ids;
+        touchMasks.value = masks;
+        recomputeMaskWorklet();
       }
     })
     .onTouchesCancelled((e) => {
+      'worklet';
+      const ids = [...touchIds.value];
+      const masks = [...touchMasks.value];
+      let changed = false;
       for (const t of e.changedTouches) {
-        runOnJS(handleUp)(t.id);
+        const slot = ids.indexOf(t.id);
+        if (slot !== -1) {
+          ids[slot] = -1;
+          masks[slot] = 0;
+          changed = true;
+        }
+      }
+      if (changed) {
+        touchIds.value = ids;
+        touchMasks.value = masks;
+        recomputeMaskWorklet();
       }
     })
     .shouldCancelWhenOutside(false);
@@ -214,37 +269,40 @@ export function ActionButtons({
         layoutH.value = height;
       }}
     >
-      {/* Single gesture zone: diagonal quadrants + slide rollover */}
+      {/* Single gesture zone: UI-thread chording + slide rollover */}
       <GestureDetector gesture={gesture}>
         <Animated.View style={StyleSheet.absoluteFill} />
       </GestureDetector>
 
-      {/* Visual diamond anchored in the ergonomic outer-bottom thumb arc */}
+      {/* Visual diamond anchored in the ergonomic thumb arc */}
       <View
         style={[
           styles.visualLayer,
-          mirrored ? styles.visualLayerMirrored : styles.visualLayerStandard,
+          compact ? styles.visualLayerCompact : styles.visualLayerRegular,
+          compact
+            ? styles.visualLayerCenter
+            : mirrored
+              ? styles.visualLayerMirrored
+              : styles.visualLayerStandard,
         ]}
         pointerEvents="box-none"
       >
         <View
-          style={styles.diamondCluster}
+          style={[styles.diamondCluster, { gap: btnGap }]}
           pointerEvents="none"
           onLayout={(e) => {
             const { x, y, width, height } = e.nativeEvent.layout;
             clusterCenterX.value = x + width / 2;
             clusterCenterY.value = y + height / 2;
-            // Generous thumb radius around the diamond, capped on wide screens
-            // so stray touches near the foldable center crease are ignored.
-            clusterMaxRadius.value = Math.max(width, height) * 0.85;
+            clusterMaxRadius.value = Math.max(width, height) * 0.95;
           }}
         >
-          <ButtonVisual config={BUTTONS[0]} scale={b0.scale} pressed={b0.pressed} />
-          <View style={styles.diamondMidRow}>
-            <ButtonVisual config={BUTTONS[1]} scale={b1.scale} pressed={b1.pressed} />
-            <ButtonVisual config={BUTTONS[2]} scale={b2.scale} pressed={b2.pressed} />
+          <ButtonVisual config={BUTTONS[0]} scale={b0.scale} pressed={b0.pressed} size={btnSize} />
+          <View style={[styles.diamondMidRow, { gap: midGap }]}>
+            <ButtonVisual config={BUTTONS[1]} scale={b1.scale} pressed={b1.pressed} size={btnSize} />
+            <ButtonVisual config={BUTTONS[2]} scale={b2.scale} pressed={b2.pressed} size={btnSize} />
           </View>
-          <ButtonVisual config={BUTTONS[3]} scale={b3.scale} pressed={b3.pressed} />
+          <ButtonVisual config={BUTTONS[3]} scale={b3.scale} pressed={b3.pressed} size={btnSize} />
         </View>
 
         {runMode === 'button' && (
@@ -286,8 +344,14 @@ const styles = StyleSheet.create({
     right: 0,
     bottom: 0,
     justifyContent: 'flex-end',
-    paddingHorizontal: 22,
+  },
+  visualLayerRegular: {
+    paddingHorizontal: 20,
     paddingBottom: 22,
+  },
+  visualLayerCompact: {
+    paddingHorizontal: 6,
+    paddingBottom: 32,
   },
   visualLayerStandard: {
     alignItems: 'flex-end',
@@ -295,13 +359,14 @@ const styles = StyleSheet.create({
   visualLayerMirrored: {
     alignItems: 'flex-start',
   },
+  visualLayerCenter: {
+    alignItems: 'center',
+  },
   diamondCluster: {
     alignItems: 'center',
-    gap: BUTTON_GAP,
   },
   diamondMidRow: {
     flexDirection: 'row',
-    gap: MID_GAP,
   },
   runBtn: {
     position: 'absolute',

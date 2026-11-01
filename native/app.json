@@ -64,7 +64,8 @@
             "./assets/fonts/Ioskeley-Mono-Bold.ttf"
           ]
         }
-      ]
+      ],
+      "expo-build-properties"
     ],
     "extra": {
       "router": {},

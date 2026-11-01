@@ -13,8 +13,9 @@ import { Colors } from '../theme/colors';
 
 const BASE_SIZE = 140;
 const THUMB_SIZE = 56;
-const MAX_DISTANCE = (BASE_SIZE - THUMB_SIZE) / 2;
-const DEAD_ZONE = 0.15; // 15% dead zone to prevent false inputs
+const COMPACT_BASE_SIZE = 116;
+const COMPACT_THUMB_SIZE = 48;
+const RADIAL_DEAD_ZONE = 0.07; // Small radial deadzone; no per-axis cross lock
 
 export type JoystickStyle = 'floating' | 'fixed';
 
@@ -26,35 +27,31 @@ interface JoystickProps {
   mode?: JoystickStyle;
   /** True when the joystick zone is on the right side (left-handed layout). */
   mirrored?: boolean;
-  /** Engage Run when stick deflection reaches the outer rim (>= 92%). */
+  /** Engage Run when stick deflection reaches the outer rim (>= 88%). */
   stickEdgeRun?: boolean;
+  /** Compact sizing for narrow portrait screens. */
+  compact?: boolean;
 }
 
 // Opacity of the joystick at rest. Floating shows a dim ghost so players know
 // where to put their thumb; fixed stays fully visible because it doesn't move.
 const REST_OPACITY: Record<JoystickStyle, number> = { floating: 0.35, fixed: 0.8 };
 
-function applyDeadZone(value: number, sensitivity: number): number {
-  'worklet';
-  const abs = Math.abs(value);
-  if (abs < DEAD_ZONE) return 0;
-  const sign = value > 0 ? 1 : -1;
-  const normalized = (abs - DEAD_ZONE) / (1 - DEAD_ZONE);
-  // Apply sensitivity curve — >1 = more responsive, <1 = less
-  const curved = Math.pow(normalized, 1 / sensitivity);
-  return sign * Math.min(1, curved);
-}
-
-function computeRestPosition(width: number, height: number, mirrored: boolean) {
+function computeRestPosition(width: number, height: number, mirrored: boolean, compact: boolean) {
   'worklet';
   if (width <= 0 || height <= 0) {
     return { x: 0, y: 0 };
   }
-  // Keep the stick within natural thumb reach of the outer bezel on wide
-  // foldables and tablets instead of drifting toward the center crease.
+  const baseSize = compact ? COMPACT_BASE_SIZE : BASE_SIZE;
+  if (compact) {
+    return {
+      x: width * 0.5,
+      y: Math.max(baseSize / 2 + 12, height - 126),
+    };
+  }
   const edgeOffset = Math.min(width * 0.5, 130);
   const x = mirrored ? width - edgeOffset : edgeOffset;
-  const y = Math.min(Math.max(height * 0.56, BASE_SIZE / 2 + 12), Math.max(BASE_SIZE / 2 + 12, height - 125));
+  const y = Math.min(Math.max(height * 0.56, baseSize / 2 + 12), Math.max(baseSize / 2 + 12, height - 125));
   return { x, y };
 }
 
@@ -65,7 +62,11 @@ export function Joystick({
   mode = 'floating',
   mirrored = false,
   stickEdgeRun = false,
+  compact = false,
 }: JoystickProps) {
+  const baseSize = compact ? COMPACT_BASE_SIZE : BASE_SIZE;
+  const thumbSize = compact ? COMPACT_THUMB_SIZE : THUMB_SIZE;
+  const maxDistance = (baseSize - thumbSize) / 2;
   const zoneW = useSharedValue(0);
   const zoneH = useSharedValue(0);
   const baseX = useSharedValue(0);
@@ -92,25 +93,63 @@ export function Joystick({
 
   const moveThumb = (touchX: number, touchY: number) => {
     'worklet';
-    const dx = touchX - baseX.value;
-    const dy = touchY - baseY.value;
-    const dist = Math.sqrt(dx * dx + dy * dy);
-    const scale = dist > MAX_DISTANCE ? MAX_DISTANCE / dist : 1;
-    thumbX.value = dx * scale;
-    thumbY.value = dy * scale;
-    const x = applyDeadZone(thumbX.value / MAX_DISTANCE, sensitivity);
-    const y = applyDeadZone(thumbY.value / MAX_DISTANCE, sensitivity);
+    let dx = touchX - baseX.value;
+    let dy = touchY - baseY.value;
+    let dist = Math.sqrt(dx * dx + dy * dy);
+
+    // Official BombSquad Remote floating behavior (`RemoteViewController.mm`):
+    // when the thumb drags past the rim in floating mode, pull the base along
+    // behind the thumb so reversing direction turns the character immediately
+    // with zero wasted travel back across the screen.
+    if (floating && dist > maxDistance) {
+      const pullScale = maxDistance / dist;
+      baseX.value = touchX - dx * pullScale;
+      baseY.value = touchY - dy * pullScale;
+      dx = touchX - baseX.value;
+      dy = touchY - baseY.value;
+      dist = maxDistance;
+    }
+
+    const visualScale = dist > maxDistance ? maxDistance / dist : 1;
+    thumbX.value = dx * visualScale;
+    thumbY.value = dy * visualScale;
+
+    // Reach full speed inside a tighter radius (`0.70 * maxDistance`) scaled by
+    // sensitivity, with a radial deadzone (no per-axis cross sticking) and
+    // unit-box clamping so diagonal running speed is 100%.
+    const fullSpeedDist = Math.max(10, (floating ? 0.70 : 0.82) * maxDistance / sensitivity);
+    const rawMag = dist / fullSpeedDist;
+    let x = 0;
+    let y = 0;
+    if (rawMag > RADIAL_DEAD_ZONE && dist > 0) {
+      const normMag = (rawMag - RADIAL_DEAD_ZONE) / (1 - RADIAL_DEAD_ZONE);
+      const unitX = (dx / dist) * normMag;
+      const unitY = (dy / dist) * normMag;
+      // Clamp to unit box [-1, 1] like RemoteViewController.mm (`setDPadX:andY:`)
+      let hx = unitX;
+      let vy = unitY;
+      if (Math.abs(hx) > 1) {
+        const m = 1 / Math.abs(hx);
+        hx *= m;
+        vy *= m;
+      }
+      if (Math.abs(vy) > 1) {
+        const m = 1 / Math.abs(vy);
+        hx *= m;
+        vy *= m;
+      }
+      x = Math.max(-1, Math.min(1, hx));
+      y = Math.max(-1, Math.min(1, vy));
+    }
 
     if (stickEdgeRun) {
-      const rimRun = dist / MAX_DISTANCE >= 0.92;
+      const rimRun = rawMag >= 0.88;
       if (rimRun !== isRunning.value) {
         isRunning.value = rimRun;
         runOnJS(emitRun)(rimRun);
       }
     }
 
-    // Touch moves arrive at 60-120 Hz; only cross to JS when the value the
-    // game receives (256 steps per axis) actually changes.
     const step = Math.round((x + 1) * 127.5) * 256 + Math.round((y + 1) * 127.5);
     if (step === lastStep.value) return;
     lastStep.value = step;
@@ -119,7 +158,7 @@ export function Joystick({
 
   const restAt = () => {
     'worklet';
-    const pos = computeRestPosition(zoneW.value, zoneH.value, mirrored);
+    const pos = computeRestPosition(zoneW.value, zoneH.value, mirrored, compact);
     baseX.value = pos.x;
     baseY.value = pos.y;
   };
@@ -162,18 +201,18 @@ export function Joystick({
   // Re-centre and fade to the new resting opacity when mode or handedness changes.
   useEffect(() => {
     if (zoneW.value > 0 && !isActive.value) {
-      const pos = computeRestPosition(zoneW.value, zoneH.value, mirrored);
+      const pos = computeRestPosition(zoneW.value, zoneH.value, mirrored, compact);
       baseX.value = pos.x;
       baseY.value = pos.y;
     }
     baseOpacity.value = withTiming(REST_OPACITY[mode], { duration: 200 });
-  }, [mode, mirrored, baseX, baseY, baseOpacity, zoneW, zoneH, isActive]);
+  }, [mode, mirrored, compact, baseX, baseY, baseOpacity, zoneW, zoneH, isActive]);
 
   const baseStyle = useAnimatedStyle(() => ({
     opacity: baseOpacity.value,
     transform: [
-      { translateX: baseX.value - BASE_SIZE / 2 },
-      { translateY: baseY.value - BASE_SIZE / 2 },
+      { translateX: baseX.value - baseSize / 2 },
+      { translateY: baseY.value - baseSize / 2 },
     ],
   }));
 
@@ -204,22 +243,38 @@ export function Joystick({
           // iPhone Duo rail or foldable posture changes) so the base never jumps
           // away from an active thumb.
           if (!isActive.value) {
-            const pos = computeRestPosition(width, height, mirrored);
+            const pos = computeRestPosition(width, height, mirrored, compact);
             baseX.value = pos.x;
             baseY.value = pos.y;
           } else {
-            const half = BASE_SIZE / 2;
+            const half = baseSize / 2;
             baseX.value = Math.max(half, Math.min(width - half, baseX.value));
             baseY.value = Math.max(half, Math.min(height - half, baseY.value));
           }
         }}
       >
-        <Animated.View style={[styles.base, baseStyle]}>
-          <Animated.View style={[styles.baseInner, borderStyle]}>
-            <Animated.View style={[styles.thumb, thumbStyle]}>
-              {/* Gradient thumb matching web: radial-gradient(circle at 35% 30%,
-                  rgba(155,107,190,0.35), rgba(92,196,176,0.15)) */}
-              <Animated.View style={[styles.thumbOuter, thumbShadowStyle]}>
+        <Animated.View style={[styles.base, { width: baseSize, height: baseSize }, baseStyle]}>
+          <Animated.View
+            style={[
+              styles.baseInner,
+              { width: baseSize, height: baseSize, borderRadius: baseSize / 2 },
+              borderStyle,
+            ]}
+          >
+            <Animated.View
+              style={[
+                styles.thumb,
+                { width: thumbSize, height: thumbSize, borderRadius: thumbSize / 2 },
+                thumbStyle,
+              ]}
+            >
+              <Animated.View
+                style={[
+                  styles.thumbOuter,
+                  { width: thumbSize, height: thumbSize, borderRadius: thumbSize / 2 },
+                  thumbShadowStyle,
+                ]}
+              >
                 <LinearGradient
                   colors={['rgba(155,107,190,0.45)', 'rgba(92,196,176,0.20)']}
                   start={{ x: 0.35, y: 0.3 }}

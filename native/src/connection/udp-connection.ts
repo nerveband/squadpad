@@ -7,7 +7,7 @@ import type { ConnectionFailure } from './connection-manager';
 
 const BUFFER_SIZE = 256;
 const MAX_STATES_PER_PACKET = 11;
-const RESEND_INTERVAL = 100;
+const RESEND_INTERVAL = 33;
 const ID_REQUEST_INTERVAL = 500;
 const ID_REQUEST_ATTEMPTS = 8;
 /** BombSquad acks every state, and the controller sends at least one per second. */
@@ -34,7 +34,6 @@ export class UdpConnection {
   private stateBirthTime: number[] = new Array(BUFFER_SIZE).fill(0);
   private writeIndex = 0;
   private ackIndex = 0;
-  private pendingCount = 0;
 
   private handshakeTimer: number | null = null;
   private resendTimer: number | null = null;
@@ -82,10 +81,22 @@ export class UdpConnection {
   sendState(input: ControllerInput): void {
     if (!this.connected || !this.socket) return;
 
-    this.stateBuffer[this.writeIndex] = encodeStateV2(input);
-    this.stateBirthTime[this.writeIndex] = Date.now();
-    this.writeIndex = (this.writeIndex + 1) & 0xFF;
-    this.pendingCount = Math.min(this.pendingCount + 1, BUFFER_SIZE);
+    const encoded = encodeStateV2(input);
+    const unacked = (this.writeIndex - this.ackIndex) & 0xFF;
+    const prevIdx = (this.writeIndex - 1) & 0xFF;
+    const prevState = this.stateBuffer[prevIdx];
+
+    // If several states are already unacknowledged and only the analog stick
+    // moved (buttons unchanged), update the latest queued slot in place so
+    // intermediate stick positions never queue up ahead of a button press.
+    if (unacked >= 3 && unacked < 128 && prevState && prevState[0] === encoded[0]) {
+      this.stateBuffer[prevIdx] = encoded;
+      this.stateBirthTime[prevIdx] = Date.now();
+    } else {
+      this.stateBuffer[this.writeIndex] = encoded;
+      this.stateBirthTime[this.writeIndex] = Date.now();
+      this.writeIndex = (this.writeIndex + 1) & 0xFF;
+    }
 
     this.sendPendingStates();
   }
@@ -120,12 +131,15 @@ export class UdpConnection {
       }
       case MSG.STATE_ACK: {
         const ack = decodeStateAck(data);
-        const birthTime = this.stateBirthTime[(ack.nextIndex - 1) & 0xFF];
-        if (birthTime > 0) this.callbacks.onLagUpdate(Date.now() - birthTime);
-
-        const acked = (ack.nextIndex - this.ackIndex) & 0xFF;
-        this.pendingCount = Math.max(0, this.pendingCount - acked);
-        this.ackIndex = ack.nextIndex;
+        const stateDiff = (ack.nextIndex - this.ackIndex) & 0xFF;
+        // Only advance ackIndex forward (1..127); ignore out-of-order UDP ACKs.
+        if (stateDiff > 0 && stateDiff < 128) {
+          const birthTime = this.stateBirthTime[(ack.nextIndex - 1) & 0xFF];
+          if (birthTime > 0) {
+            this.callbacks.onLagUpdate(Math.max(1, Math.round((Date.now() - birthTime) * 0.5)));
+          }
+          this.ackIndex = ack.nextIndex;
+        }
         break;
       }
       case MSG.DISCONNECT: {
@@ -143,11 +157,17 @@ export class UdpConnection {
   }
 
   private sendPendingStates(): void {
-    if (!this.socket || this.playerId < 0 || this.pendingCount === 0) return;
+    if (!this.socket || this.playerId < 0) return;
+    const unacked = (this.writeIndex - this.ackIndex) & 0xFF;
+    if (unacked === 0 || unacked >= 128) return;
 
+    // Match official BombSquad Remote (shipUnAckedStatesV2): always send the
+    // newest `count` states ending at `writeIndex - 1` so the player's latest
+    // turn or button press is in the very first packet that lands.
+    const count = Math.min(unacked, MAX_STATES_PER_PACKET);
+    const startIndex = (this.writeIndex - count) & 0xFF;
     const states: Uint8Array[] = [];
-    const count = Math.min(this.pendingCount, MAX_STATES_PER_PACKET);
-    let idx = this.ackIndex;
+    let idx = startIndex;
     for (let i = 0; i < count; i++) {
       const state = this.stateBuffer[idx];
       if (state) states.push(state);
@@ -155,7 +175,7 @@ export class UdpConnection {
     }
     if (states.length === 0) return;
 
-    this.socket.send(buildStatePacket(this.playerId, states, this.ackIndex), this.host, this.port);
+    this.socket.send(buildStatePacket(this.playerId, states, startIndex), this.host, this.port);
   }
 
   private fail(failure: ConnectionFailure): void {

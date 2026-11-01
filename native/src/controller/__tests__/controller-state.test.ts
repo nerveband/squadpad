@@ -1,5 +1,5 @@
 import { ControllerState } from '../controller-state';
-import { getZone } from '../touch-zones';
+import { getZone, getButtonMask } from '../touch-zones';
 
 describe('ControllerState', () => {
   test('initial state is centered with no buttons', () => {
@@ -117,5 +117,28 @@ describe('getZone diamond quadrant & foldable crease filter', () => {
 
   test('returns -1 when cluster center is unmeasured', () => {
     expect(getZone(100, 100, 0, 0, radius)).toBe(-1);
+  });
+});
+
+describe('getButtonMask single-thumb chording & closest button', () => {
+  const cx = 200;
+  const cy = 200;
+  const sepX = 60;
+  const sepY = 90;
+  const maxR = 240;
+
+  test('activates single button when touching directly on it', () => {
+    expect(getButtonMask(cx, cy - sepY, cx, cy, sepX, sepY, maxR)).toBe(1 << 0); // throw
+    expect(getButtonMask(cx - sepX, cy, cx, cy, sepX, sepY, maxR)).toBe(1 << 1); // punch
+    expect(getButtonMask(cx + sepX, cy, cx, cy, sepX, sepY, maxR)).toBe(1 << 2); // bomb
+    expect(getButtonMask(cx, cy + sepY, cx, cy, sepX, sepY, maxR)).toBe(1 << 3); // jump
+  });
+
+  test('activates both Jump and Punch when thumb bridges the gap between them', () => {
+    const midX = cx - sepX * 0.5;
+    const midY = cy + sepY * 0.5;
+    const mask = getButtonMask(midX, midY, cx, cy, sepX, sepY, maxR);
+    expect(mask & (1 << 1)).toBeTruthy(); // punch
+    expect(mask & (1 << 3)).toBeTruthy(); // jump
   });
 });

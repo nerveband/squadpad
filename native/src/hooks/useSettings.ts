@@ -25,7 +25,7 @@ export const DEFAULT_SETTINGS: Settings = {
   sensitivity: 1.0,
   allowPortrait: true,
   leftHanded: false,
-  runMode: 'buttonHold',
+  runMode: 'stickEdge',
   relayUrl: 'wss://squadpad-relay.fly.dev',
 };
 

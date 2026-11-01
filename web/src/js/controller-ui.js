@@ -65,19 +65,12 @@ export function initControllerUI(opts) {
     return joystickBase.offsetWidth / 2 || 70;
   }
 
-  const DEAD_ZONE = 0.15;
+  const RADIAL_DEAD_ZONE = 0.07;
   let JOYSTICK_RADIUS = 70;
   let joystickActive = false;
   let joystickTouchId = null;
   let joystickCenterX = 0;
   let joystickCenterY = 0;
-
-  function applyDeadZone(val) {
-    const abs = Math.abs(val);
-    if (abs < DEAD_ZONE) return 0;
-    const sign = val > 0 ? 1 : -1;
-    return sign * Math.min(1, (abs - DEAD_ZONE) / (1 - DEAD_ZONE));
-  }
   function positionJoystickBase(cx, cy) {
     const rect = joystickZone.getBoundingClientRect();
     const localX = cx - rect.left;
@@ -127,7 +120,18 @@ export function initControllerUI(opts) {
 
     let dx = touch.clientX - joystickCenterX;
     let dy = touch.clientY - joystickCenterY;
-    const dist = Math.sqrt(dx * dx + dy * dy);
+    let dist = Math.sqrt(dx * dx + dy * dy);
+
+    // Pull floating base along when thumb drags beyond JOYSTICK_RADIUS
+    if (dist > JOYSTICK_RADIUS) {
+      const pullScale = JOYSTICK_RADIUS / dist;
+      joystickCenterX = touch.clientX - dx * pullScale;
+      joystickCenterY = touch.clientY - dy * pullScale;
+      positionJoystickBase(joystickCenterX, joystickCenterY);
+      dx = touch.clientX - joystickCenterX;
+      dy = touch.clientY - joystickCenterY;
+      dist = JOYSTICK_RADIUS;
+    }
 
     const clampedDist = Math.min(dist, JOYSTICK_RADIUS);
     const angle = Math.atan2(dy, dx);
@@ -136,9 +140,28 @@ export function initControllerUI(opts) {
 
     joystickThumb.style.transform = `translate(${visualX}px, ${visualY}px)`;
 
-    const rawX = Math.max(-1, Math.min(1, dx / JOYSTICK_RADIUS));
-    const rawY = Math.max(-1, Math.min(1, dy / JOYSTICK_RADIUS));
-    controller.setJoystick(applyDeadZone(rawX), applyDeadZone(rawY));
+    const fullSpeedDist = JOYSTICK_RADIUS * 0.72;
+    const rawMag = dist / fullSpeedDist;
+    let nx = 0;
+    let ny = 0;
+    if (rawMag > RADIAL_DEAD_ZONE && dist > 0) {
+      const normMag = (rawMag - RADIAL_DEAD_ZONE) / (1 - RADIAL_DEAD_ZONE);
+      let hx = (dx / dist) * normMag;
+      let vy = (dy / dist) * normMag;
+      if (Math.abs(hx) > 1) {
+        const m = 1 / Math.abs(hx);
+        hx *= m;
+        vy *= m;
+      }
+      if (Math.abs(vy) > 1) {
+        const m = 1 / Math.abs(vy);
+        hx *= m;
+        vy *= m;
+      }
+      nx = Math.max(-1, Math.min(1, hx));
+      ny = Math.max(-1, Math.min(1, vy));
+    }
+    controller.setJoystick(nx, ny);
   }
 
   function onJoystickTouchEnd(e) {
@@ -183,13 +206,9 @@ export function initControllerUI(opts) {
   }
 
   function syncTouchRunState() {
-    if (activeButtonTouches.size > 0) {
-      controller.pressButton('run');
-    } else {
-      controller.releaseButton('run');
-    }
+    // Keep face-button presses pure so menu selection and bomb throws behave
+    // identically to BombSquad Remote.
   }
-
   function pressActionBtn(btn) {
     const action = btn.dataset.action;
     if (!action) return;

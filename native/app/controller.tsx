@@ -22,7 +22,8 @@ export default function ControllerScreen() {
   const router = useRouter();
   const params = useLocalSearchParams<{ host?: string; room?: string; name?: string; mode?: string }>();
   const { settings, update, loaded } = useSettings();
-  const { insets, isPortrait, fold, posture, isTabletopController } = useFoldable();
+  const { insets, safeWidth, isPortrait, fold, isTabletopController } = useFoldable();
+  const isCompactPortrait = isPortrait && safeWidth < 500;
   const mode: ConnectionMode = params.mode === 'relay' ? 'relay' : 'lan';
   const target = (mode === 'relay' ? params.room : params.host) || '';
 
@@ -113,6 +114,7 @@ export default function ControllerScreen() {
       mode={settings.joystickStyle}
       mirrored={settings.leftHanded}
       stickEdgeRun={settings.runMode === 'stickEdge'}
+      compact={isCompactPortrait}
     />
   );
   const buttons = (
@@ -123,9 +125,9 @@ export default function ControllerScreen() {
       hapticIntensity={settings.hapticIntensity}
       runMode={settings.runMode}
       mirrored={settings.leftHanded}
+      compact={isCompactPortrait}
     />
   );
-
   const leftControl = settings.leftHanded ? buttons : joystick;
   const rightControl = settings.leftHanded ? joystick : buttons;
 
@@ -146,8 +148,8 @@ export default function ControllerScreen() {
   const horizontalFoldGutter = hasHorizontalFold ? Math.max(20, fold.height + 16) : 12;
 
   const controlPadStyle = {
-    paddingLeft: Math.max(insets.left + 8, 12),
-    paddingRight: Math.max(insets.right + 8, 12),
+    paddingLeft: Math.max(insets.left + (isCompactPortrait ? 2 : 8), isCompactPortrait ? 4 : 12),
+    paddingRight: Math.max(insets.right + (isCompactPortrait ? 2 : 8), isCompactPortrait ? 4 : 12),
     paddingBottom: Math.max(insets.bottom + 8, 12),
   };
 
@@ -240,7 +242,27 @@ export default function ControllerScreen() {
           </View>
         ) : isPortrait ? (
           <View style={[styles.portraitContainer, controlPadStyle]}>
-            <View style={styles.portraitSpacer} />
+            <View style={styles.portraitDeck}>
+              <View style={styles.portraitDeckCard}>
+                <View>
+                  <Text style={styles.deckLabel}>
+                    {mode === 'relay' ? 'ONLINE ROOM' : 'WI-FI HOST'}
+                  </Text>
+                  <Text style={styles.portraitTarget} numberOfLines={1}>
+                    {target || 'Connected'}
+                  </Text>
+                </View>
+                <View style={styles.deckBadges}>
+                  <Pressable
+                    onPressIn={() => controller.pressButton('run')}
+                    onPressOut={() => controller.releaseButton('run')}
+                    style={({ pressed }) => [styles.runHoldChip, pressed && styles.runHoldChipPressed]}
+                  >
+                    <Text style={styles.runHoldChipText}>HOLD RUN</Text>
+                  </Pressable>
+                </View>
+              </View>
+            </View>
             <View style={styles.portraitControls}>
               <View style={styles.zoneFlex}>{leftControl}</View>
               <View style={styles.zoneFlex}>{rightControl}</View>
@@ -297,11 +319,49 @@ const styles = StyleSheet.create({
   portraitContainer: {
     flex: 1,
   },
-  portraitSpacer: {
-    flex: 0.15,
+  portraitDeck: {
+    paddingHorizontal: Spacing.sm,
+    paddingTop: Spacing.md,
+  },
+  portraitDeckCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: 'rgba(255,255,255,0.03)',
+    borderRadius: Radius.md,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.07)',
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+  },
+  portraitTarget: {
+    fontFamily: Fonts.monoBold,
+    color: Colors.teal,
+    fontSize: FontSize.md,
+    fontWeight: FontWeight.bold,
+    marginTop: 2,
+  },
+  runHoldChip: {
+    paddingVertical: 8,
+    paddingHorizontal: 14,
+    borderRadius: Radius.sm,
+    backgroundColor: 'rgba(92,196,176,0.14)',
+    borderWidth: 1.5,
+    borderColor: 'rgba(92,196,176,0.38)',
+  },
+  runHoldChipPressed: {
+    backgroundColor: 'rgba(92,196,176,0.45)',
+    borderColor: '#fff',
+  },
+  runHoldChipText: {
+    fontFamily: Fonts.bold,
+    color: Colors.teal,
+    fontSize: FontSize.xs,
+    fontWeight: FontWeight.bold,
+    letterSpacing: 0.8,
   },
   portraitControls: {
-    flex: 0.85,
+    flex: 1,
     flexDirection: 'row',
   },
   tabletopContainer: {

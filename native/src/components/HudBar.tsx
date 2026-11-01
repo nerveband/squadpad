@@ -38,6 +38,7 @@ export function HudBar({
   const inputRef = useRef<ComponentRef<typeof TextInput>>(null);
   const { width, height } = useWindowDimensions();
   const insets = useSafeAreaInsets();
+  const isCompact = width < 540;
   const blurTimer = useRef<number | undefined>(undefined);
   // Focus input when editing starts or orientation changes while editing
   useEffect(() => {
@@ -66,10 +67,11 @@ export function HudBar({
     <View
       style={[
         styles.bar,
+        isCompact && styles.barCompact,
         {
           paddingTop: Math.max(insets.top + 6, 8),
-          paddingLeft: Math.max(insets.left + 16, 16),
-          paddingRight: Math.max(insets.right + 16, 16),
+          paddingLeft: Math.max(insets.left + (isCompact ? 12 : 16), 12),
+          paddingRight: Math.max(insets.right + (isCompact ? 12 : 16), 12),
         },
       ]}
     >
@@ -98,7 +100,7 @@ export function HudBar({
       )}
 
       {editingName ? (
-        <View style={styles.nameEditWrap}>
+        <View style={[styles.nameEditWrap, isCompact && styles.nameCompactFlex]}>
           <TextInput
             ref={inputRef}
             value={editNameValue}
@@ -120,17 +122,27 @@ export function HudBar({
           </Pressable>
         </View>
       ) : (
-        <Pressable onPress={onNamePress} style={styles.nameBtn} hitSlop={8}>
-          <Text style={styles.name} numberOfLines={1}>{playerName || 'Player'}</Text>
+        <Pressable
+          onPress={onNamePress}
+          style={[styles.nameBtn, isCompact && styles.nameCompactFlex]}
+          hitSlop={8}
+        >
+          <Text style={[styles.name, isCompact && styles.nameCompact]} numberOfLines={1}>
+            {playerName || 'Player'}
+          </Text>
           <PencilSimple size={11} color={Colors.textDim} weight="bold" />
         </Pressable>
       )}
 
-      {/* The brand only fills space; it gives way to the name field while editing. */}
-      <Text style={styles.brand} numberOfLines={1}>{editingName ? '' : 'SquadPad'}</Text>
+      {/* Show centered SquadPad title only when horizontal space allows it without truncating. */}
+      {!isCompact && (
+        <Text style={styles.brand} numberOfLines={1}>
+          {editingName ? '' : 'SquadPad'}
+        </Text>
+      )}
 
       <View style={styles.right}>
-        <Text style={styles.timer}>{connectTime}</Text>
+        {!isCompact && <Text style={styles.timer}>{connectTime}</Text>}
         <LagIndicator lagMs={lagMs} />
       </View>
 
@@ -157,6 +169,9 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: 'rgba(255,255,255,0.04)',
     gap: 12,
+  },
+  barCompact: {
+    gap: 8,
   },
   backBtn: {
     width: 36,
@@ -194,12 +209,18 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 5,
   },
+  nameCompactFlex: {
+    flex: 1,
+  },
   name: {
     fontFamily: Fonts.semibold,
     color: Colors.text,
     fontSize: FontSize.sm,
     fontWeight: FontWeight.semibold,
-    maxWidth: 100,
+    maxWidth: 110,
+  },
+  nameCompact: {
+    maxWidth: 140,
   },
   nameEditWrap: {
     flexDirection: 'row',

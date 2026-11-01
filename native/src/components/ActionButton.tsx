@@ -3,7 +3,7 @@ import Animated, { SharedValue, useAnimatedStyle } from 'react-native-reanimated
 import { LinearGradient } from 'expo-linear-gradient';
 
 export const BUTTON_SIZE = 82;
-
+export const COMPACT_BUTTON_SIZE = 64;
 export interface ActionButtonConfig {
   name: string;
   icon: React.ReactNode;
@@ -15,10 +15,11 @@ interface ButtonVisualProps {
   config: ActionButtonConfig;
   scale: SharedValue<number>;
   pressed: SharedValue<number>;
+  size?: number;
 }
 
 /** Visual-only button circle. No gesture handling — that lives in ActionButtons. */
-export function ButtonVisual({ config, scale, pressed }: ButtonVisualProps) {
+export function ButtonVisual({ config, scale, pressed, size = BUTTON_SIZE }: ButtonVisualProps) {
   const animatedStyle = useAnimatedStyle(() => ({
     transform: [{ scale: scale.value }],
   }));
@@ -38,19 +39,25 @@ export function ButtonVisual({ config, scale, pressed }: ButtonVisualProps) {
     opacity: pressed.value > 0.5 ? 0.35 : 0,
   }));
 
+  const half = size / 2;
+
   return (
-    <Animated.View style={[styles.visualBtn, animatedStyle]}>
+    <Animated.View style={[styles.visualBtn, { width: size, height: size }, animatedStyle]}>
       <Animated.View
-        style={[styles.glow, { shadowColor: config.glowColor }, glowStyle]}
+        style={[styles.glow, { borderRadius: half, shadowColor: config.glowColor }, glowStyle]}
       />
       <Animated.View
-        style={[styles.face, { shadowColor: config.colors[0] }, borderStyle]}
+        style={[
+          styles.face,
+          { width: size, height: size, borderRadius: half, shadowColor: config.colors[0] },
+          borderStyle,
+        ]}
       >
         <LinearGradient
           colors={[config.colors[0], config.colors[1]]}
           start={{ x: 0.3, y: 0.15 }}
           end={{ x: 0.8, y: 0.95 }}
-          style={styles.gradient}
+          style={[styles.gradient, { borderRadius: half }]}
         />
         {/* Glossy shine highlight */}
         <LinearGradient
@@ -58,10 +65,10 @@ export function ButtonVisual({ config, scale, pressed }: ButtonVisualProps) {
           locations={[0, 0.45, 1]}
           start={{ x: 0.25, y: 0 }}
           end={{ x: 0.75, y: 0.65 }}
-          style={styles.shine}
+          style={[styles.shine, { borderTopLeftRadius: half, borderTopRightRadius: half }]}
         />
-        <Animated.View style={[styles.brightnessOverlay, brightnessStyle]} />
-        <Animated.View style={[styles.insetGlow, brightnessStyle]} />
+        <Animated.View style={[styles.brightnessOverlay, { borderRadius: half }, brightnessStyle]} />
+        <Animated.View style={[styles.insetGlow, { borderRadius: half }, brightnessStyle]} />
         <View style={styles.iconContainer}>
           {config.icon}
         </View>
