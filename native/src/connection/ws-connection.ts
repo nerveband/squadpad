@@ -31,6 +31,7 @@ export class WsConnection {
   private reconnectTimer: number | null = null;
   private readyTimer: number | null = null;
   private pingTimer: number | null = null;
+  private lastSentButtons = 0;
 
   constructor(
     private url: string,
@@ -48,9 +49,21 @@ export class WsConnection {
   }
 
   sendState(input: ControllerInput): void {
-    if (this.ready && this.ws?.readyState === WebSocket.OPEN) {
-      this.ws.send(encodeStateV2(input));
+    if (!this.ready || this.ws?.readyState !== WebSocket.OPEN) return;
+    const b = input.buttons & 0xFF;
+    const h = input.h & 0xFF;
+    const v = input.v & 0xFF;
+    const isButtonEdge = b !== this.lastSentButtons;
+    const isCenterRelease = h === 128 && v === 128;
+    const buffered =
+      'bufferedAmount' in this.ws && typeof this.ws.bufferedAmount === 'number'
+        ? this.ws.bufferedAmount
+        : 0;
+    if (!isButtonEdge && !isCenterRelease && buffered > 64) {
+      return;
     }
+    this.lastSentButtons = b;
+    this.ws.send(encodeStateV2(input));
   }
 
   disconnect(): void {

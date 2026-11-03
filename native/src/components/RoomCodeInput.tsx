@@ -46,7 +46,6 @@ export function RoomCodeInput({ onJoin, loading }: RoomCodeInputProps) {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Room Code</Text>
       <View style={styles.row}>
         <TextInput
           ref={word1Ref}
@@ -88,12 +87,6 @@ const styles = StyleSheet.create({
   container: {
     gap: Spacing.sm,
   },
-  title: {
-    fontFamily: Fonts.semibold,
-    color: Colors.text,
-    fontSize: FontSize.md,
-    fontWeight: FontWeight.semibold,
-  },
   row: {
     flexDirection: 'row',
     gap: Spacing.sm,
@@ -101,6 +94,7 @@ const styles = StyleSheet.create({
   },
   input: {
     flex: 1,
+    minWidth: 0,
     backgroundColor: Colors.white05,
     borderWidth: 1.5,
     borderColor: Colors.border,
@@ -109,12 +103,12 @@ const styles = StyleSheet.create({
     color: Colors.text,
     fontSize: FontSize.md,
     fontWeight: FontWeight.regular,
-    paddingVertical: 12,
-    paddingHorizontal: 16,
+    paddingVertical: 11,
+    paddingHorizontal: 10,
     textAlign: 'center',
     letterSpacing: 0.5,
   },
   joinButton: {
-    paddingHorizontal: 20,
+    paddingHorizontal: 16,
   },
 });

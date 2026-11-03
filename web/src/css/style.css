@@ -2323,3 +2323,32 @@ details[open] .advanced-toggle::after {
     font-size: 0.75rem;
   }
 }
+
+@media (orientation: landscape) and (max-height: 520px) {
+  #connect-screen {
+    align-items: flex-start;
+    padding-top: max(12px, env(safe-area-inset-top));
+    padding-bottom: max(12px, env(safe-area-inset-bottom));
+  }
+  .connect-card {
+    width: min(680px, 94vw);
+    margin-top: 38px;
+    padding: 20px 24px 18px;
+    gap: 12px;
+  }
+  .brand-icon {
+    width: 96px;
+    height: 96px;
+    margin-top: -66px;
+    margin-bottom: -14px;
+  }
+  .brand-title {
+    font-size: 2.1rem;
+  }
+  .brand-subtitle {
+    font-size: 0.85rem;
+  }
+  .bento-card {
+    padding: 16px 14px;
+  }
+}

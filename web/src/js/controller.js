@@ -18,6 +18,7 @@ const BUTTON_MAP = {
   bomb:  BTN.BOMB,
   run:   BTN.RUN,
 };
+const ACTION_FLAGS = BTN.THROW | BTN.PUNCH | BTN.BOMB | BTN.JUMP;
 
 const DEFAULT_KEYS = {
   KeyW: 'up',    ArrowUp: 'up',
@@ -37,6 +38,9 @@ export class Controller {
     this.buttons = 0;
     this.joyX = 0;
     this.joyY = 0;
+    this._stickRun = false;
+    this._actionRun = false;
+    this._explicitRun = false;
     this.onChange = null;
     this._lastEmitted = ''; // last state handed to onChange, as "buttons,h,v"
     this.keyBindings = { ...DEFAULT_KEYS };
@@ -52,13 +56,47 @@ export class Controller {
     };
   }
 
-  setJoystick(x, y) {
+  _syncRunBit() {
+    if (this._stickRun || this._actionRun || this._explicitRun) {
+      this.buttons |= BTN.RUN;
+    } else {
+      this.buttons &= ~BTN.RUN;
+    }
+  }
+
+  setJoystick(x, y, rimRun) {
     this.joyX = Math.max(-1, Math.min(1, x));
     this.joyY = Math.max(-1, Math.min(1, y));
+    if (rimRun !== undefined) {
+      this._stickRun = !!rimRun;
+      this._syncRunBit();
+    }
+    this._notify();
+  }
+
+  /**
+   * Atomically update the 4 diamond action buttons from a 4-bit mask:
+   * bit 0 = throw, bit 1 = punch, bit 2 = bomb, bit 3 = jump.
+   */
+  setActionMask(mask, holdRun = false) {
+    let next = this.buttons & ~ACTION_FLAGS;
+    if (mask & (1 << 0)) next |= BTN.THROW;
+    if (mask & (1 << 1)) next |= BTN.PUNCH;
+    if (mask & (1 << 2)) next |= BTN.BOMB;
+    if (mask & (1 << 3)) next |= BTN.JUMP;
+    this.buttons = next;
+    this._actionRun = !!(holdRun && mask !== 0);
+    this._syncRunBit();
     this._notify();
   }
 
   pressButton(name) {
+    if (name === 'run') {
+      this._explicitRun = true;
+      this._syncRunBit();
+      this._notify();
+      return;
+    }
     const flag = BUTTON_MAP[name];
     if (flag && !(this.buttons & flag)) {
       this.buttons |= flag;
@@ -67,12 +105,19 @@ export class Controller {
   }
 
   releaseButton(name) {
+    if (name === 'run') {
+      this._explicitRun = false;
+      this._syncRunBit();
+      this._notify();
+      return;
+    }
     const flag = BUTTON_MAP[name];
     if (flag && (this.buttons & flag)) {
       this.buttons &= ~flag;
       this._notify();
     }
   }
+
 
   handleKeyDown(code) {
     const action = this.keyBindings[code];
@@ -106,6 +151,9 @@ export class Controller {
     this.buttons = 0;
     this.joyX = 0;
     this.joyY = 0;
+    this._stickRun = false;
+    this._actionRun = false;
+    this._explicitRun = false;
     this._dirs = { up: false, down: false, left: false, right: false };
     this._heldKeys.clear();
     this._notify();

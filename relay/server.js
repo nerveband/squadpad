@@ -137,6 +137,7 @@ export function createRelay(options = {}) {
 
   // Handle new WebSocket connections
   wss.on('connection', (ws, req) => {
+    req?.socket?.setNoDelay?.(true);
     const ip = req?.headers?.['x-forwarded-for']?.split(',')[0]?.trim()
       || req?.socket?.remoteAddress
       || 'unknown';

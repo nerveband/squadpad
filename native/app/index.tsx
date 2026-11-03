@@ -10,7 +10,7 @@ const GradientMask = MaskedView as unknown as ComponentType<{
   maskElement: ReactElement;
   children: ReactNode;
 }>;
-import { WifiHigh, Globe, CaretDown, CaretUp, Info } from 'phosphor-react-native';
+import { WifiHigh, Globe, CaretDown, CaretUp, Info, GearSix } from 'phosphor-react-native';
 import Animated, { useSharedValue, useAnimatedStyle, withRepeat, withTiming, Easing, FadeIn } from 'react-native-reanimated';
 import { StyledTextInput } from '../src/components/StyledTextInput';
 import { GameList } from '../src/components/GameList';
@@ -28,7 +28,8 @@ export default function HomeScreen() {
   const router = useRouter();
   const searchParams = useLocalSearchParams<{ room?: string; name?: string }>();
   const { settings, update, loaded } = useSettings();
-  const { insets, isWide, fold } = useFoldable();
+  const { insets, isPortrait, safeHeight, isWide, fold } = useFoldable();
+  const isShortLandscape = !isPortrait && safeHeight < 480;
   const [playerName, setPlayerName] = useState(settings.playerName);
   const [nameError, setNameError] = useState(false);
   const nameInputRef = useRef<ComponentRef<typeof TextInput>>(null);
@@ -147,8 +148,12 @@ export default function HomeScreen() {
     });
   };
   const padStyle = {
-    paddingTop: Math.max(insets.top + Spacing.sm, Spacing.lg),
-    paddingBottom: Math.max(insets.bottom + Spacing.xl, Spacing.xxl),
+    paddingTop: isShortLandscape
+      ? Math.max(insets.top + 4, Spacing.sm)
+      : Math.max(insets.top + Spacing.sm, Spacing.lg),
+    paddingBottom: isShortLandscape
+      ? Math.max(insets.bottom + 8, Spacing.md)
+      : Math.max(insets.bottom + Spacing.xl, Spacing.xxl),
     paddingLeft: Math.max(insets.left + Spacing.lg, Spacing.lg),
     paddingRight: Math.max(insets.right + Spacing.lg, Spacing.lg),
   };
@@ -159,12 +164,13 @@ export default function HomeScreen() {
   const leftPaneStyle = hasVerticalFold
     ? { width: Math.max(240, fold.x - Math.max(insets.left + Spacing.lg, Spacing.lg) - 14) }
     : styles.paneFlex;
-  const foldGap = hasVerticalFold ? Math.max(28, fold.width + 28) : 28;
+  const foldGap = hasVerticalFold ? Math.max(24, fold.width + 24) : isShortLandscape ? 16 : 24;
+  const cardStyle = isShortLandscape ? styles.cardCompact : styles.card;
 
   const nearbyCard = (
-    <GlassCard style={styles.card}>
+    <GlassCard style={cardStyle}>
       <View style={styles.cardHeader}>
-        <WifiHigh size={22} color={Colors.teal} weight="bold" />
+        <WifiHigh size={20} color={Colors.teal} weight="bold" />
         <Text style={styles.cardTitle}>Nearby Games</Text>
       </View>
       <Text style={styles.cardDescription}>
@@ -180,53 +186,63 @@ export default function HomeScreen() {
     </GlassCard>
   );
 
-  const relayAndAdvanced = (
-    <>
-      {/* Room Code - cloud relay */}
-      <GlassCard style={styles.card}>
-        <View style={styles.cardHeader}>
-          <Globe size={22} color={Colors.purple} weight="bold" />
-          <Text style={styles.cardTitle}>Cloud Relay</Text>
-        </View>
-        <Text style={styles.cardDescription}>
-          Join a game anywhere using a room code
-        </Text>
-        <RoomCodeInput onJoin={handleJoinRoom} loading={connecting} />
+  const relayCard = (
+    <GlassCard style={cardStyle}>
+      <View style={styles.cardHeader}>
+        <Globe size={20} color={Colors.purple} weight="bold" />
+        <Text style={styles.cardTitle}>Cloud Relay</Text>
+      </View>
+      <Text style={styles.cardDescription}>
+        Join a game anywhere using a room code
+      </Text>
+      <RoomCodeInput onJoin={handleJoinRoom} loading={connecting} />
 
-        {/* History chips */}
-        {history.length > 0 && (
-          <View style={styles.historySection}>
-            <Text style={styles.historyLabel}>Recent</Text>
-            <View style={styles.chips}>
-              {history.map((code) => (
-                <Pressable
-                  key={code}
-                  onPress={() => handleJoinRoom(code)}
-                  style={({ pressed }) => [styles.chip, pressed && styles.chipPressed]}
-                >
-                  <Text style={styles.chipText}>{code}</Text>
-                </Pressable>
-              ))}
-            </View>
+      {/* History chips */}
+      {history.length > 0 && (
+        <View style={styles.historySection}>
+          <Text style={styles.historyLabel}>Recent</Text>
+          <View style={styles.chips}>
+            {history.map((code) => (
+              <Pressable
+                key={code}
+                onPress={() => handleJoinRoom(code)}
+                style={({ pressed }) => [styles.chip, pressed && styles.chipPressed]}
+              >
+                <Text style={styles.chipText}>{code}</Text>
+              </Pressable>
+            ))}
           </View>
-        )}
-      </GlassCard>
+        </View>
+      )}
+    </GlassCard>
+  );
 
-      {/* Advanced - collapsible */}
-      <Pressable
-        onPress={() => setShowAdvanced(!showAdvanced)}
-        style={styles.advancedToggle}
-      >
-        <Text style={styles.advancedToggleText}>Advanced</Text>
-        {showAdvanced
-          ? <CaretUp size={16} color={Colors.textDim} weight="bold" />
-          : <CaretDown size={16} color={Colors.textDim} weight="bold" />
-        }
-      </Pressable>
+  const advancedAndHostInfo = (
+    <>
+      <View style={styles.inlineTogglesRow}>
+        <Pressable
+          onPress={() => setShowAdvanced(!showAdvanced)}
+          style={styles.advancedToggle}
+        >
+          <Text style={styles.advancedToggleText}>Direct IP</Text>
+          {showAdvanced
+            ? <CaretUp size={15} color={Colors.textDim} weight="bold" />
+            : <CaretDown size={15} color={Colors.textDim} weight="bold" />
+          }
+        </Pressable>
+
+        <Pressable
+          onPress={() => setShowHostInfo(!showHostInfo)}
+          style={styles.hostInfoToggle}
+        >
+          <Info size={15} color={Colors.textDim} weight="bold" />
+          <Text style={styles.hostInfoToggleText}>How to host</Text>
+        </Pressable>
+      </View>
 
       {showAdvanced && (
         <Animated.View entering={FadeIn.duration(200)}>
-          <GlassCard style={styles.card}>
+          <GlassCard style={cardStyle}>
             <Text style={styles.label}>Direct IP Address</Text>
             <Text style={styles.cardDescription}>
               Connect directly to a BombSquad host by IP
@@ -255,18 +271,9 @@ export default function HomeScreen() {
         </Animated.View>
       )}
 
-      {/* How to Host info */}
-      <Pressable
-        onPress={() => setShowHostInfo(!showHostInfo)}
-        style={styles.hostInfoToggle}
-      >
-        <Info size={16} color={Colors.textDim} weight="bold" />
-        <Text style={styles.hostInfoToggleText}>How do I host a game?</Text>
-      </Pressable>
-
       {showHostInfo && (
         <Animated.View entering={FadeIn.duration(200)}>
-          <GlassCard style={styles.card}>
+          <GlassCard style={cardStyle}>
             <Text style={styles.hostInfoText}>
               To host a game, run BombSquad on a computer or tablet on your local network.
               Players on the same Wi-Fi will see it under &quot;Nearby Games&quot; automatically.
@@ -283,7 +290,6 @@ export default function HomeScreen() {
       )}
     </>
   );
-
   return (
     <View style={styles.container}>
       <LinearGradient
@@ -303,72 +309,90 @@ export default function HomeScreen() {
         contentContainerStyle={[
           styles.content,
           isWide && styles.contentWide,
+          isShortLandscape && styles.contentCompact,
           padStyle,
         ]}
         keyboardShouldPersistTaps="handled"
         bounces={false}
       >
         {isWide ? (
-          <View style={[styles.twoPaneRow, { gap: foldGap }]}>
-            <View style={[styles.paneCol, leftPaneStyle]}>
-              <View style={styles.brand}>
+          <>
+            {/* Horizontal Top Bar: Brand lockup on left, Your Name + Settings on right */}
+            <View style={[styles.wideTopBar, { gap: foldGap }]}>
+              <View style={[styles.brandHorizontal, leftPaneStyle]}>
                 <Animated.View style={[styles.bombIconWrap, floatStyle]}>
                   <Image
                     source={require('../assets/icon-hero.png')}
-                    style={styles.bombIconCompact}
+                    style={styles.bombIconLandscape}
                     resizeMode="contain"
                   />
                 </Animated.View>
-                <GradientMask maskElement={<Text style={styles.titleMask}>SquadPad</Text>}>
-                  <LinearGradient
-                    colors={[Colors.teal, Colors.purple, Colors.gold]}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 1 }}
-                  >
-                    <Text style={[styles.titleMask, { opacity: 0 }]}>SquadPad</Text>
-                  </LinearGradient>
-                </GradientMask>
-                <Text style={styles.subtitle}>Game Controller for BombSquad</Text>
+                <View style={styles.brandTextCol}>
+                  <GradientMask maskElement={<Text style={styles.titleMaskLandscape}>SquadPad</Text>}>
+                    <LinearGradient
+                      colors={[Colors.teal, Colors.purple, Colors.gold]}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 1 }}
+                    >
+                      <Text style={[styles.titleMaskLandscape, { opacity: 0 }]}>SquadPad</Text>
+                    </LinearGradient>
+                  </GradientMask>
+                  <Text style={styles.subtitleLandscape}>Game Controller for BombSquad</Text>
+                </View>
               </View>
 
-              <View style={styles.section}>
-                <Text style={styles.label}>Your Name</Text>
-                <StyledTextInput
-                  inputRef={nameInputRef}
-                  error={nameError}
-                  value={playerName}
-                  onChangeText={handleNameChange}
-                  placeholder="Enter your name"
-                  autoCapitalize="words"
-                  autoCorrect={false}
-                  maxLength={20}
-                />
-                {nameError && (
-                  <Text style={styles.nameErrorText}>Please enter your name first.</Text>
-                )}
-              </View>
-
-              {nearbyCard}
-            </View>
-
-            <View style={[styles.paneCol, styles.paneFlex]}>
-              {relayAndAdvanced}
-              <Pressable onPress={() => router.push('/settings')} style={styles.settingsLink}>
-                <Text style={styles.settingsLinkText}>Settings</Text>
-              </Pressable>
-              <View style={styles.footer}>
-                <Text style={styles.credits}>
-                  Unofficial companion app. BombSquad is made by Eric Froemling.
-                </Text>
+              <View style={[styles.wideTopRight, styles.paneFlex]}>
+                <View style={styles.wideNameField}>
+                  <StyledTextInput
+                    inputRef={nameInputRef}
+                    error={nameError}
+                    value={playerName}
+                    onChangeText={handleNameChange}
+                    placeholder="Enter your name"
+                    autoCapitalize="words"
+                    autoCorrect={false}
+                    maxLength={20}
+                    style={styles.wideNameInput}
+                  />
+                  {nameError && (
+                    <Text style={styles.nameErrorText}>Please enter your name first.</Text>
+                  )}
+                </View>
                 <Pressable
-                  onPress={() => Linking.openURL('https://github.com/nerveband/squadpad')}
-                  hitSlop={8}
+                  onPress={() => router.push('/settings')}
+                  style={styles.settingsPill}
+                  accessibilityRole="button"
+                  accessibilityLabel="Settings"
                 >
-                  <Text style={styles.openSourceLink}>Open Source</Text>
+                  <GearSix size={18} color={Colors.purple} weight="bold" />
+                  <Text style={styles.settingsLinkText}>Settings</Text>
                 </Pressable>
               </View>
             </View>
-          </View>
+
+            {/* Side-by-side main cards aligned at the exact same top edge */}
+            <View style={[styles.twoPaneRow, { gap: foldGap }]}>
+              <View style={[styles.paneCol, leftPaneStyle]}>
+                {nearbyCard}
+                {advancedAndHostInfo}
+              </View>
+
+              <View style={[styles.paneCol, styles.paneFlex]}>
+                {relayCard}
+                <View style={styles.wideFooterRow}>
+                  <Text style={styles.credits}>
+                    Unofficial companion app · BombSquad by Eric Froemling ·{' '}
+                  </Text>
+                  <Pressable
+                    onPress={() => Linking.openURL('https://github.com/nerveband/squadpad')}
+                    hitSlop={8}
+                  >
+                    <Text style={styles.openSourceLink}>Open Source</Text>
+                  </Pressable>
+                </View>
+              </View>
+            </View>
+          </>
         ) : (
           <>
             {/* Brand: bomb icon + gradient title matching web */}
@@ -413,7 +437,8 @@ export default function HomeScreen() {
             </View>
 
             {nearbyCard}
-            {relayAndAdvanced}
+            {relayCard}
+            {advancedAndHostInfo}
 
             {/* Settings link */}
             <Pressable onPress={() => router.push('/settings')} style={styles.settingsLink}>
@@ -455,13 +480,70 @@ const styles = StyleSheet.create({
   contentWide: {
     maxWidth: 960,
   },
+  contentCompact: {
+    gap: Spacing.md,
+  },
+  wideTopBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    width: '100%',
+  },
+  brandHorizontal: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
+  },
+  brandTextCol: {
+    justifyContent: 'center',
+  },
+  bombIconLandscape: {
+    width: 48,
+    height: 53,
+  },
+  titleMaskLandscape: {
+    fontFamily: Fonts.extrabold,
+    fontSize: 26,
+    fontWeight: FontWeight.extrabold,
+    letterSpacing: -1.1,
+    textAlign: 'left',
+  },
+  subtitleLandscape: {
+    fontFamily: Fonts.primary,
+    color: Colors.textDim,
+    fontSize: FontSize.xs,
+    marginTop: -2,
+  },
+  wideTopRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
+  },
+  wideNameField: {
+    flex: 1,
+    gap: 2,
+  },
+  wideNameInput: {
+    paddingVertical: 10,
+  },
+  settingsPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: 'rgba(155,107,190,0.12)',
+    borderWidth: 1,
+    borderColor: 'rgba(155,107,190,0.28)',
+    borderRadius: Radius.md,
+    paddingVertical: 11,
+    paddingHorizontal: 14,
+  },
   twoPaneRow: {
     flexDirection: 'row',
     alignItems: 'flex-start',
     width: '100%',
   },
   paneCol: {
-    gap: Spacing.lg,
+    gap: Spacing.md,
   },
   paneFlex: {
     flex: 1,
@@ -483,11 +565,6 @@ const styles = StyleSheet.create({
     width: 120,
     height: 132, // aspect ratio ~719:791
     marginBottom: -8,
-  },
-  bombIconCompact: {
-    width: 96,
-    height: 106,
-    marginBottom: -6,
   },
   titleMask: {
     fontFamily: Fonts.extrabold,
@@ -521,6 +598,10 @@ const styles = StyleSheet.create({
   },
   card: {
     gap: Spacing.sm,
+  },
+  cardCompact: {
+    gap: Spacing.xs,
+    padding: 16,
   },
   cardHeader: {
     flexDirection: 'row',
@@ -573,6 +654,12 @@ const styles = StyleSheet.create({
     color: Colors.purple,
     fontSize: FontSize.sm,
     fontWeight: FontWeight.semibold,
+  },
+  inlineTogglesRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: Spacing.lg,
   },
   advancedToggle: {
     flexDirection: 'row',
@@ -641,6 +728,13 @@ const styles = StyleSheet.create({
   footer: {
     alignItems: 'center',
     gap: Spacing.xs,
+  },
+  wideFooterRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexWrap: 'wrap',
+    paddingTop: 2,
   },
   credits: {
     fontFamily: Fonts.primary,

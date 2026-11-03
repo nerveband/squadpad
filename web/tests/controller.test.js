@@ -85,4 +85,29 @@ describe('Controller', () => {
     expect(c.getState().h).toBe(255);
     expect(c.getState().v).toBe(0);
   });
+
+  it('atomically updates chorded action mask and rimRun in single emissions', () => {
+    const c = new Controller();
+    const states = [];
+    c.onChange = (s) => states.push(s);
+
+    c.setActionMask((1 << 1) | (1 << 3), true); // Punch + Jump + holdRun
+    expect(states).toHaveLength(1);
+    expect(states[0].buttons).toBe(BTN.PUNCH | BTN.JUMP | BTN.RUN);
+
+    c.setJoystick(1, 0, true);
+    expect(states).toHaveLength(2);
+    expect(states[1].h).toBe(255);
+    expect(states[1].buttons).toBe(BTN.PUNCH | BTN.JUMP | BTN.RUN);
+  });
+
+  it('keeps jump held when releasing one alias key while another is still held, and clears on reset', () => {
+    const c = new Controller();
+    c.handleKeyDown('KeyK');
+    c.handleKeyDown('Space');
+    c.handleKeyUp('KeyK');
+    expect(c.getState().buttons & BTN.JUMP).toBeTruthy();
+    c.reset();
+    expect(c.getState()).toEqual({ buttons: 0, h: 128, v: 128 });
+  });
 });

@@ -89,11 +89,9 @@ export function useFoldable(): FoldableLayout {
     posture = isPortrait ? 'tabletop' : 'book';
   }
 
-  // Unfolded iPhone Duo in landscape has safeWidth = 867 pt (951 - 84 vertical bar).
-  // Android foldables unfolded have safeWidth ~673-841 dp.
-  // Outer iPhone Duo has safeWidth = 382 pt (portrait) or 594 pt (landscape).
-  const isWide = safeWidth >= 660 || posture === 'book';
-
+  // Use the two-column landscape layout whenever in landscape orientation on any
+  // phone (`!isPortrait`), or on an unfolded foldable / tablet (`safeWidth >= 660`).
+  const isWide = !isPortrait || safeWidth >= 660 || posture === 'book';
   // Use tabletop controller layout when in tabletop posture, or in portrait on an
   // unfolded foldable / tablet (safeWidth >= 560).
   const isTabletopController =

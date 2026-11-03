@@ -38,6 +38,7 @@ export class Connection {
     this._maxReconnectAttempts = MAX_RECONNECT_ATTEMPTS;
     this._reconnectTimer = null;
     this._readyTimer = null;
+    this._lastSentButtons = 0;
   }
 
   connect(url, playerName) {
@@ -64,6 +65,8 @@ export class Connection {
   _open(url) {
     // Clean up any existing connection
     if (this.ws) {
+      this.ws.onopen = null;
+      this.ws.onmessage = null;
       this.ws.onclose = null;
       this.ws.onerror = null;
       try { this.ws.close(); } catch (_) {}
@@ -82,10 +85,12 @@ export class Connection {
     }
     this.ws.binaryType = 'arraybuffer';
 
-    this.ws.onopen = () => {
+    const ws = this.ws;
+    ws.onopen = () => {
+      if (this.ws !== ws || this._userDisconnected) return;
       if (this.mode === 'relay' && this.roomCode) {
         this._status('joining');
-        this.ws.send(JSON.stringify({
+        ws.send(JSON.stringify({
           type: 'join',
           room: this.roomCode,
           name: this.playerName || 'Player'
@@ -93,17 +98,19 @@ export class Connection {
       } else {
         // Send player name to the host's local WebSocket server
         this._status('waiting_for_host');
-        this.ws.send(JSON.stringify({ name: this.playerName || 'Player' }));
+        ws.send(JSON.stringify({ name: this.playerName || 'Player' }));
       }
       this._startReadyTimer();
     };
 
-    this.ws.onmessage = (event) => {
+    ws.onmessage = (event) => {
+      if (this.ws !== ws || this._userDisconnected) return;
       if (typeof event.data === 'string') this._handleControl(event.data);
       if (this.onMessage) this.onMessage(event.data);
     };
 
-    this.ws.onclose = () => {
+    ws.onclose = () => {
+      if (this.ws !== ws) return;
       this.ready = false;
       this._clearReadyTimer();
       if (this._fatal) {
@@ -212,9 +219,17 @@ export class Connection {
   }
 
   sendState(stateBytes) {
-    if (this.connected) {
-      this.ws.send(stateBytes);
+    if (!this.connected) return;
+    const isButtonEdge = stateBytes[0] !== this._lastSentButtons;
+    const isCenterRelease = stateBytes[1] === 128 && stateBytes[2] === 128;
+    // If TCP send buffer is backed up during a Wi-Fi micro-stall, skip
+    // intermediate analog moves so stale stick states never queue up behind TCP;
+    // button transitions and stick return-to-center always send immediately.
+    if (!isButtonEdge && !isCenterRelease && (this.ws.bufferedAmount || 0) > 64) {
+      return;
     }
+    this._lastSentButtons = stateBytes[0];
+    this.ws.send(stateBytes);
   }
 
   disconnect() {

@@ -91,7 +91,7 @@ export function initControllerUI(opts) {
     joystickTouchId = null;
     joystickBase.classList.remove('active');
     joystickThumb.style.transform = 'translate(0px, 0px)';
-    controller.setJoystick(0, 0);
+    controller.setJoystick(0, 0, false);
   }
 
   function onJoystickTouchStart(e) {
@@ -161,7 +161,8 @@ export function initControllerUI(opts) {
       nx = Math.max(-1, Math.min(1, hx));
       ny = Math.max(-1, Math.min(1, vy));
     }
-    controller.setJoystick(nx, ny);
+    const rimRun = dist >= JOYSTICK_RADIUS * 0.88;
+    controller.setJoystick(nx, ny, rimRun);
   }
 
   function onJoystickTouchEnd(e) {
@@ -183,14 +184,51 @@ export function initControllerUI(opts) {
   joystickZone.addEventListener('touchend', onJoystickTouchEnd, { passive: false });
   joystickZone.addEventListener('touchcancel', onJoystickTouchCancel, { passive: false });
 
-  // ---- Action button touch handling (multi-touch + slide rollover + Run) -
-  const activeButtonTouches = new Map();
+  // ---- Action button touch handling (pure-math chording + slide rollover) -
+  // Bitmask order matches native: 0 = throw, 1 = punch, 2 = bomb, 3 = jump
+  const ACTION_NAMES = ['throw', 'punch', 'bomb', 'jump'];
+  const activeTouchMasks = new Map();
+  let currentActionMask = 0;
+  let clusterGeom = null;
 
-  function isButtonHeld(btn) {
-    for (const activeBtn of activeButtonTouches.values()) {
-      if (activeBtn === btn) return true;
-    }
-    return false;
+  function measureCluster() {
+    const rect = buttonZone.getBoundingClientRect();
+    if (!rect.width || !rect.height) return null;
+    return {
+      cx: rect.left + rect.width / 2,
+      cy: rect.top + rect.height / 2,
+      sepX: rect.width * 0.28,
+      sepY: rect.height * 0.28,
+      maxR: Math.max(rect.width, rect.height) * 0.95,
+    };
+  }
+
+  function getWebButtonMask(clientX, clientY) {
+    const g = clusterGeom || (clusterGeom = measureCluster());
+    if (!g) return 0;
+    const rawDx = clientX - g.cx;
+    const rawDy = clientY - g.cy;
+    if (rawDx * rawDx + rawDy * rawDy > g.maxR * g.maxR) return 0;
+
+    const nx = rawDx / g.sepX;
+    const ny = rawDy / g.sepY;
+    const d0 = nx * nx + (ny + 1) * (ny + 1); // throw (top)
+    const d1 = (nx + 1) * (nx + 1) + ny * ny; // punch (left)
+    const d2 = (nx - 1) * (nx - 1) + ny * ny; // bomb (right)
+    const d3 = nx * nx + (ny - 1) * (ny - 1); // jump (bottom)
+
+    const chordDistSq = 0.92 * 0.92;
+    let mask = 0;
+    if (d0 <= chordDistSq) mask |= 1 << 0;
+    if (d1 <= chordDistSq) mask |= 1 << 1;
+    if (d2 <= chordDistSq) mask |= 1 << 2;
+    if (d3 <= chordDistSq) mask |= 1 << 3;
+    if (mask !== 0) return mask;
+
+    if (d0 <= d1 && d0 <= d2 && d0 <= d3) return 1 << 0;
+    if (d1 <= d2 && d1 <= d3) return 1 << 1;
+    if (d2 <= d3) return 1 << 2;
+    return 1 << 3;
   }
 
   function triggerHaptic(action) {
@@ -205,75 +243,66 @@ export function initControllerUI(opts) {
     }
   }
 
-  function syncTouchRunState() {
-    // Keep face-button presses pure so menu selection and bomb throws behave
-    // identically to BombSquad Remote.
-  }
-  function pressActionBtn(btn) {
-    const action = btn.dataset.action;
-    if (!action) return;
-    btn.classList.add('pressed');
-    controller.pressButton(action);
-    triggerHaptic(action);
-  }
+  function recomputeActionMask() {
+    let nextMask = 0;
+    for (const m of activeTouchMasks.values()) {
+      nextMask |= m;
+    }
+    if (nextMask === currentActionMask) return;
+    const prevMask = currentActionMask;
+    currentActionMask = nextMask;
 
-  function releaseActionBtn(btn) {
-    const action = btn.dataset.action;
-    btn.classList.remove('pressed');
-    if (action) controller.releaseButton(action);
+    // Send state on wire FIRST, then update DOM classes and haptics
+    controller.setActionMask(nextMask, false);
+
+    for (let i = 0; i < 4; i++) {
+      const bit = 1 << i;
+      const action = ACTION_NAMES[i];
+      const btn = actionBtnMap[action];
+      const wasDown = (prevMask & bit) !== 0;
+      const isDown = (nextMask & bit) !== 0;
+      if (!wasDown && isDown) {
+        if (btn) btn.classList.add('pressed');
+        triggerHaptic(action);
+      } else if (wasDown && !isDown) {
+        if (btn) btn.classList.remove('pressed');
+      }
+    }
   }
 
   function onButtonTouchStart(e) {
     e.preventDefault();
+    clusterGeom = measureCluster();
     for (const touch of e.changedTouches) {
-      const btn = touch.target.closest('.action-btn');
-      if (!btn || !btn.dataset.action) continue;
-      const alreadyHeld = isButtonHeld(btn);
-      activeButtonTouches.set(touch.identifier, btn);
-      if (!alreadyHeld) {
-        pressActionBtn(btn);
-      }
+      const mask = getWebButtonMask(touch.clientX, touch.clientY);
+      activeTouchMasks.set(touch.identifier, mask);
     }
-    syncTouchRunState();
+    recomputeActionMask();
   }
 
   function onButtonTouchMove(e) {
     e.preventDefault();
+    let changed = false;
     for (const touch of e.changedTouches) {
-      const prevBtn = activeButtonTouches.get(touch.identifier);
-      if (!prevBtn && !buttonZone.contains(touch.target)) continue;
-      const el = document.elementFromPoint(touch.clientX, touch.clientY);
-      const nextBtn = el ? el.closest('.action-btn') : null;
-      if (nextBtn === prevBtn) continue;
-
-      if (prevBtn) {
-        activeButtonTouches.delete(touch.identifier);
-        if (!isButtonHeld(prevBtn)) {
-          releaseActionBtn(prevBtn);
-        }
-      }
-      if (nextBtn && nextBtn.dataset.action) {
-        const alreadyHeld = isButtonHeld(nextBtn);
-        activeButtonTouches.set(touch.identifier, nextBtn);
-        if (!alreadyHeld) {
-          pressActionBtn(nextBtn);
-        }
+      if (!activeTouchMasks.has(touch.identifier)) continue;
+      const mask = getWebButtonMask(touch.clientX, touch.clientY);
+      if (activeTouchMasks.get(touch.identifier) !== mask) {
+        activeTouchMasks.set(touch.identifier, mask);
+        changed = true;
       }
     }
-    syncTouchRunState();
+    if (changed) recomputeActionMask();
   }
 
   function onButtonTouchEnd(e) {
     e.preventDefault();
+    let changed = false;
     for (const touch of e.changedTouches) {
-      const btn = activeButtonTouches.get(touch.identifier);
-      if (!btn) continue;
-      activeButtonTouches.delete(touch.identifier);
-      if (!isButtonHeld(btn)) {
-        releaseActionBtn(btn);
+      if (activeTouchMasks.delete(touch.identifier)) {
+        changed = true;
       }
     }
-    syncTouchRunState();
+    if (changed) recomputeActionMask();
   }
 
   function onButtonTouchCancel(e) {
@@ -361,8 +390,10 @@ export function initControllerUI(opts) {
   }
 
   function resetAllInputs() {
+    activeTouchMasks.clear();
+    currentActionMask = 0;
     controller.reset();
-    resetJoystick();
+    joystickRelease();
     document.querySelectorAll('.action-btn.pressed').forEach((btn) => btn.classList.remove('pressed'));
   }
 
