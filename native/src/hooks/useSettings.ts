@@ -74,5 +74,17 @@ export function useSettings() {
     AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(current)).catch(() => {});
     emit();
   }, []);
-  return { settings, update, loaded: isLoaded };
+
+  const reset = useCallback(() => {
+    const preservedName = current.playerName;
+    const next: Settings = { ...DEFAULT_SETTINGS, playerName: preservedName };
+    if (!loaded) {
+      pendingBeforeLoad = next;
+    }
+    current = next;
+    AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(current)).catch(() => {});
+    emit();
+  }, []);
+
+  return { settings, update, reset, loaded: isLoaded };
 }

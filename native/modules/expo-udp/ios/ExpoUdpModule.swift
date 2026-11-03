@@ -1,6 +1,6 @@
 import Darwin
 import ExpoModulesCore
-
+import UIKit
 public class ExpoUdpModule: Module {
   private var sockets: [Int: UdpSocket] = [:]
   private var nextId = 1
@@ -57,6 +57,10 @@ public class ExpoUdpModule: Module {
       return broadcastAddress()
     }
 
+    Function("copyToClipboard") { (text: String) -> Bool in
+      UIPasteboard.general.string = text
+      return true
+    }
     OnDestroy {
       self.lock.lock()
       let all = Array(self.sockets.values)

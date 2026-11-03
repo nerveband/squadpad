@@ -1,7 +1,10 @@
-import { View, Text, StyleSheet, ScrollView, Pressable, Linking, Platform } from 'react-native';
+import { useState, useCallback } from 'react';
+import { View, Text, StyleSheet, ScrollView, Pressable, Linking, Platform, Share } from 'react-native';
 import { useRouter } from 'expo-router';
-import { ArrowLeft } from 'phosphor-react-native';
+import { ArrowLeft, Copy, Check, ArrowCounterClockwise } from 'phosphor-react-native';
+import * as Haptics from 'expo-haptics';
 import Constants from 'expo-constants';
+import { UdpSocket } from '../modules/expo-udp';
 import { GlassCard } from '../src/components/GlassCard';
 import { StyledTextInput } from '../src/components/StyledTextInput';
 import { useSettings, type RunMode } from '../src/hooks/useSettings';
@@ -81,8 +84,20 @@ function SensitivityPicker({ value, onChange }: { value: number; onChange: (v: n
 
 export default function SettingsScreen() {
   const router = useRouter();
-  const { settings, update } = useSettings();
+  const { settings, update, reset } = useSettings();
   const { insets, isWide, fold, hinge, posture } = useFoldable();
+  const [copiedDiag, setCopiedDiag] = useState(false);
+  const [resetDone, setResetDone] = useState(false);
+
+  const broadcastIp = (() => {
+    try {
+      return UdpSocket.getBroadcastAddress() || '--';
+    } catch {
+      return '--';
+    }
+  })();
+
+  const postureLabel = hinge ? `${posture} (${Math.round(hinge.angle)}°)` : posture;
 
   const deviceInfo = {
     platform: Platform.OS,
@@ -91,6 +106,33 @@ export default function SettingsScreen() {
     sdkVersion: Constants.expoConfig?.sdkVersion || '--',
   };
 
+  const handleCopyDiagnostics = useCallback(() => {
+    const text = [
+      `SquadPad v${deviceInfo.appVersion} (SDK ${deviceInfo.sdkVersion})`,
+      `Platform: ${deviceInfo.platform} ${deviceInfo.version}`,
+      `Posture: ${postureLabel}`,
+      `Broadcast: ${broadcastIp}`,
+      `Relay: ${settings.relayUrl}`,
+      `Joystick: ${settings.joystickStyle} (${settings.sensitivity}x), Run: ${settings.runMode}, Left-handed: ${settings.leftHanded}`,
+    ].join('\n');
+    if (settings.hapticsEnabled) {
+      Haptics.selectionAsync().catch(() => {});
+    }
+    if (!UdpSocket.copyToClipboard(text)) {
+      Share.share({ message: text }).catch(() => {});
+    }
+    setCopiedDiag(true);
+    setTimeout(() => setCopiedDiag(false), 1800);
+  }, [deviceInfo.appVersion, deviceInfo.platform, deviceInfo.sdkVersion, deviceInfo.version, postureLabel, broadcastIp, settings]);
+
+  const handleResetSettings = useCallback(() => {
+    reset();
+    if (settings.hapticsEnabled) {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+    }
+    setResetDone(true);
+    setTimeout(() => setResetDone(false), 1800);
+  }, [reset, settings.hapticsEnabled]);
   const padStyle = {
     paddingTop: Math.max(insets.top + Spacing.sm, Spacing.lg),
     paddingBottom: Math.max(insets.bottom + Spacing.xl, Spacing.xxl),
@@ -123,8 +165,24 @@ export default function SettingsScreen() {
 
       {/* Controller */}
       <GlassCard>
-        <Text style={styles.sectionTitle}>Controller</Text>
-
+        <View style={styles.cardTitleRow}>
+          <Text style={styles.sectionTitleInline}>Controller</Text>
+          <Pressable
+            onPress={handleResetSettings}
+            style={({ pressed }) => [styles.actionPill, pressed && styles.actionPillPressed]}
+            accessibilityRole="button"
+            accessibilityLabel="Reset settings to defaults"
+          >
+            {resetDone ? (
+              <Check size={14} color={Colors.teal} weight="bold" />
+            ) : (
+              <ArrowCounterClockwise size={14} color={Colors.purple} weight="bold" />
+            )}
+            <Text style={[styles.actionPillText, resetDone && { color: Colors.teal }]}>
+              {resetDone ? 'Reset!' : 'Reset Defaults'}
+            </Text>
+          </Pressable>
+        </View>
         <SensitivityPicker
           value={settings.sensitivity}
           onChange={(v) => update({ sensitivity: v })}
@@ -189,31 +247,49 @@ export default function SettingsScreen() {
     <>
       {/* Diagnostics */}
       <GlassCard>
-        <Text style={styles.sectionTitle}>Diagnostics</Text>
+        <View style={styles.cardTitleRow}>
+          <Text style={styles.sectionTitleInline}>Diagnostics</Text>
+          <Pressable
+            onPress={handleCopyDiagnostics}
+            style={({ pressed }) => [styles.actionPill, pressed && styles.actionPillPressed]}
+            accessibilityRole="button"
+            accessibilityLabel="Copy diagnostics"
+          >
+            {copiedDiag ? (
+              <Check size={14} color={Colors.teal} weight="bold" />
+            ) : (
+              <Copy size={14} color={Colors.purple} weight="bold" />
+            )}
+            <Text style={[styles.actionPillText, copiedDiag && { color: Colors.teal }]}>
+              {copiedDiag ? 'Copied!' : 'Copy'}
+            </Text>
+          </Pressable>
+        </View>
         <View style={styles.diagRow}>
           <Text style={styles.diagLabel}>Platform</Text>
-          <Text style={styles.diagValue}>{deviceInfo.platform} {deviceInfo.version}</Text>
+          <Text style={styles.diagValue} selectable>{deviceInfo.platform} {deviceInfo.version}</Text>
         </View>
         <View style={styles.diagRow}>
           <Text style={styles.diagLabel}>App Version</Text>
-          <Text style={styles.diagValue}>{deviceInfo.appVersion}</Text>
+          <Text style={styles.diagValue} selectable>{deviceInfo.appVersion}</Text>
         </View>
         <View style={styles.diagRow}>
           <Text style={styles.diagLabel}>Expo SDK</Text>
-          <Text style={styles.diagValue}>{deviceInfo.sdkVersion}</Text>
+          <Text style={styles.diagValue} selectable>{deviceInfo.sdkVersion}</Text>
         </View>
         <View style={styles.diagRow}>
           <Text style={styles.diagLabel}>Posture</Text>
-          <Text style={styles.diagValue}>
-            {hinge ? `${posture} (${Math.round(hinge.angle)}°)` : posture}
-          </Text>
+          <Text style={styles.diagValue} selectable>{postureLabel}</Text>
+        </View>
+        <View style={styles.diagRow}>
+          <Text style={styles.diagLabel}>Broadcast</Text>
+          <Text style={styles.diagValue} selectable>{broadcastIp}</Text>
         </View>
         <View style={styles.diagRow}>
           <Text style={styles.diagLabel}>Relay</Text>
-          <Text style={styles.diagValue} numberOfLines={1}>{settings.relayUrl}</Text>
+          <Text style={styles.diagValue} selectable>{settings.relayUrl}</Text>
         </View>
       </GlassCard>
-
       {/* About */}
       <GlassCard>
         <Text style={styles.sectionTitle}>About</Text>
@@ -317,6 +393,38 @@ const styles = StyleSheet.create({
     fontWeight: FontWeight.bold,
     marginBottom: Spacing.md,
   },
+  cardTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: Spacing.md,
+  },
+  sectionTitleInline: {
+    fontFamily: Fonts.bold,
+    color: Colors.text,
+    fontSize: FontSize.lg,
+    fontWeight: FontWeight.bold,
+  },
+  actionPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: Radius.sm,
+    backgroundColor: 'rgba(155,107,190,0.12)',
+    borderWidth: 1,
+    borderColor: 'rgba(155,107,190,0.28)',
+  },
+  actionPillPressed: {
+    backgroundColor: 'rgba(155,107,190,0.22)',
+  },
+  actionPillText: {
+    fontFamily: Fonts.semibold,
+    color: Colors.purple,
+    fontSize: FontSize.xs,
+    fontWeight: FontWeight.semibold,
+  },
   settingRow: {
     gap: Spacing.sm,
     marginBottom: Spacing.md,
@@ -393,6 +501,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    gap: Spacing.md,
     paddingVertical: 6,
   },
   diagLabel: {
@@ -401,10 +510,11 @@ const styles = StyleSheet.create({
     fontSize: FontSize.sm,
   },
   diagValue: {
+    flex: 1,
+    textAlign: 'right',
     color: Colors.text,
     fontSize: FontSize.sm,
     fontFamily: Fonts.mono,
-    maxWidth: 200,
   },
   aboutText: {
     fontFamily: Fonts.primary,

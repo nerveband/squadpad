@@ -1,5 +1,7 @@
 package expo.modules.udp
 
+import android.content.ClipData
+import android.content.ClipboardManager
 import android.content.Context
 import android.net.wifi.WifiManager
 import android.os.Build
@@ -63,6 +65,12 @@ class ExpoUdpModule : Module() {
       broadcastAddress()
     }
 
+    Function("copyToClipboard") { text: String ->
+      val context = appContext.reactContext ?: return@Function false
+      val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager ?: return@Function false
+      clipboard.setPrimaryClip(ClipData.newPlainText("SquadPad Diagnostics", text))
+      true
+    }
     OnDestroy {
       sockets.values.forEach { it.close() }
       sockets.clear()

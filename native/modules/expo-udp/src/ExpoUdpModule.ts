@@ -19,8 +19,8 @@ declare class ExpoUdpNativeModule extends NativeModule<ExpoUdpEvents> {
   closeSocket(socketId: number): void;
   diagnostics(socketId: number): Record<string, unknown>;
   getBroadcastAddress(): string | null;
+  copyToClipboard?(text: string): boolean;
 }
-
 const ExpoUdpNative = requireNativeModule<ExpoUdpNativeModule>('ExpoUdp');
 
 export class UdpSocket {
@@ -60,6 +60,16 @@ export class UdpSocket {
     return ExpoUdpNative.getBroadcastAddress();
   }
 
+  static copyToClipboard(text: string): boolean {
+    try {
+      if (typeof ExpoUdpNative.copyToClipboard === 'function') {
+        return ExpoUdpNative.copyToClipboard(text);
+      }
+    } catch {
+      // Fallback handled by caller
+    }
+    return false;
+  }
   close(): void {
     if (this.listener) {
       this.listener.remove();
