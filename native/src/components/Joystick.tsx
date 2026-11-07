@@ -79,8 +79,11 @@ export const Joystick = memo(function Joystick({
   const thumbGlowOpacity = useSharedValue(0.4);
   const restOpacity = REST_OPACITY[mode];
   const floating = mode === 'floating';
-  // Last position sent to JS, quantised to the wire format (h * 512 + v * 2 + run).
-  const lastStep = useSharedValue(-1);
+  // Last position sent to JS, quantised to the wire format, with 2-step hysteresis
+  // to suppress capacitive thumb micro-jitter from flooding the JS bridge.
+  const lastH = useSharedValue(128);
+  const lastV = useSharedValue(128);
+  const lastRimRun = useSharedValue(false);
 
   const emitMove = useCallback(
     (x: number, y: number, rimRun?: boolean) => {
@@ -146,12 +149,27 @@ export const Joystick = memo(function Joystick({
     const rimRun = stickEdgeRun ? dist >= maxDistance * 0.88 : false;
     isRunning.value = rimRun;
 
-    const step =
-      Math.round((x + 1) * 127.5) * 512 +
-      Math.round((y + 1) * 127.5) * 2 +
-      (rimRun ? 1 : 0);
-    if (step === lastStep.value) return;
-    lastStep.value = step;
+    const qh = Math.round((x + 1) * 127.5);
+    const qv = Math.round((y + 1) * 127.5);
+    const isCenter = qh === 128 && qv === 128;
+    const isExtreme = qh === 0 || qh === 255 || qv === 0 || qv === 255;
+    const dh = Math.abs(qh - lastH.value);
+    const dv = Math.abs(qv - lastV.value);
+    if (
+      rimRun === lastRimRun.value &&
+      !isCenter &&
+      !isExtreme &&
+      dh < 2 &&
+      dv < 2
+    ) {
+      return;
+    }
+    if (qh === lastH.value && qv === lastV.value && rimRun === lastRimRun.value) {
+      return;
+    }
+    lastH.value = qh;
+    lastV.value = qv;
+    lastRimRun.value = rimRun;
     runOnJS(emitMove)(x, y, rimRun);
   };
 
@@ -172,7 +190,9 @@ export const Joystick = memo(function Joystick({
     baseOpacity.value = withTiming(restOpacity, { duration: 300 });
     borderOpacity.value = withTiming(0.15, { duration: 300 });
     thumbGlowOpacity.value = withTiming(0.4, { duration: 300 });
-    lastStep.value = -1;
+    lastH.value = 128;
+    lastV.value = 128;
+    lastRimRun.value = false;
     isRunning.value = false;
     runOnJS(emitMove)(0, 0, false);
   };

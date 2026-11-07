@@ -27,9 +27,9 @@ export class UdpConnection {
   private playerId = -1;
   private requestKey = Math.floor(Math.random() * 65535);
   private connected = false;
+  private nativeSession = false;
   private lastReceiveTime = 0;
 
-  // Circular state buffer; all indices are mod 256. Once a slot is written to
   // `stateBuffer` and transmitted, it is immutable so BombSquad never ignores
   // a mutated sequence number as a duplicate retransmit.
   private stateBuffer: (Uint8Array | null)[] = new Array(BUFFER_SIZE).fill(null);
@@ -60,10 +60,9 @@ export class UdpConnection {
       return;
     }
 
-    socket.onMessage((data) => {
-      this.handlePacket(data);
+    socket.onMessage((data, _addr, _port, lagMs) => {
+      this.handlePacket(data, lagMs);
     });
-
     // BombSquad keys clients by name and request key, so resending is safe.
     const request = buildIdRequest(playerName, this.requestKey);
     let attempts = 0;
@@ -107,6 +106,11 @@ export class UdpConnection {
   sendState(input: ControllerInput): void {
     if (!this.connected || !this.socket) return;
 
+    if (this.nativeSession) {
+      this.socket.sendState(input.buttons & 0xFF, input.h & 0xFF, input.v & 0xFF);
+      return;
+    }
+
     const b = input.buttons & 0xFF;
     const h = input.h & 0xFF;
     const v = input.v & 0xFF;
@@ -114,11 +118,6 @@ export class UdpConnection {
     const isCenterRelease = h === 128 && v === 128 && (this.lastCommittedH !== 128 || this.lastCommittedV !== 128);
     const unacked = (this.writeIndex - this.ackIndex) & 0xFF;
 
-    // Button transitions and stick return-to-center always commit and transmit
-    // immediately. Analog moves also transmit immediately when fewer than 2
-    // states are in flight; otherwise they update `pendingAnalog` before
-    // sequence assignment so 120 Hz stick moves never build a queue ahead of
-    // button presses or trigger Ballistica's 1..10 sequence-gap stall.
     if (isButtonEdge || isCenterRelease || unacked < 2) {
       this.pendingAnalog = null;
       this.commitState(input);
@@ -138,7 +137,7 @@ export class UdpConnection {
     this.cleanup();
   }
 
-  private handlePacket(data: Uint8Array): void {
+  private handlePacket(data: Uint8Array, nativeLagMs?: number): void {
     if (data.length === 0) return;
 
     switch (data[0]) {
@@ -150,19 +149,28 @@ export class UdpConnection {
         this.connected = true;
         clearInterval(this.handshakeTimer ?? undefined);
         this.handshakeTimer = null;
-        this.resendTimer = setInterval(() => this.sendPendingStates(), RESEND_INTERVAL);
+        this.nativeSession = this.socket?.configureSession(this.playerId, this.host, this.port) ?? false;
+        if (!this.nativeSession) {
+          this.resendTimer = setInterval(() => this.sendPendingStates(), RESEND_INTERVAL);
+        }
         this.watchdogTimer = setInterval(() => {
           if (Date.now() - this.lastReceiveTime > SILENCE_TIMEOUT) {
             this.fail({ reason: 'connection_lost', detail: this.host });
           }
         }, 1000);
-        console.log(`[UdpConn] Connected to ${this.host} as player ${this.playerId} (v2=${response.supportsV2})`);
+        console.log(`[UdpConn] Connected to ${this.host} as player ${this.playerId} (v2=${response.supportsV2}, native=${this.nativeSession})`);
         this.callbacks.onConnect(this.playerId);
         break;
       }
       case MSG.STATE_ACK: {
         if (!this.connected || data.length < 2) return;
         this.lastReceiveTime = Date.now();
+        if (this.nativeSession) {
+          if (typeof nativeLagMs === 'number' && nativeLagMs > 0) {
+            this.callbacks.onLagUpdate(nativeLagMs);
+          }
+          break;
+        }
         const ack = decodeStateAck(data);
         const unacked = (this.writeIndex - this.ackIndex) & 0xFF;
         const stateDiff = (ack.nextIndex - this.ackIndex) & 0xFF;

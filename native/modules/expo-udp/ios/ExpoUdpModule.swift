@@ -17,12 +17,13 @@ public class ExpoUdpModule: Module {
       self.nextId += 1
       self.lock.unlock()
 
-      let socket = try UdpSocket(id: id, port: UInt16(clamping: port)) { [weak self] data, address, remotePort in
+      let socket = try UdpSocket(id: id, port: UInt16(clamping: port)) { [weak self] data, address, remotePort, lagMs in
         self?.sendEvent("onUdpMessage", [
           "socketId": id,
           "data": [UInt8](data),
           "address": address,
           "port": remotePort,
+          "lagMs": lagMs,
         ])
       }
       self.lock.lock()
@@ -33,6 +34,15 @@ public class ExpoUdpModule: Module {
 
     Function("setBroadcast") { (socketId: Int, enabled: Bool) in
       self.socket(socketId)?.setBroadcast(enabled)
+    }
+    Function("configureSession") { (socketId: Int, playerId: Int, address: String, port: Int) -> Bool in
+      guard let socket = self.socket(socketId) else { return false }
+      return socket.configureSession(playerId: playerId, address: address, port: UInt16(clamping: port))
+    }
+
+    Function("sendState") { (socketId: Int, buttons: Int, h: Int, v: Int) -> Int in
+      guard let socket = self.socket(socketId) else { return -Int(EBADF) }
+      return socket.sendState(buttons: buttons, h: h, v: v)
     }
 
     // Returns bytes sent, or a negative errno on failure.
@@ -83,7 +93,9 @@ private final class UdpSocket {
   let id: Int
   private let fd: Int32
   private let source: DispatchSourceRead
-  private let onMessage: (Data, String, Int) -> Void
+  private let resendTimer: DispatchSourceTimer
+  private let queue: DispatchQueue
+  private let onMessage: (Data, String, Int, Int) -> Void
   private let stats = NSLock()
   private var broadcast = false
   private var packetsSent = 0
@@ -94,7 +106,24 @@ private final class UdpSocket {
   private var cachedAddr: sockaddr_in?
   private var recvBuffer = [UInt8](repeating: 0, count: 2048)
 
-  init(id: Int, port: UInt16, onMessage: @escaping (Data, String, Int) -> Void) throws {
+  private var sessionActive = false
+  private var sessionPlayerId = -1
+  private var sessionHost = ""
+  private var sessionPort: UInt16 = 43210
+  private var stateBuffer = [Int](repeating: 0, count: 256)
+  private var stateBirthMs = [Int64](repeating: 0, count: 256)
+  private var writeIndex = 0
+  private var ackIndex = 0
+  private var lastButtons = 0
+  private var lastH = 128
+  private var lastV = 128
+  private var pendingState = -1
+  private var lastSendMs: Int64 = 0
+  private var lastAckEmitMs: Int64 = 0
+  private var smoothedLagMs = 0
+  private var sendBuf = [UInt8](repeating: 0, count: 40)
+
+  init(id: Int, port: UInt16, onMessage: @escaping (Data, String, Int, Int) -> Void) throws {
     self.id = id
     self.onMessage = onMessage
 
@@ -125,10 +154,13 @@ private final class UdpSocket {
     _ = fcntl(fd, F_SETFL, fcntl(fd, F_GETFL) | O_NONBLOCK)
 
     self.fd = fd
-    self.source = DispatchSource.makeReadSource(
-      fileDescriptor: fd,
-      queue: DispatchQueue(label: "expo.udp.socket.\(id)", qos: .userInteractive)
-    )
+    let q = DispatchQueue(label: "expo.udp.socket.\(id)", qos: .userInteractive)
+    self.queue = q
+    self.source = DispatchSource.makeReadSource(fileDescriptor: fd, queue: q)
+    self.resendTimer = DispatchSource.makeTimerSource(queue: q)
+    resendTimer.schedule(deadline: .now() + .milliseconds(35), repeating: .milliseconds(35))
+    resendTimer.setEventHandler { [weak self] in self?.tickResend() }
+    resendTimer.resume()
     source.setEventHandler { [weak self] in self?.drain() }
     source.setCancelHandler { Darwin.close(fd) }
     source.resume()
@@ -143,6 +175,138 @@ private final class UdpSocket {
     } else {
       record(error: "setsockopt(SO_BROADCAST): \(String(cString: strerror(errno)))")
     }
+  }
+  private static func nowMs() -> Int64 {
+    return Int64(ProcessInfo.processInfo.systemUptime * 1000.0)
+  }
+
+  func configureSession(playerId: Int, address: String, port: UInt16) -> Bool {
+    let resolved = resolveIPv4(address)
+    stats.lock()
+    if let r = resolved {
+      cachedHost = address
+      cachedAddr = r
+    }
+    sessionPlayerId = playerId & 0xFF
+    sessionHost = address
+    sessionPort = port
+    writeIndex = 0
+    ackIndex = 0
+    lastButtons = 0
+    lastH = 128
+    lastV = 128
+    pendingState = -1
+    lastSendMs = 0
+    lastAckEmitMs = 0
+    smoothedLagMs = 0
+    sessionActive = true
+    stats.unlock()
+    return true
+  }
+
+  private func commitStateLocked(b: Int, h: Int, v: Int, now: Int64, force: Bool) {
+    if !force && writeIndex != ackIndex && b == lastButtons && h == lastH && v == lastV {
+      return
+    }
+    lastButtons = b
+    lastH = h
+    lastV = v
+    stateBuffer[writeIndex] = b | (h << 8) | (v << 16)
+    stateBirthMs[writeIndex] = now
+    writeIndex = (writeIndex + 1) & 0xFF
+  }
+
+  private func buildPendingPacketLocked(now: Int64) -> Int {
+    if !sessionActive || sessionPlayerId < 0 { return 0 }
+    if pendingState != -1 && ((writeIndex - ackIndex) & 0xFF) < 4 {
+      let p = pendingState
+      pendingState = -1
+      commitStateLocked(b: p & 0xFF, h: (p >> 8) & 0xFF, v: (p >> 16) & 0xFF, now: now, force: false)
+    }
+    let unacked = (writeIndex - ackIndex) & 0xFF
+    if unacked == 0 || unacked >= 128 { return 0 }
+    let count = min(unacked, 11)
+    let startIndex = unacked <= 21 ? ackIndex : ((writeIndex - count) & 0xFF)
+    sendBuf[0] = 24
+    sendBuf[1] = UInt8(sessionPlayerId & 0xFF)
+    sendBuf[2] = UInt8(count)
+    sendBuf[3] = UInt8(startIndex)
+    var idx = startIndex
+    for i in 0..<count {
+      let s = stateBuffer[idx]
+      let off = 4 + i * 3
+      sendBuf[off] = UInt8(s & 0xFF)
+      sendBuf[off + 1] = UInt8((s >> 8) & 0xFF)
+      sendBuf[off + 2] = UInt8((s >> 16) & 0xFF)
+      idx = (idx + 1) & 0xFF
+    }
+    lastSendMs = now
+    return 4 + count * 3
+  }
+
+  private func sendRawLocked(count: Int, address: String, port: UInt16) -> Int {
+    guard var dest = cachedAddr else { return -Int(EHOSTUNREACH) }
+    dest.sin_port = port.bigEndian
+    let sent = sendBuf.withUnsafeBytes { buffer in
+      withUnsafePointer(to: &dest) {
+        $0.withMemoryRebound(to: sockaddr.self, capacity: 1) {
+          sendto(fd, buffer.baseAddress, count, 0, $0, socklen_t(MemoryLayout<sockaddr_in>.size))
+        }
+      }
+    }
+    if sent >= 0 {
+      packetsSent += 1
+      bytesSent += sent
+    }
+    return sent
+  }
+
+  func sendState(buttons: Int, h: Int, v: Int) -> Int {
+    let now = Self.nowMs()
+    stats.lock()
+    if !sessionActive || sessionPlayerId < 0 {
+      stats.unlock()
+      return -Int(EINVAL)
+    }
+    let b = buttons & 0xFF
+    let hc = h & 0xFF
+    let vc = v & 0xFF
+    let isButtonEdge = b != lastButtons
+    let isCenterRelease = hc == 128 && vc == 128 && (lastH != 128 || lastV != 128)
+    let unacked = (writeIndex - ackIndex) & 0xFF
+    let isKeepalive = unacked == 0 && (now - lastSendMs) >= 850
+    let sendLen: Int
+    if isButtonEdge || isCenterRelease || unacked < 4 || isKeepalive {
+      pendingState = -1
+      commitStateLocked(b: b, h: hc, v: vc, now: now, force: isKeepalive)
+      sendLen = buildPendingPacketLocked(now: now)
+    } else {
+      pendingState = b | (hc << 8) | (vc << 16)
+      sendLen = (now - lastSendMs) >= 25 ? buildPendingPacketLocked(now: now) : 0
+    }
+    let res = sendLen > 0 ? sendRawLocked(count: sendLen, address: sessionHost, port: sessionPort) : 0
+    stats.unlock()
+    return res
+  }
+
+  private func tickResend() {
+    let now = Self.nowMs()
+    stats.lock()
+    if sessionActive && sessionPlayerId >= 0 {
+      if pendingState != -1 && ((writeIndex - ackIndex) & 0xFF) < 4 {
+        let p = pendingState
+        pendingState = -1
+        commitStateLocked(b: p & 0xFF, h: (p >> 8) & 0xFF, v: (p >> 16) & 0xFF, now: now, force: false)
+      }
+      let unacked = (writeIndex - ackIndex) & 0xFF
+      if unacked > 0 && unacked < 128 && (now - lastSendMs) >= 35 {
+        let sendLen = buildPendingPacketLocked(now: now)
+        if sendLen > 0 {
+          _ = sendRawLocked(count: sendLen, address: sessionHost, port: sessionPort)
+        }
+      }
+    }
+    stats.unlock()
   }
 
   func send(_ data: [UInt8], to address: String, port: UInt16) -> Int {
@@ -184,6 +348,10 @@ private final class UdpSocket {
   }
 
   func close() {
+    stats.lock()
+    sessionActive = false
+    stats.unlock()
+    resendTimer.cancel()
     source.cancel()
   }
 
@@ -225,13 +393,58 @@ private final class UdpSocket {
         return
       }
       if count == 0 { continue }
+      let now = Self.nowMs()
       stats.lock()
       packetsReceived += 1
-      stats.unlock()
-      onMessage(Data(recvBuffer[0..<count]), ipString(from.sin_addr), Int(UInt16(bigEndian: from.sin_port)))
+      if sessionActive && count >= 2 && recvBuffer[0] == 7 {
+        let ackNext = Int(recvBuffer[1])
+        let unacked = (writeIndex - ackIndex) & 0xFF
+        let stateDiff = (ackNext - ackIndex) & 0xFF
+        if stateDiff > 0 && stateDiff <= unacked {
+          let birth = stateBirthMs[(ackNext - 1) & 0xFF]
+          if birth > 0 {
+            let halfRtt = max(1, Int((now - birth + 1) / 2))
+            smoothedLagMs = smoothedLagMs == 0 ? halfRtt : max(1, (smoothedLagMs * 2 + halfRtt) / 3)
+          }
+          ackIndex = ackNext
+          if pendingState != -1 && ((writeIndex - ackIndex) & 0xFF) < 4 {
+            let p = pendingState
+            pendingState = -1
+            commitStateLocked(b: p & 0xFF, h: (p >> 8) & 0xFF, v: (p >> 16) & 0xFF, now: now, force: false)
+            let sendLen = buildPendingPacketLocked(now: now)
+            if sendLen > 0 {
+              _ = sendRawLocked(count: sendLen, address: sessionHost, port: sessionPort)
+            }
+          }
+        } else if stateDiff > unacked && ((ackIndex - ackNext) & 0xFF) > 16 {
+          let p = pendingState
+          pendingState = -1
+          let b = p != -1 ? (p & 0xFF) : lastButtons
+          let hc = p != -1 ? ((p >> 8) & 0xFF) : lastH
+          let vc = p != -1 ? ((p >> 16) & 0xFF) : lastV
+          ackIndex = ackNext
+          writeIndex = ackNext
+          commitStateLocked(b: b, h: hc, v: vc, now: now, force: true)
+          let sendLen = buildPendingPacketLocked(now: now)
+          if sendLen > 0 {
+            _ = sendRawLocked(count: sendLen, address: sessionHost, port: sessionPort)
+          }
+        }
+        var emitLag = -1
+        if (now - lastAckEmitMs) >= 400 {
+          lastAckEmitMs = now
+          emitLag = smoothedLagMs > 0 ? smoothedLagMs : 1
+        }
+        stats.unlock()
+        if emitLag > 0 {
+          onMessage(Data([7, UInt8(ackNext & 0xFF)]), "", Int(UInt16(bigEndian: from.sin_port)), emitLag)
+        }
+      } else {
+        stats.unlock()
+        onMessage(Data(recvBuffer[0..<count]), ipString(from.sin_addr), Int(UInt16(bigEndian: from.sin_port)), 0)
+      }
     }
   }
-
   private func record(error: String) {
     stats.lock()
     lastError = error
