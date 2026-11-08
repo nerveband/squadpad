@@ -261,6 +261,16 @@ private final class UdpSocket {
     return sent
   }
 
+  /// A 128-or-more gap means the sequence window wrapped: the host stopped
+  /// acknowledging, so every later packet would look like a duplicate and be
+  /// dropped. Restart the ring at zero and re-commit the live state.
+  private func recoverStallLocked(now: Int64) {
+    ackIndex = 0
+    writeIndex = 0
+    pendingState = -1
+    commitStateLocked(b: lastButtons, h: lastH, v: lastV, now: now, force: true)
+  }
+
   func sendState(buttons: Int, h: Int, v: Int) -> Int {
     let now = Self.nowMs()
     stats.lock()
@@ -273,6 +283,9 @@ private final class UdpSocket {
     let vc = v & 0xFF
     let isButtonEdge = b != lastButtons
     let isCenterRelease = hc == 128 && vc == 128 && (lastH != 128 || lastV != 128)
+    if ((writeIndex - ackIndex) & 0xFF) >= 128 {
+      recoverStallLocked(now: now)
+    }
     let unacked = (writeIndex - ackIndex) & 0xFF
     let isKeepalive = unacked == 0 && (now - lastSendMs) >= 850
     let sendLen: Int

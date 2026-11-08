@@ -137,6 +137,12 @@ export class ControllerState {
     this._notify();
   }
 
+  /**
+   * Explicit transition back to neutral. Always emits, even when the cached
+   * state already reads neutral, because the host may still believe a button or
+   * stick is held (for example after the app was backgrounded and no touch-up
+   * ever arrived).
+   */
   reset() {
     this.touchButtons = 0;
     this.gamepadButtons = 0;
@@ -149,6 +155,7 @@ export class ControllerState {
     this.actionRun = false;
     this.gamepadRun = false;
     this.explicitRun = false;
+    this.lastEmitted = '';
     this._notify();
   }
   // Touch moves arrive at 60-120 Hz but the wire format has 256 steps per axis,

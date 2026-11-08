@@ -34,6 +34,10 @@ export default function ControllerScreen() {
   const playerName = settings.playerName || params.name || 'Player';
   const [status, setStatus] = useState<ConnectionStatus>({ kind: 'connecting', stage: 'connecting' });
   const [attempt, setAttempt] = useState(0);
+  // Single source of truth for "start a fresh input session". Bumping this makes
+  // the joystick and the action buttons drop any touch the OS never closed and
+  // tell the host that everything is released.
+  const [inputEpoch, setInputEpoch] = useState(0);
 
   // Created once and never during render: its callbacks only touch this
   // screen after it has mounted.
@@ -61,11 +65,14 @@ export default function ControllerScreen() {
     onLagUpdate: controller.pushLag,
   };
 
-  // Clear any held movement/buttons if the app goes to background.
+  // Clear any held movement/buttons if the app goes to background. The epoch
+  // bump is what actually frees the touch state machines; controller.reset()
+  // alone leaves their per-touch ownership intact.
   useEffect(() => {
     const sub = AppState.addEventListener('change', (nextState) => {
       if (nextState !== 'active') {
         controller.resetController();
+        setInputEpoch((n) => n + 1);
       }
     });
     return () => sub.remove();
@@ -96,6 +103,7 @@ export default function ControllerScreen() {
 
   const handleAllSettings = useCallback(() => {
     controller.resetController();
+    setInputEpoch((n) => n + 1);
     setHudVisible(false);
     router.push('/settings');
   }, [controller, router]);
@@ -115,6 +123,7 @@ export default function ControllerScreen() {
       mirrored={settings.leftHanded}
       stickEdgeRun={settings.runMode === 'stickEdge'}
       compact={isCompactPortrait}
+      resetSignal={inputEpoch}
     />
   );
   const buttons = (
@@ -127,6 +136,7 @@ export default function ControllerScreen() {
       runMode={settings.runMode}
       mirrored={settings.leftHanded}
       compact={isCompactPortrait}
+      resetSignal={inputEpoch}
     />
   );
   const leftControl = settings.leftHanded ? buttons : joystick;

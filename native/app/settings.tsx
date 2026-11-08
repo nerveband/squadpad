@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, ScrollView, Pressable, Linking, Platform, Share } from 'react-native';
 import { useRouter } from 'expo-router';
 import { ArrowLeft, Copy, Check, ArrowCounterClockwise } from 'phosphor-react-native';
@@ -89,6 +89,10 @@ export default function SettingsScreen() {
   const { insets, isWide, fold, hinge, posture } = useFoldable();
   const [copiedDiag, setCopiedDiag] = useState(false);
   const [resetDone, setResetDone] = useState(false);
+  // Toast timers are their own tiny state machine: one owned timer per flag,
+  // cleared on unmount so a fast back-navigation cannot set state afterwards.
+  const copiedTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const resetTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const broadcastIp = (() => {
     try {
@@ -143,7 +147,11 @@ export default function SettingsScreen() {
       Share.share({ message: text }).catch(() => {});
     }
     setCopiedDiag(true);
-    setTimeout(() => setCopiedDiag(false), 1800);
+    if (copiedTimer.current) clearTimeout(copiedTimer.current);
+    copiedTimer.current = setTimeout(() => {
+      copiedTimer.current = null;
+      setCopiedDiag(false);
+    }, 1800);
   }, [deviceInfo.appVersion, deviceInfo.platform, deviceInfo.sdkVersion, deviceInfo.version, postureLabel, fontStatus, broadcastIp, settings]);
 
   const handleResetSettings = useCallback(() => {
@@ -152,8 +160,17 @@ export default function SettingsScreen() {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
     }
     setResetDone(true);
-    setTimeout(() => setResetDone(false), 1800);
+    if (resetTimer.current) clearTimeout(resetTimer.current);
+    resetTimer.current = setTimeout(() => {
+      resetTimer.current = null;
+      setResetDone(false);
+    }, 1800);
   }, [reset, settings.hapticsEnabled]);
+  useEffect(() => () => {
+    if (copiedTimer.current) clearTimeout(copiedTimer.current);
+    if (resetTimer.current) clearTimeout(resetTimer.current);
+  }, []);
+
   const padStyle = {
     paddingTop: Math.max(insets.top + Spacing.sm, Spacing.lg),
     paddingBottom: Math.max(insets.bottom + Spacing.xl, Spacing.xxl),

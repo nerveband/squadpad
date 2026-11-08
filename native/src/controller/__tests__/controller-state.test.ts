@@ -130,6 +130,41 @@ describe('ControllerState', () => {
     expect(states[1].buttons).toBe(0);
   });
 
+  test('reset always emits neutral so a host holding a button is released', () => {
+    const c = new ControllerState();
+    const states: { buttons: number; h: number; v: number }[] = [];
+    c.onChange = (s) => states.push(s);
+
+    // Press then release normally: the cached state is already neutral.
+    c.pressButton('jump');
+    c.releaseButton('jump');
+    expect(states).toHaveLength(2);
+
+    // A backgrounded app may still leave the host believing jump is held, so
+    // reset must emit neutral even though our cache says neutral already.
+    c.reset();
+    expect(states).toHaveLength(3);
+    expect(states[2]).toEqual({ buttons: 0, h: 128, v: 128 });
+  });
+
+  test('reset clears every run source at once', () => {
+    const c = new ControllerState();
+    const states: { buttons: number; h: number; v: number }[] = [];
+    c.onChange = (s) => states.push(s);
+
+    c.pressButton('run');
+    c.setActionMask(1 << 3, true);
+    c.setJoystick(1, 0, true);
+    expect(states.at(-1)!.buttons & BTN.RUN).toBeTruthy();
+
+    c.reset();
+    expect(states.at(-1)!.buttons).toBe(0);
+
+    // No source may resurrect RUN after the reset.
+    c.setJoystick(0, 0, false);
+    expect(states.at(-1)!.buttons).toBe(0);
+  });
+
   test('setGamepadInput and clearGamepad coexist with touch input without clobbering it', () => {
     const c = new ControllerState();
     c.setJoystick(0.8, 0, true);

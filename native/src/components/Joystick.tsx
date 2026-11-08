@@ -30,6 +30,12 @@ interface JoystickProps {
   stickEdgeRun?: boolean;
   /** Compact sizing for narrow portrait screens. */
   compact?: boolean;
+  /**
+   * Increment to force the touch state machine back to idle. Android can drop
+   * touch-up events when the app is backgrounded, which would otherwise leave
+   * the stick owning a dead touch id and ignore every later thumb.
+   */
+  resetSignal?: number;
 }
 
 // Opacity of the joystick at rest. Floating shows a dim ghost so players know
@@ -61,6 +67,7 @@ export const Joystick = memo(function Joystick({
   mirrored = false,
   stickEdgeRun = false,
   compact = false,
+  resetSignal = 0,
 }: JoystickProps) {
   const baseSize = compact ? COMPACT_BASE_SIZE : BASE_SIZE;
   const thumbSize = compact ? COMPACT_THUMB_SIZE : THUMB_SIZE;
@@ -257,6 +264,32 @@ export const Joystick = memo(function Joystick({
         .shouldCancelWhenOutside(false),
     [floating, sensitivity, stickEdgeRun, maxDistance, restOpacity, mirrored, compact, emitMove],
   );
+  // Explicit idle transition. Without this, a backgrounded app on Android keeps
+  // `activeTouchId` set because the touch-up never arrives, and the stick
+  // silently ignores the next thumb.
+  useEffect(() => {
+    if (resetSignal === 0) return;
+    activeTouchId.value = -1;
+    isActive.value = false;
+    thumbX.value = 0;
+    thumbY.value = 0;
+    lastH.value = 128;
+    lastV.value = 128;
+    lastRimRun.value = false;
+    isRunning.value = false;
+    borderOpacity.value = 0.15;
+    thumbGlowOpacity.value = 0.4;
+    baseOpacity.value = withTiming(REST_OPACITY[mode], { duration: 150 });
+    if (zoneW.value > 0) {
+      const pos = computeRestPosition(zoneW.value, zoneH.value, mirrored, compact);
+      baseX.value = pos.x;
+      baseY.value = pos.y;
+    }
+    emitMove(0, 0, false);
+    // Only resetSignal drives this transition.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [resetSignal]);
+
   // Re-centre and fade to the new resting opacity when mode or handedness changes,
   // and clear stickRun if stickEdgeRun is turned off mid-session.
   useEffect(() => {

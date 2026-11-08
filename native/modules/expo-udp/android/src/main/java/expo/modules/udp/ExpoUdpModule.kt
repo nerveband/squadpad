@@ -254,6 +254,19 @@ class ExpoUdpModule : Module() {
       }
     }
 
+    /**
+     * A 128-or-more gap means the sequence window wrapped: the host stopped
+     * acknowledging, so every later packet would look like a duplicate and be
+     * dropped. Restart the ring at zero and re-commit the live state instead of
+     * silently sending nothing for the rest of the session.
+     */
+    private fun recoverStallLocked(now: Long) {
+      ackIndex = 0
+      writeIndex = 0
+      pendingState = -1
+      commitStateLocked(lastButtons, lastH, lastV, now, true)
+    }
+
     fun sendState(buttons: Int, h: Int, v: Int): Int {
       val now = SystemClock.elapsedRealtime()
       synchronized(stateLock) {
@@ -263,6 +276,9 @@ class ExpoUdpModule : Module() {
         val vc = v and 0xFF
         val isButtonEdge = b != lastButtons
         val isCenterRelease = hc == 128 && vc == 128 && (lastH != 128 || lastV != 128)
+        if (((writeIndex - ackIndex) and 0xFF) >= 128) {
+          recoverStallLocked(now)
+        }
         val unacked = (writeIndex - ackIndex) and 0xFF
         val isKeepalive = unacked == 0 && (now - lastSendMs) >= 850L
 

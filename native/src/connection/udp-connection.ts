@@ -26,7 +26,17 @@ export class UdpConnection {
   private socket: UdpSocket | null = null;
   private playerId = -1;
   private requestKey = Math.floor(Math.random() * 65535);
-  private connected = false;
+  /**
+   * Explicit session phase: `handshaking` while ID_REQUEST is retried, `active`
+   * once BombSquad assigned a player id, `failed` after a terminal error.
+   * `connected` stays as the readable predicate so call sites stay simple.
+   */
+  private phase: 'idle' | 'handshaking' | 'active' | 'failed' = 'idle';
+
+  private get connected(): boolean {
+    return this.phase === 'active';
+  }
+
   private nativeSession = false;
   private lastReceiveTime = 0;
 
@@ -64,6 +74,7 @@ export class UdpConnection {
       this.handlePacket(data, lagMs);
     });
     // BombSquad keys clients by name and request key, so resending is safe.
+    this.phase = 'handshaking';
     const request = buildIdRequest(playerName, this.requestKey);
     let attempts = 0;
     const sendRequest = () => {
@@ -111,6 +122,14 @@ export class UdpConnection {
       return;
     }
 
+    // A 128-or-more gap means the sequence window wrapped and the host stopped
+    // acking. Restart the ring instead of dropping every later packet.
+    if (((this.writeIndex - this.ackIndex) & 0xFF) >= 128) {
+      this.ackIndex = 0;
+      this.writeIndex = 0;
+      this.pendingAnalog = null;
+    }
+
     const b = input.buttons & 0xFF;
     const h = input.h & 0xFF;
     const v = input.v & 0xFF;
@@ -146,7 +165,7 @@ export class UdpConnection {
         this.lastReceiveTime = Date.now();
         const response = decodeIdResponse(data);
         this.playerId = response.playerId;
-        this.connected = true;
+        this.phase = 'active';
         clearInterval(this.handshakeTimer ?? undefined);
         this.handshakeTimer = null;
         this.nativeSession = this.socket?.configureSession(this.playerId, this.host, this.port) ?? false;
@@ -260,6 +279,7 @@ export class UdpConnection {
   }
   private fail(failure: ConnectionFailure): void {
     console.warn('[UdpConn] Connection failed:', failure, this.socket?.diagnostics());
+    this.phase = 'failed';
     this.cleanup();
     this.callbacks.onFailure(failure);
   }
@@ -273,7 +293,7 @@ export class UdpConnection {
     this.watchdogTimer = null;
     this.socket?.close();
     this.socket = null;
-    this.connected = false;
+    this.phase = 'idle';
     this.playerId = -1;
   }
 }

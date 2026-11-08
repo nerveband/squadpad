@@ -63,6 +63,11 @@ interface ActionButtonsProps {
   mirrored?: boolean;
   /** Use compact diamond sizing for narrow portrait screens. */
   compact?: boolean;
+  /**
+   * Increment to force the touch table back to idle and release any chord the
+   * host still believes is held after a dropped touch-up.
+   */
+  resetSignal?: number;
 }
 
 export const ActionButtons = memo(function ActionButtons({
@@ -74,6 +79,7 @@ export const ActionButtons = memo(function ActionButtons({
   runMode = 'stickEdge',
   mirrored = false,
   compact = false,
+  resetSignal = 0,
 }: ActionButtonsProps) {
   const b0 = useButtonAnim(); // throw (top, bit 0)
   const b1 = useButtonAnim(); // punch (left, bit 1)
@@ -131,6 +137,24 @@ export const ActionButtons = memo(function ActionButtons({
       onMaskChange(currentMask.value, runMode === 'buttonHold');
     }
   }, [runMode, onMaskChange, currentMask]);
+
+  // Explicit idle transition: clear the touch slot table and release any chord.
+  useEffect(() => {
+    if (resetSignal === 0) return;
+    const prev = currentMask.value;
+    touchIds.value = [-1, -1, -1, -1, -1, -1, -1, -1];
+    touchMasks.value = [0, 0, 0, 0, 0, 0, 0, 0];
+    currentMask.value = 0;
+    for (const anim of [b0, b1, b2, b3]) {
+      anim.scale.value = 1;
+      anim.pressed.value = 0;
+    }
+    if (prev !== 0) {
+      applyMaskChange(0, prev);
+    }
+    // Only resetSignal drives this transition.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [resetSignal]);
 
   const updateButtonAnimsWorklet = (nextMask: number, prevMask: number) => {
     'worklet';
