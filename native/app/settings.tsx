@@ -4,6 +4,7 @@ import { useRouter } from 'expo-router';
 import { ArrowLeft, Copy, Check, ArrowCounterClockwise } from 'phosphor-react-native';
 import * as Haptics from 'expo-haptics';
 import Constants from 'expo-constants';
+import * as Font from 'expo-font';
 import { UdpSocket } from '../modules/expo-udp';
 import { GlassCard } from '../src/components/GlassCard';
 import { StyledTextInput } from '../src/components/StyledTextInput';
@@ -99,6 +100,25 @@ export default function SettingsScreen() {
 
   const postureLabel = hinge ? `${posture} (${Math.round(hinge.angle)}°)` : posture;
 
+  // Objective on-device proof that the bundled families actually registered.
+  // If a family fails to load, text silently falls back to Roboto on Android.
+  const fontStatus = (() => {
+    try {
+      const loaded = [
+        Fonts.primary,
+        Fonts.semibold,
+        Fonts.bold,
+        Fonts.extrabold,
+        Fonts.mono,
+        Fonts.monoSemibold,
+        Fonts.monoBold,
+      ].filter((name) => Font.isLoaded(name));
+      return loaded.length === 7 ? 'Outfit + Ioskeley ✓' : `${loaded.length}/7 loaded`;
+    } catch {
+      return 'unavailable';
+    }
+  })();
+
   const deviceInfo = {
     platform: Platform.OS,
     version: Platform.Version,
@@ -111,6 +131,7 @@ export default function SettingsScreen() {
       `SquadPad v${deviceInfo.appVersion} (SDK ${deviceInfo.sdkVersion})`,
       `Platform: ${deviceInfo.platform} ${deviceInfo.version}`,
       `Posture: ${postureLabel}`,
+      `Fonts: ${fontStatus}`,
       `Broadcast: ${broadcastIp}`,
       `Relay: ${settings.relayUrl}`,
       `Joystick: ${settings.joystickStyle} (${settings.sensitivity}x), Run: ${settings.runMode}, Left-handed: ${settings.leftHanded}`,
@@ -123,7 +144,7 @@ export default function SettingsScreen() {
     }
     setCopiedDiag(true);
     setTimeout(() => setCopiedDiag(false), 1800);
-  }, [deviceInfo.appVersion, deviceInfo.platform, deviceInfo.sdkVersion, deviceInfo.version, postureLabel, broadcastIp, settings]);
+  }, [deviceInfo.appVersion, deviceInfo.platform, deviceInfo.sdkVersion, deviceInfo.version, postureLabel, fontStatus, broadcastIp, settings]);
 
   const handleResetSettings = useCallback(() => {
     reset();
@@ -276,6 +297,10 @@ export default function SettingsScreen() {
         <View style={styles.diagRow}>
           <Text style={styles.diagLabel}>Expo SDK</Text>
           <Text style={styles.diagValue} selectable>{deviceInfo.sdkVersion}</Text>
+        </View>
+        <View style={styles.diagRow}>
+          <Text style={styles.diagLabel}>Fonts</Text>
+          <Text style={styles.diagValue} selectable>{fontStatus}</Text>
         </View>
         <View style={styles.diagRow}>
           <Text style={styles.diagLabel}>Posture</Text>
