@@ -259,7 +259,7 @@ export class UdpConnection {
     this.socket.send(buildStatePacket(this.playerId, states, startIndex), this.host, this.port);
   }
   private fail(failure: ConnectionFailure): void {
-    console.warn('[UdpConn] Connection failed:', failure);
+    console.warn('[UdpConn] Connection failed:', failure, this.socket?.diagnostics());
     this.cleanup();
     this.callbacks.onFailure(failure);
   }
