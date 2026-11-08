@@ -2,7 +2,7 @@ import { useRef, useState, type ComponentRef } from 'react';
 import { View, Text, TextInput, StyleSheet } from 'react-native';
 import { PrimaryButton } from './PrimaryButton';
 import { Colors } from '../theme/colors';
-import { Fonts, FontSize, FontWeight } from '../theme/typography';
+import { Fonts, FontSize } from '../theme/typography';
 import { Radius, Spacing } from '../theme/spacing';
 
 interface RoomCodeInputProps {
@@ -102,7 +102,6 @@ const styles = StyleSheet.create({
     fontFamily: Fonts.mono,
     color: Colors.text,
     fontSize: FontSize.md,
-    fontWeight: FontWeight.regular,
     paddingVertical: 11,
     paddingHorizontal: 10,
     textAlign: 'center',

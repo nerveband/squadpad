@@ -4,7 +4,7 @@ import { ArrowLeft, GearSix, PencilSimple, Check, Pause } from 'phosphor-react-n
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LagIndicator } from './LagIndicator';
 import { Colors } from '../theme/colors';
-import { Fonts, FontSize, FontWeight } from '../theme/typography';
+import { Fonts, FontSize } from '../theme/typography';
 
 interface HudBarProps {
   playerName: string;
@@ -202,7 +202,6 @@ const styles = StyleSheet.create({
     fontFamily: Fonts.semibold,
     color: Colors.gold,
     fontSize: FontSize.xs,
-    fontWeight: FontWeight.semibold,
   },
   nameBtn: {
     flexDirection: 'row',
@@ -216,7 +215,6 @@ const styles = StyleSheet.create({
     fontFamily: Fonts.semibold,
     color: Colors.text,
     fontSize: FontSize.sm,
-    fontWeight: FontWeight.semibold,
     maxWidth: 110,
   },
   nameCompact: {
@@ -231,7 +229,6 @@ const styles = StyleSheet.create({
     fontFamily: Fonts.semibold,
     color: Colors.text,
     fontSize: FontSize.sm,
-    fontWeight: FontWeight.semibold,
     backgroundColor: 'rgba(255,255,255,0.10)',
     borderRadius: 6,
     borderWidth: 1.5,
@@ -256,7 +253,6 @@ const styles = StyleSheet.create({
     fontFamily: Fonts.bold,
     color: Colors.textDim,
     fontSize: FontSize.sm,
-    fontWeight: FontWeight.semibold,
     letterSpacing: -0.5,
     textAlign: 'center',
   },

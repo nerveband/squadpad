@@ -3,7 +3,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { X, GearSix } from 'phosphor-react-native';
 import Animated, { FadeIn, FadeOut, SlideInRight, SlideOutRight } from 'react-native-reanimated';
 import { Colors } from '../theme/colors';
-import { FontSize, FontWeight, Fonts } from '../theme/typography';
+import { FontSize, Fonts } from '../theme/typography';
 import { Spacing, Radius } from '../theme/spacing';
 import type { Settings, RunMode } from '../hooks/useSettings';
 import type { ConnectionMode } from '../connection/failure-messages';
@@ -276,7 +276,6 @@ const hudStyles = StyleSheet.create({
     fontFamily: Fonts.bold,
     color: Colors.text,
     fontSize: FontSize.lg,
-    fontWeight: FontWeight.bold,
   },
   closeBtn: {
     width: 36,
@@ -293,7 +292,6 @@ const hudStyles = StyleSheet.create({
     fontFamily: Fonts.semibold,
     color: Colors.textDim,
     fontSize: FontSize.xs,
-    fontWeight: FontWeight.semibold,
     textTransform: 'uppercase',
     letterSpacing: 1,
     marginBottom: Spacing.sm,
@@ -313,7 +311,6 @@ const hudStyles = StyleSheet.create({
     fontFamily: Fonts.semibold,
     color: Colors.text,
     fontSize: FontSize.sm,
-    fontWeight: FontWeight.semibold,
     maxWidth: 140,
   },
   toggleRow: {
@@ -343,7 +340,6 @@ const hudStyles = StyleSheet.create({
     fontFamily: Fonts.semibold,
     color: Colors.textDim,
     fontSize: FontSize.xs,
-    fontWeight: FontWeight.semibold,
   },
   pillTextActive: {
     color: Colors.purple,
@@ -351,7 +347,6 @@ const hudStyles = StyleSheet.create({
   valueText: {
     color: Colors.teal,
     fontSize: FontSize.sm,
-    fontWeight: FontWeight.bold,
     fontFamily: Fonts.monoBold,
   },
   settingBlock: {
@@ -378,7 +373,6 @@ const hudStyles = StyleSheet.create({
     fontFamily: Fonts.semibold,
     color: Colors.textDim,
     fontSize: 11,
-    fontWeight: FontWeight.semibold,
   },
   segTextActive: {
     color: Colors.text,
@@ -398,6 +392,5 @@ const hudStyles = StyleSheet.create({
     fontFamily: Fonts.semibold,
     color: Colors.purple,
     fontSize: FontSize.sm,
-    fontWeight: FontWeight.semibold,
   },
 });

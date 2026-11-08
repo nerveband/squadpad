@@ -9,7 +9,7 @@ import type { ButtonName } from '../controller/controller-state';
 import { getZone, getButtonMask } from '../controller/touch-zones';
 import type { RunMode } from '../hooks/useSettings';
 import { Colors } from '../theme/colors';
-import { Fonts, FontSize, FontWeight } from '../theme/typography';
+import { Fonts, FontSize } from '../theme/typography';
 
 const BUTTON_GAP = 14;
 const COMPACT_BUTTON_GAP = 8;
@@ -394,7 +394,6 @@ const styles = StyleSheet.create({
     fontFamily: Fonts.bold,
     color: '#fff',
     fontSize: FontSize.xs,
-    fontWeight: FontWeight.bold,
     letterSpacing: 1,
   },
 });

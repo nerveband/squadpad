@@ -216,7 +216,7 @@ class ExpoUdpModule : Module() {
       if (unacked == 0 || unacked >= 128) return 0
       val count = unacked.coerceAtMost(11)
       val startIndex = if (unacked <= 21) ackIndex else ((writeIndex - count) and 0xFF)
-      sendBuf[0] = 24 // MSG.STATE2
+      sendBuf[0] = MSG_STATE2.toByte()
       sendBuf[1] = sessionPlayerId.toByte()
       sendBuf[2] = count.toByte()
       sendBuf[3] = startIndex.toByte()
@@ -298,6 +298,11 @@ class ExpoUdpModule : Module() {
       "bytesSent" to bytesSent.get(),
       "packetsReceived" to packetsReceived.get(),
       "lastError" to lastError,
+      "sessionActive" to sessionActive,
+      "playerId" to sessionPlayerId,
+      "writeIndex" to writeIndex,
+      "ackIndex" to ackIndex,
+      "lagMs" to smoothedLagMs,
     )
 
     @Suppress("DEPRECATION")
@@ -366,8 +371,8 @@ class ExpoUdpModule : Module() {
             socket.receive(packet)
             packetsReceived.incrementAndGet()
             val len = packet.length
-            if (sessionActive && len >= 2 && (buffer[0].toInt() and 0xFF) == 7) {
-              // Handle MSG_STATE_ACK (7) directly on the native thread in microseconds
+            if (sessionActive && len >= 2 && (buffer[0].toInt() and 0xFF) == MSG_STATE_ACK) {
+              // Handle MSG_STATE_ACK directly on the native thread in microseconds
               val now = SystemClock.elapsedRealtime()
               val ackNext = buffer[1].toInt() and 0xFF
               var emitLag = -1
@@ -406,7 +411,7 @@ class ExpoUdpModule : Module() {
                 }
               }
               if (emitLag > 0) {
-                onMessage(byteArrayOf(7, ackNext.toByte()), "", packet.port, emitLag)
+                onMessage(byteArrayOf(MSG_STATE_ACK.toByte(), ackNext.toByte()), "", packet.port, emitLag)
               }
             } else {
               onMessage(buffer.copyOf(len), packet.address?.hostAddress ?: "", packet.port, 0)
@@ -439,6 +444,10 @@ class ExpoUdpModule : Module() {
 }
 
 private const val RECEIVE_TIMEOUT_MS = 35
+
+/** BombSquad remote protocol opcodes; mirrors native/src/protocol/constants.ts. */
+private const val MSG_STATE2 = 10
+private const val MSG_STATE_ACK = 6
 /** Subnet broadcast address of the Wi-Fi interface, falling back to any active IPv4 interface. */
 private fun broadcastAddress(): String? {
   var fallback: String? = null

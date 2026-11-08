@@ -20,7 +20,7 @@ import { useDiscovery } from '../src/hooks/useDiscovery';
 import { useConnectionHistory } from '../src/hooks/useConnectionHistory';
 import { useSettings } from '../src/hooks/useSettings';
 import { Colors } from '../src/theme/colors';
-import { Fonts, FontSize, FontWeight } from '../src/theme/typography';
+import { Fonts, FontSize } from '../src/theme/typography';
 import { Spacing, Radius } from '../src/theme/spacing';
 import type { DiscoveredGame } from '../src/connection/discovery';
 
@@ -504,7 +504,6 @@ const styles = StyleSheet.create({
   titleMaskLandscape: {
     fontFamily: Fonts.extrabold,
     fontSize: 26,
-    fontWeight: FontWeight.extrabold,
     letterSpacing: -1.1,
     textAlign: 'left',
   },
@@ -569,7 +568,6 @@ const styles = StyleSheet.create({
   titleMask: {
     fontFamily: Fonts.extrabold,
     fontSize: 36,
-    fontWeight: FontWeight.extrabold,
     letterSpacing: -1.5,
     textAlign: 'center',
   },
@@ -586,7 +584,6 @@ const styles = StyleSheet.create({
     fontFamily: Fonts.semibold,
     color: Colors.textDim,
     fontSize: FontSize.sm,
-    fontWeight: FontWeight.semibold,
     textTransform: 'uppercase',
     letterSpacing: 1,
   },
@@ -594,7 +591,6 @@ const styles = StyleSheet.create({
     fontFamily: Fonts.semibold,
     color: Colors.danger,
     fontSize: FontSize.xs,
-    fontWeight: FontWeight.semibold,
   },
   card: {
     gap: Spacing.sm,
@@ -612,7 +608,6 @@ const styles = StyleSheet.create({
     fontFamily: Fonts.bold,
     color: Colors.text,
     fontSize: FontSize.lg,
-    fontWeight: FontWeight.bold,
   },
   cardDescription: {
     fontFamily: Fonts.primary,
@@ -629,7 +624,6 @@ const styles = StyleSheet.create({
     fontFamily: Fonts.semibold,
     color: Colors.textDim,
     fontSize: FontSize.xs,
-    fontWeight: FontWeight.semibold,
     textTransform: 'uppercase',
     letterSpacing: 1,
   },
@@ -653,7 +647,6 @@ const styles = StyleSheet.create({
     fontFamily: Fonts.monoSemibold,
     color: Colors.purple,
     fontSize: FontSize.sm,
-    fontWeight: FontWeight.semibold,
   },
   inlineTogglesRow: {
     flexDirection: 'row',
@@ -672,7 +665,6 @@ const styles = StyleSheet.create({
     fontFamily: Fonts.semibold,
     color: Colors.textDim,
     fontSize: FontSize.sm,
-    fontWeight: FontWeight.semibold,
   },
   ipRow: {
     flexDirection: 'row',
@@ -695,7 +687,6 @@ const styles = StyleSheet.create({
     fontFamily: Fonts.bold,
     color: '#fff',
     fontSize: FontSize.md,
-    fontWeight: FontWeight.bold,
   },
   hostInfoToggle: {
     flexDirection: 'row',
@@ -723,7 +714,6 @@ const styles = StyleSheet.create({
     fontFamily: Fonts.semibold,
     color: Colors.purple,
     fontSize: FontSize.sm,
-    fontWeight: FontWeight.semibold,
   },
   footer: {
     alignItems: 'center',
@@ -747,7 +737,6 @@ const styles = StyleSheet.create({
     fontFamily: Fonts.semibold,
     color: Colors.teal,
     fontSize: FontSize.xs,
-    fontWeight: FontWeight.semibold,
     opacity: 0.7,
   },
 });

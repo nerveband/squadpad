@@ -15,7 +15,7 @@ import { useGamepad } from '../src/hooks/useGamepad';
 import { ConnectionManager, type ConnectionStatus } from '../src/connection/connection-manager';
 import type { ConnectionMode } from '../src/connection/failure-messages';
 import { Colors } from '../src/theme/colors';
-import { Fonts, FontSize, FontWeight } from '../src/theme/typography';
+import { Fonts, FontSize } from '../src/theme/typography';
 import { Radius, Spacing } from '../src/theme/spacing';
 
 export default function ControllerScreen() {
@@ -339,7 +339,6 @@ const styles = StyleSheet.create({
     fontFamily: Fonts.monoBold,
     color: Colors.teal,
     fontSize: FontSize.md,
-    fontWeight: FontWeight.bold,
     marginTop: 2,
   },
   runHoldChip: {
@@ -358,7 +357,6 @@ const styles = StyleSheet.create({
     fontFamily: Fonts.bold,
     color: Colors.teal,
     fontSize: FontSize.xs,
-    fontWeight: FontWeight.bold,
     letterSpacing: 0.8,
   },
   portraitControls: {
@@ -397,14 +395,12 @@ const styles = StyleSheet.create({
     fontFamily: Fonts.semibold,
     color: Colors.textDim,
     fontSize: FontSize.xs,
-    fontWeight: FontWeight.semibold,
     letterSpacing: 1,
   },
   deckTarget: {
     fontFamily: Fonts.monoBold,
     color: Colors.teal,
     fontSize: FontSize.lg,
-    fontWeight: FontWeight.bold,
     marginTop: 2,
   },
   deckBadges: {
@@ -428,6 +424,5 @@ const styles = StyleSheet.create({
     fontFamily: Fonts.semibold,
     color: Colors.text,
     fontSize: FontSize.xs,
-    fontWeight: FontWeight.semibold,
   },
 });

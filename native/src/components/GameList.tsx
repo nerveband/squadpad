@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, Pressable, ActivityIndicator, Linking, Platform
 import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
 import { WifiHigh } from 'phosphor-react-native';
 import { Colors } from '../theme/colors';
-import { Fonts, FontSize, FontWeight } from '../theme/typography';
+import { Fonts, FontSize } from '../theme/typography';
 import { Radius, Spacing } from '../theme/spacing';
 import type { DiscoveredGame } from '../connection/discovery';
 
@@ -129,13 +129,11 @@ const styles = StyleSheet.create({
     fontFamily: Fonts.semibold,
     color: Colors.teal,
     fontSize: FontSize.sm,
-    fontWeight: FontWeight.semibold,
   },
   joinText: {
     fontFamily: Fonts.bold,
     color: Colors.teal,
     fontSize: FontSize.sm,
-    fontWeight: FontWeight.bold,
   },
   item: {
     flexDirection: 'row',
@@ -157,7 +155,6 @@ const styles = StyleSheet.create({
     fontFamily: Fonts.semibold,
     color: Colors.text,
     fontSize: FontSize.md,
-    fontWeight: FontWeight.semibold,
   },
   gameAddress: {
     fontFamily: Fonts.mono,

@@ -2,7 +2,7 @@ import { Pressable, Text, StyleSheet, ViewStyle } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import Animated, { useSharedValue, useAnimatedStyle, withSpring } from 'react-native-reanimated';
 import { Colors } from '../theme/colors';
-import { Fonts, FontSize, FontWeight } from '../theme/typography';
+import { Fonts, FontSize } from '../theme/typography';
 import { Radius } from '../theme/spacing';
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
@@ -53,7 +53,6 @@ const styles = StyleSheet.create({
     fontFamily: Fonts.bold,
     color: '#fff',
     fontSize: FontSize.md,
-    fontWeight: FontWeight.bold,
   },
   disabled: {
     opacity: 0.5,

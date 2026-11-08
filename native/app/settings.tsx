@@ -10,7 +10,7 @@ import { StyledTextInput } from '../src/components/StyledTextInput';
 import { useSettings, type RunMode } from '../src/hooks/useSettings';
 import { useFoldable } from '../src/hooks/useFoldable';
 import { Colors } from '../src/theme/colors';
-import { FontSize, FontWeight, Fonts } from '../src/theme/typography';
+import { FontSize, Fonts } from '../src/theme/typography';
 import { Spacing, Radius } from '../src/theme/spacing';
 
 function ToggleButton({ label, value, onToggle }: { label: string; value: boolean; onToggle: () => void }) {
@@ -384,13 +384,11 @@ const styles = StyleSheet.create({
     fontFamily: Fonts.bold,
     color: Colors.text,
     fontSize: FontSize.xl,
-    fontWeight: FontWeight.bold,
   },
   sectionTitle: {
     fontFamily: Fonts.bold,
     color: Colors.text,
     fontSize: FontSize.lg,
-    fontWeight: FontWeight.bold,
     marginBottom: Spacing.md,
   },
   cardTitleRow: {
@@ -403,7 +401,6 @@ const styles = StyleSheet.create({
     fontFamily: Fonts.bold,
     color: Colors.text,
     fontSize: FontSize.lg,
-    fontWeight: FontWeight.bold,
   },
   actionPill: {
     flexDirection: 'row',
@@ -423,7 +420,6 @@ const styles = StyleSheet.create({
     fontFamily: Fonts.semibold,
     color: Colors.purple,
     fontSize: FontSize.xs,
-    fontWeight: FontWeight.semibold,
   },
   settingRow: {
     gap: Spacing.sm,
@@ -442,7 +438,6 @@ const styles = StyleSheet.create({
   sensValue: {
     color: Colors.teal,
     fontSize: FontSize.sm,
-    fontWeight: FontWeight.bold,
     fontFamily: Fonts.monoBold,
   },
   toggleRow: {
@@ -467,7 +462,6 @@ const styles = StyleSheet.create({
     fontFamily: Fonts.semibold,
     color: Colors.textDim,
     fontSize: FontSize.sm,
-    fontWeight: FontWeight.semibold,
   },
   toggleTextActive: {
     color: Colors.purple,
@@ -492,7 +486,6 @@ const styles = StyleSheet.create({
     fontFamily: Fonts.semibold,
     color: Colors.textDim,
     fontSize: FontSize.sm,
-    fontWeight: FontWeight.semibold,
   },
   segmentTextActive: {
     color: Colors.text,
@@ -531,6 +524,5 @@ const styles = StyleSheet.create({
   aboutLink: {
     fontFamily: Fonts.semibold,
     color: Colors.teal,
-    fontWeight: FontWeight.semibold,
   },
 });

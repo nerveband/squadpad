@@ -227,7 +227,7 @@ private final class UdpSocket {
     if unacked == 0 || unacked >= 128 { return 0 }
     let count = min(unacked, 11)
     let startIndex = unacked <= 21 ? ackIndex : ((writeIndex - count) & 0xFF)
-    sendBuf[0] = 24
+    sendBuf[0] = UInt8(msgState2)
     sendBuf[1] = UInt8(sessionPlayerId & 0xFF)
     sendBuf[2] = UInt8(count)
     sendBuf[3] = UInt8(startIndex)
@@ -372,6 +372,11 @@ private final class UdpSocket {
       "bytesSent": bytesSent,
       "packetsReceived": packetsReceived,
       "lastError": lastError as Any,
+      "sessionActive": sessionActive,
+      "playerId": sessionPlayerId,
+      "writeIndex": writeIndex,
+      "ackIndex": ackIndex,
+      "lagMs": smoothedLagMs,
     ]
   }
 
@@ -396,7 +401,7 @@ private final class UdpSocket {
       let now = Self.nowMs()
       stats.lock()
       packetsReceived += 1
-      if sessionActive && count >= 2 && recvBuffer[0] == 7 {
+      if sessionActive && count >= 2 && recvBuffer[0] == UInt8(msgStateAck) {
         let ackNext = Int(recvBuffer[1])
         let unacked = (writeIndex - ackIndex) & 0xFF
         let stateDiff = (ackNext - ackIndex) & 0xFF
@@ -437,7 +442,7 @@ private final class UdpSocket {
         }
         stats.unlock()
         if emitLag > 0 {
-          onMessage(Data([7, UInt8(ackNext & 0xFF)]), "", Int(UInt16(bigEndian: from.sin_port)), emitLag)
+          onMessage(Data([UInt8(msgStateAck), UInt8(ackNext & 0xFF)]), "", Int(UInt16(bigEndian: from.sin_port)), emitLag)
         }
       } else {
         stats.unlock()
@@ -451,6 +456,10 @@ private final class UdpSocket {
     stats.unlock()
   }
 }
+
+/// BombSquad remote protocol opcodes; mirrors native/src/protocol/constants.ts.
+private let msgState2 = 10
+private let msgStateAck = 6
 
 private enum UdpError: Error, CustomStringConvertible {
   case posix(String, Int32)

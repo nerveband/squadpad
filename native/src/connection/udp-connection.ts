@@ -150,6 +150,15 @@ export class UdpConnection {
         clearInterval(this.handshakeTimer ?? undefined);
         this.handshakeTimer = null;
         this.nativeSession = this.socket?.configureSession(this.playerId, this.host, this.port) ?? false;
+        // Smoke check: if the native engine cannot actually emit a state packet,
+        // drop back to the JS queue instead of leaving a dead controller.
+        if (this.nativeSession) {
+          const probe = this.socket?.sendState(0, 128, 128) ?? -1;
+          if (probe <= 0) {
+            this.nativeSession = false;
+            console.warn('[UdpConn] native state engine unavailable, using JS queue', this.socket?.diagnostics());
+          }
+        }
         if (!this.nativeSession) {
           this.resendTimer = setInterval(() => this.sendPendingStates(), RESEND_INTERVAL);
         }
@@ -158,7 +167,10 @@ export class UdpConnection {
             this.fail({ reason: 'connection_lost', detail: this.host });
           }
         }, 1000);
-        console.log(`[UdpConn] Connected to ${this.host} as player ${this.playerId} (v2=${response.supportsV2}, native=${this.nativeSession})`);
+        console.log(
+          `[UdpConn] Connected to ${this.host} as player ${this.playerId} (v2=${response.supportsV2}, native=${this.nativeSession})`,
+          this.socket?.diagnostics(),
+        );
         this.callbacks.onConnect(this.playerId);
         break;
       }
