@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { useFonts } from 'expo-font';
+import { useFonts, isLoaded as isFontLoaded } from 'expo-font';
 import * as SplashScreen from 'expo-splash-screen';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -27,6 +27,23 @@ export default function RootLayout() {
   useEffect(() => {
     if (fontsLoaded || fontError) {
       SplashScreen.hideAsync().catch(() => {});
+    }
+    if (fontError) {
+      console.warn('[Fonts] load failed, text will fall back to system fonts:', fontError);
+      return;
+    }
+    if (fontsLoaded) {
+      const families = [
+        'Outfit-Regular',
+        'Outfit-SemiBold',
+        'Outfit-Bold',
+        'Outfit-ExtraBold',
+        'Ioskeley-Mono',
+        'Ioskeley-Mono-Semibold',
+        'Ioskeley-Mono-Bold',
+      ];
+      const loaded = families.filter((name) => isFontLoaded(name));
+      console.log(`[Fonts] ${loaded.length}/${families.length} registered`, loaded.join(','));
     }
   }, [fontsLoaded, fontError]);
 
