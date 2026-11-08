@@ -7,7 +7,7 @@ Working notes for the first App Store and Google Play release of the native app 
 |Area|State|Evidence|
 |---|---|---|
 |iOS multicast entitlement|Done|Apple granted it Oct 23. `com.apple.developer.networking.multicast` is in `app.json`; the App ID `org.squadpad.app` has Multicast Networking checked (portal read-back after reload); EAS regenerated App Store profile `S9BXABZC2T`, whose entitlements include the key (ASC API read)|
-|TestFlight|Builds 1.0.0 (4)–(14) uploaded|Build 14 (`994d90a5-310a-482b-b34b-2786ceda2c0b`, ASC `c4f1b82b-b307-471b-ab94-59e58c907d02`, Nov 7) fixes the native UDP engine, which had stamped `MSG_STATE2` as opcode 24 instead of 10 and matched `MSG_STATE_ACK` as 7 instead of 6, so BombSquad accepted the join then ignored every input until the watchdog fired. `IN_BETA_TESTING` internal and external, beta review `APPROVED`; public link https://testflight.apple.com/join/qSJF34YF (`squadpad.org/ios`)|
+|TestFlight|Builds 1.0.0 (4)–(15) uploaded|Build 15 (`2f2e4e28-5dfb-4e26-8fbb-4a081bfad1a3`, ASC `12bbfbac-c0fe-48af-9c8d-84d202d3a919`, Nov 8) makes the implicit input state machines explicit: joystick and action-button touch ownership now reset through an input epoch on background and settings entry, `ControllerState.reset()` always emits neutral, and the native sequence window recovers from a wrap instead of going silent. `IN_BETA_TESTING` internal and external; public link https://testflight.apple.com/join/qSJF34YF|
 |App Store|Listing and App Privacy done, not submitted|Version string 1.0.0; `eas metadata:push` synced description, keywords, URLs, categories, age rating, review contact and notes, 6 iPhone + 5 iPad screenshots (ASC API read-back). App Privacy published Oct 24 ("Published a few seconds ago by Ashraf Ali"): Other User Content, App Functionality, linked to identity, no tracking. Remaining: Ashraf's TestFlight result, then attach build 13 and submit|
 |Android minimum version|Android 7.0 (API 24), unchanged|See "Android compatibility"|
 |Google Play account|Created and verified|Organization account "wavedepth", ID 7899252951962949465, owner info@wavedepth.com, nerveband@gmail.com is Admin. Organization, representative, website and phones verified Oct 23|
@@ -15,6 +15,8 @@ Working notes for the first App Store and Google Play release of the native app 
 |Play listing and policy forms|Saved, not sent for review|Main store listing, store settings and every App content declaration saved ("You're all caught up"). Answers in `native/store/play/README.md`|
 |Play graphics|Done and uploaded|`native/store/play/screenshots/` (5 phone, 4 + 4 tablet, feature graphic, icon)|
 |Website|"Coming soon" line live|squadpad.org shows "Phone apps for iPhone and Android are coming soon to the App Store and Google Play." No badges until a listing is live. Deployed with `netlify deploy --prod --dir=web/src`|
+
+State machine audit: `docs/state-machines.md`.
 
 ## Accounts and names
 
