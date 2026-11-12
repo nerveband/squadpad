@@ -28,8 +28,14 @@ export default function HomeScreen() {
   const router = useRouter();
   const searchParams = useLocalSearchParams<{ room?: string; name?: string }>();
   const { settings, update, loaded } = useSettings();
-  const { insets, isPortrait, safeHeight, isWide, fold } = useFoldable();
-  const isShortLandscape = !isPortrait && safeHeight < 480;
+  const { width, insets, isPortrait, safeWidth, safeHeight, isWide, fold } = useFoldable();
+  const isLandscape = !isPortrait;
+  const isShortLandscape = isLandscape && safeHeight < 480;
+  const isLargeLandscape = isLandscape && safeWidth >= 1000;
+  const landscapeEdgePad = isLandscape ? Math.min(36, Math.max(18, Math.round(width * 0.035))) : 0;
+  const safeLeftPad = Math.max(insets.left + Spacing.lg, Spacing.lg) + landscapeEdgePad;
+  const safeRightPad = Math.max(insets.right + Spacing.lg, Spacing.lg) + landscapeEdgePad;
+  const wideStageMaxWidth = Math.min(1180, Math.max(520, safeWidth - landscapeEdgePad * 2));
   const [playerName, setPlayerName] = useState(settings.playerName);
   const [nameError, setNameError] = useState(false);
   const nameInputRef = useRef<ComponentRef<typeof TextInput>>(null);
@@ -149,23 +155,23 @@ export default function HomeScreen() {
   };
   const padStyle = {
     paddingTop: isShortLandscape
-      ? Math.max(insets.top + 4, Spacing.sm)
-      : Math.max(insets.top + Spacing.sm, Spacing.lg),
+      ? Math.max(insets.top + 6, Spacing.sm)
+      : Math.max(insets.top + Spacing.sm, Spacing.lg) + (isLandscape ? 6 : 0),
     paddingBottom: isShortLandscape
-      ? Math.max(insets.bottom + 8, Spacing.md)
-      : Math.max(insets.bottom + Spacing.xl, Spacing.xxl),
-    paddingLeft: Math.max(insets.left + Spacing.lg, Spacing.lg),
-    paddingRight: Math.max(insets.right + Spacing.lg, Spacing.lg),
+      ? Math.max(insets.bottom + 10, Spacing.md)
+      : Math.max(insets.bottom + Spacing.xl, Spacing.xxl) + (isLandscape ? 8 : 0),
+    paddingLeft: safeLeftPad,
+    paddingRight: safeRightPad,
   };
 
   // When a vertical fold division is active, size the left pane up to the fold
   // and leave a clear gutter over the crease.
   const hasVerticalFold = fold?.orientation === 'vertical';
   const leftPaneStyle = hasVerticalFold
-    ? { width: Math.max(240, fold.x - Math.max(insets.left + Spacing.lg, Spacing.lg) - 14) }
+    ? { width: Math.max(240, fold.x - safeLeftPad - 14) }
     : styles.paneFlex;
-  const foldGap = hasVerticalFold ? Math.max(24, fold.width + 24) : isShortLandscape ? 16 : 24;
-  const cardStyle = isShortLandscape ? styles.cardCompact : styles.card;
+  const foldGap = hasVerticalFold ? Math.max(28, fold.width + 28) : isShortLandscape ? 16 : 28;
+  const cardStyle = isShortLandscape ? styles.cardCompact : isLargeLandscape ? styles.cardLargeLandscape : styles.card;
 
   const nearbyCard = (
     <GlassCard style={cardStyle}>
@@ -309,7 +315,9 @@ export default function HomeScreen() {
         contentContainerStyle={[
           styles.content,
           isWide && styles.contentWide,
+          isWide && { maxWidth: wideStageMaxWidth },
           isShortLandscape && styles.contentCompact,
+          isLargeLandscape && styles.contentLargeLandscape,
           padStyle,
         ]}
         keyboardShouldPersistTaps="handled"
@@ -323,18 +331,18 @@ export default function HomeScreen() {
                 <Animated.View style={[styles.bombIconWrap, floatStyle]}>
                   <Image
                     source={require('../assets/icon-hero.png')}
-                    style={styles.bombIconLandscape}
+                    style={isLargeLandscape ? styles.bombIconLandscapeLarge : styles.bombIconLandscape}
                     resizeMode="contain"
                   />
                 </Animated.View>
                 <View style={styles.brandTextCol}>
-                  <GradientMask maskElement={<Text style={styles.titleMaskLandscape}>SquadPad</Text>}>
+                  <GradientMask maskElement={<Text style={isLargeLandscape ? styles.titleMaskLandscapeLarge : styles.titleMaskLandscape}>SquadPad</Text>}>
                     <LinearGradient
                       colors={[Colors.teal, Colors.purple, Colors.gold]}
                       start={{ x: 0, y: 0 }}
                       end={{ x: 1, y: 1 }}
                     >
-                      <Text style={[styles.titleMaskLandscape, { opacity: 0 }]}>SquadPad</Text>
+                      <Text style={[isLargeLandscape ? styles.titleMaskLandscapeLarge : styles.titleMaskLandscape, { opacity: 0 }]}>SquadPad</Text>
                     </LinearGradient>
                   </GradientMask>
                   <Text style={styles.subtitleLandscape}>Game Controller for BombSquad</Text>
@@ -483,6 +491,9 @@ const styles = StyleSheet.create({
   contentCompact: {
     gap: Spacing.md,
   },
+  contentLargeLandscape: {
+    gap: Spacing.xl,
+  },
   wideTopBar: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -501,10 +512,20 @@ const styles = StyleSheet.create({
     width: 48,
     height: 53,
   },
+  bombIconLandscapeLarge: {
+    width: 56,
+    height: 62,
+  },
   titleMaskLandscape: {
     fontFamily: Fonts.extrabold,
     fontSize: 26,
     letterSpacing: -1.1,
+    textAlign: 'left',
+  },
+  titleMaskLandscapeLarge: {
+    fontFamily: Fonts.extrabold,
+    fontSize: 30,
+    letterSpacing: -1.2,
     textAlign: 'left',
   },
   subtitleLandscape: {
@@ -598,6 +619,10 @@ const styles = StyleSheet.create({
   cardCompact: {
     gap: Spacing.xs,
     padding: 16,
+  },
+  cardLargeLandscape: {
+    gap: Spacing.md,
+    padding: 20,
   },
   cardHeader: {
     flexDirection: 'row',
