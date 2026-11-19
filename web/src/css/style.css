@@ -2366,13 +2366,20 @@ details[open] .advanced-toggle::after {
   border-radius: 6px;
 }
 .store-badges img {
-  height: 48px;
-  width: auto;
   display: block;
+  width: auto;
+  height: 50px;
   border: 0;
+  object-fit: contain;
+}
+.store-badges a:first-child img {
+  height: 44px;
 }
 @media (max-width: 560px) {
   .store-badges img {
-    height: 44px;
+    height: 46px;
+  }
+  .store-badges a:first-child img {
+    height: 40px;
   }
 }
