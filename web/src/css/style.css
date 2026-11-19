@@ -2352,3 +2352,27 @@ details[open] .advanced-toggle::after {
     padding: 16px 14px;
   }
 }
+.store-badges {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 2px 0 8px;
+}
+.store-badges a {
+  display: inline-flex;
+  line-height: 0;
+  border-radius: 6px;
+}
+.store-badges img {
+  height: 48px;
+  width: auto;
+  display: block;
+  border: 0;
+}
+@media (max-width: 560px) {
+  .store-badges img {
+    height: 44px;
+  }
+}
